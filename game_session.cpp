@@ -1,3 +1,10 @@
+// File: LocalWebSocketServer/game_session.cpp
+//
+// Additions:
+// 1. New function `check_for_level_up` to handle leveling logic.
+// 2. Updated `send_player_stats` to include level and XP.
+// 3. Added debug command `GIVE_XP:` to test leveling.
+//
 // File: src/game_session.cpp
 #include "game_session.hpp"
 #include <iostream>
@@ -102,11 +109,37 @@ void send_player_stats(websocket::stream<tcp::socket>& ws, const PlayerState& pl
         << ",\"attack\":" << player.stats.attack
         << ",\"defense\":" << player.stats.defense
         << ",\"speed\":" << player.stats.speed
+        << ",\"level\":" << player.stats.level // ADDED
+        << ",\"experience\":" << player.stats.experience // ADDED
+        << ",\"experienceToNextLevel\":" << player.stats.experienceToNextLevel // ADDED
         << ",\"availableSkillPoints\":" << player.availableSkillPoints
         << "}";
 
     ws.write(net::buffer(oss.str()));
 }
+
+// --- Level Up Handler ---
+void check_for_level_up(websocket::stream<tcp::socket>& ws, PlayerState& player) {
+    // Check if player has enough XP to level up, loop in case of multiple levels
+    while (player.stats.experience >= player.stats.experienceToNextLevel) {
+        player.stats.level++;
+        player.stats.experience -= player.stats.experienceToNextLevel;
+        // Increase XP required for next level (e.g., 50% more)
+        player.stats.experienceToNextLevel = static_cast<int>(player.stats.experienceToNextLevel * 1.5);
+        player.availableSkillPoints += 3;
+
+        std::cout << "[Level Up] Player " << player.playerName << " reached level " << player.stats.level << "\n";
+
+        // Notify client
+        std::string level_msg = "SERVER:LEVEL_UP:You have reached level " + std::to_string(player.stats.level) + "!";
+        ws.write(net::buffer(level_msg));
+
+        std::string prompt_msg = "SERVER:PROMPT:You have " + std::to_string(player.availableSkillPoints) + " new skill points to spend. Use UPGRADE_STAT:stat_name.";
+        ws.write(net::buffer(prompt_msg));
+    }
+    // Note: The calling function (e.g., GIVE_XP) is responsible for sending the final updated stats.
+}
+
 
 // --- Main Session Handler ---
 void do_session(tcp::socket socket) {
@@ -249,8 +282,13 @@ void do_session(tcp::socket socket) {
 
                         send_available_areas(ws);
                     }
-                    else {
+                    else if (player.availableSkillPoints > 0) {
                         std::string remaining = "SERVER:PROMPT:You have " + std::to_string(player.availableSkillPoints) + " skill points remaining.";
+                        ws.write(net::buffer(remaining));
+                    }
+                    else {
+                        // This branch is hit when skill points reach 0 *after* initial creation (i.e., leveling)
+                        std::string remaining = "SERVER:STATUS:All skill points spent.";
                         ws.write(net::buffer(remaining));
                     }
                 }
@@ -310,6 +348,13 @@ void do_session(tcp::socket socket) {
                         std::string response = "SERVER:MONSTER_ACTION:You targeted the " + it->type +
                             " (ID: " + std::to_string(selected_id) + "). Moving to combat phase...";
                         ws.write(net::buffer(response));
+
+                        // --- TODO: Combat logic would go here ---
+                        // After combat, you would grant XP, e.g.:
+                        // int xp_gain = 50;
+                        // player.stats.experience += xp_gain;
+                        // check_for_level_up(ws, player);
+                        // send_player_stats(ws, player);
                     }
                     else {
                         ws.write(net::buffer("SERVER:ERROR:Selected monster ID not found in this area."));
@@ -317,6 +362,35 @@ void do_session(tcp::socket socket) {
                 }
                 catch (const std::exception&) {
                     ws.write(net::buffer("SERVER:ERROR:Invalid monster ID format."));
+                }
+            }
+            // DEBUG: Give XP
+            else if (message.rfind("GIVE_XP:", 0) == 0) {
+                if (!player.isFullyInitialized) {
+                    ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+                    buffer.consume(buffer.size());
+                    continue;
+                }
+                try {
+                    int xp_to_give = std::stoi(message.substr(8));
+                    if (xp_to_give > 0) {
+                        player.stats.experience += xp_to_give;
+
+                        std::string response = "SERVER:STATUS:Gained " + std::to_string(xp_to_give) + " XP.";
+                        ws.write(net::buffer(response));
+
+                        // Check for level up
+                        check_for_level_up(ws, player);
+
+                        // Send updated stats
+                        send_player_stats(ws, player);
+                    }
+                    else {
+                        ws.write(net::buffer("SERVER:ERROR:Invalid XP amount."));
+                    }
+                }
+                catch (const std::exception&) {
+                    ws.write(net::buffer("SERVER:ERROR:Invalid XP amount format."));
                 }
             }
             // Echo/Debug
