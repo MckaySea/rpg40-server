@@ -48,6 +48,7 @@ struct PlayerState {
 
     // Stats and progression
     PlayerStats stats;
+    std::vector<std::string> spells; // ADDED
     int availableSkillPoints = 0;
     bool hasSpentInitialPoints = false;
     bool isFullyInitialized = false; // true after name, class, and point spending

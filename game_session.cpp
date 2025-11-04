@@ -109,11 +109,22 @@ void send_player_stats(websocket::stream<tcp::socket>& ws, const PlayerState& pl
         << ",\"attack\":" << player.stats.attack
         << ",\"defense\":" << player.stats.defense
         << ",\"speed\":" << player.stats.speed
-        << ",\"level\":" << player.stats.level // ADDED
-        << ",\"experience\":" << player.stats.experience // ADDED
-        << ",\"experienceToNextLevel\":" << player.stats.experienceToNextLevel // ADDED
-        << ",\"availableSkillPoints\":" << player.availableSkillPoints
-        << "}";
+        << ",\"level\":" << player.stats.level
+        << ",\"experience\":" << player.stats.experience
+        << ",\"experienceToNextLevel\":" << player.stats.experienceToNextLevel
+        << ",\"availableSkillPoints\":" << player.availableSkillPoints;
+
+    // ADDED: Include spells for wizards
+    if (player.currentClass == PlayerClass::WIZARD && !player.spells.empty()) {
+        oss << ",\"spells\":[";
+        for (size_t i = 0; i < player.spells.size(); ++i) {
+            if (i > 0) oss << ",";
+            oss << "\"" << player.spells[i] << "\"";
+        }
+        oss << "]";
+    }
+
+    oss << "}";
 
     ws.write(net::buffer(oss.str()));
 }
@@ -198,6 +209,7 @@ void do_session(tcp::socket socket) {
                 }
                 else if (class_str == "WIZARD") {
                     player.currentClass = PlayerClass::WIZARD;
+                    player.spells = { "Fireball", "Lightning", "Freeze" };
                 }
                 else if (class_str == "ROGUE") {
                     player.currentClass = PlayerClass::ROGUE;
