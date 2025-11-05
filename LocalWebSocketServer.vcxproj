@@ -123,10 +123,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="game_session.cpp" />
+    <ClCompile Include="AsyncSession.cpp" />
     <ClCompile Include="server_main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AsyncSession.hpp" />
     <ClInclude Include="game_session.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

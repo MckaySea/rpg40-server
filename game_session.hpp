@@ -1,13 +1,21 @@
 // File: LocalWebSocketServer/game_session.hpp
+#pragma once 
+
 #include <string>
 #include <vector>
-#include <deque> // ADDED: For path queue
-#include <chrono> // ADDED: For move timers
+#include <deque> 
+#include <chrono> 
 #include <boost/optional.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
+
+// --- ADDED: Global game constants ---
+static const int GRID_COLS = 40;
+static const int GRID_ROWS = 22;
+static const std::chrono::milliseconds MOVEMENT_DELAY{ 150 }; // Speed: ms per tile
+static const int SERVER_TICK_RATE_MS = 50; // 20 ticks per second
 
 enum class PlayerClass {
     UNSELECTED,
@@ -16,8 +24,6 @@ enum class PlayerClass {
     ROGUE
 };
 
-// ADDED: Simple struct for sharing public player data
-// Moved here because it depends on PlayerClass
 struct PlayerBroadcastData {
     std::string userId;
     std::string playerName;
@@ -28,7 +34,6 @@ struct PlayerBroadcastData {
     int posY = 0;
 };
 
-// Player Stats Structure
 struct PlayerStats {
     int health = 0;
     int maxHealth = 0;
@@ -49,14 +54,12 @@ struct PlayerStats {
     }
 };
 
-// Represents the template for a monster in an area
 struct MonsterState {
     int id;
     std::string type;
     std::string assetKey;
 };
 
-// Represents an active monster in combat
 struct MonsterInstance {
     int id;
     std::string type;
@@ -73,7 +76,6 @@ struct MonsterInstance {
     }
 };
 
-// --- ADDED: Pathfinding Struct ---
 struct Point {
     int x, y;
     bool operator==(const Point& other) const {
@@ -108,9 +110,7 @@ struct PlayerState {
     boost::optional<MonsterInstance> currentOpponent;
     bool isDefending = false;
 
-    // --- ADDED: Movement State ---
+    // Movement State
     std::deque<Point> currentPath; // The A* path
     std::chrono::steady_clock::time_point lastMoveTime; // Timer
 };
-
-void do_session(tcp::socket socket);

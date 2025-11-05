@@ -18,12 +18,15 @@
     <ClCompile Include="server_main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="game_session.cpp">
+    <ClCompile Include="AsyncSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game_session.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AsyncSession.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
