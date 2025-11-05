@@ -30,6 +30,9 @@ public:
     // Take ownership of the socket
     explicit AsyncSession(tcp::socket socket);
 
+    // Destructor for proper cleanup
+    ~AsyncSession();
+
     // Start the session
     void run();
 

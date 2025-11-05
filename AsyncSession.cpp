@@ -2,6 +2,8 @@
 //
 // FIXED: Merged all logic from game_session.cpp into this file.
 // This resolves all "unresolved external symbol" linker errors.
+// FIXED: C++17 structured binding errors.
+// FIXED: Missing destructor definition.
 //
 
 #include "AsyncSession.hpp"
@@ -71,9 +73,14 @@ static const std::vector<std::string> MONSTER_KEYS = { "SLIME", "GOBLIN", "WOLF"
 
 int global_monster_id_counter = 1;
 
-// --- Multiplayer Registry ---
+// --- Multiplayer Registries ---
 std::map<std::string, PlayerBroadcastData> g_player_registry;
 std::mutex g_player_registry_mutex;
+
+// --- ADDED: Session registry for broadcasting chat ---
+std::map<std::string, std::weak_ptr<AsyncSession>> g_session_registry;
+std::mutex g_session_registry_mutex;
+
 
 // --- A* Pathfinding Implementation ---
 namespace { // Use anonymous namespace to keep these helpers file-local
@@ -209,6 +216,14 @@ AsyncSession::AsyncSession(tcp::socket socket)
     std::cout << "--- New Client Connected from: " << client_address_ << " ---" << std::endl;
 }
 
+// --- ADDED: Destructor definition ---
+AsyncSession::~AsyncSession()
+{
+    // This is a failsafe, on_session_end should already be called
+    std::lock_guard<std::mutex> lock(g_session_registry_mutex);
+    g_session_registry.erase(player_.userId);
+}
+
 void AsyncSession::run()
 {
     net::dispatch(ws_.get_executor(),
@@ -246,6 +261,10 @@ void AsyncSession::on_run()
                 {
                     std::lock_guard<std::mutex> lock(g_player_registry_mutex);
                     g_player_registry[self->player_.userId] = self->broadcast_data_;
+                }
+                {
+                    std::lock_guard<std::mutex> lock(g_session_registry_mutex);
+                    g_session_registry[self->player_.userId] = self->shared_from_this();
                 }
 
                 static std::string welcome = "SERVER:WELCOME! Please enter your character name using SET_NAME:YourName";
@@ -327,7 +346,7 @@ void AsyncSession::do_move_tick(beast::error_code ec)
                 std::lock_guard<std::mutex> lock(g_player_registry_mutex);
                 g_player_registry[player_.userId] = broadcast_data_;
             }
-            send_player_stats(); // Call member function
+            send_player_stats();
         }
     }
 
@@ -349,7 +368,15 @@ void AsyncSession::on_session_end()
         g_player_registry.erase(player_.userId);
     }
     catch (std::exception const& e) {
-        std::cerr << "[" << client_address_ << "] Exception during cleanup: " << e.what() << "\n";
+        std::cerr << "[" << client_address_ << "] Exception during data cleanup: " << e.what() << "\n";
+    }
+
+    try {
+        std::lock_guard<std::mutex> lock(g_session_registry_mutex);
+        g_session_registry.erase(player_.userId);
+    }
+    catch (std::exception const& e) {
+        std::cerr << "[" << client_address_ << "] Exception during session cleanup: " << e.what() << "\n";
     }
 
     std::cout << "[" << client_address_ << "] Client disconnected.\n";
@@ -593,6 +620,54 @@ void AsyncSession::handle_message(const std::string& message)
             }
         }
     }
+    // --- ADDED: Chat Message Handler ---
+    else if (message.rfind("SEND_CHAT:", 0) == 0) {
+        if (!player_.isFullyInitialized) {
+            ws_.write(net::buffer("SERVER:ERROR:Must complete character creation to chat."));
+            return;
+        }
+        std::string chat_text = message.substr(10);
+        if (chat_text.empty() || chat_text.length() > 100) {
+            ws_.write(net::buffer("SERVER:ERROR:Chat message must be 1-100 characters."));
+            return;
+        }
+
+        // Format the message
+        // Create a shared_ptr to the string to ensure it lives long enough
+        auto shared_chat_msg = std::make_shared<std::string>(
+            "SERVER:CHAT_MSG:{\"sender\":\"" + player_.playerName + "\",\"text\":\"" + chat_text + "\"}");
+
+        // Get a list of all active sessions
+        std::vector<std::shared_ptr<AsyncSession>> all_sessions;
+        {
+            std::lock_guard<std::mutex> lock(g_session_registry_mutex);
+            // --- FIXED: C++14 compatible loop ---
+            for (auto const& pair : g_session_registry) {
+                // auto id = pair.first; // not needed
+                auto weak_session = pair.second;
+                if (auto session = weak_session.lock()) {
+                    all_sessions.push_back(session);
+                }
+            }
+        }
+
+        // Dispatch a write task to each session's strand
+        for (auto& session : all_sessions) {
+            // --- FIXED: Use session variable correctly ---
+            net::dispatch(session->ws_.get_executor(), [session, shared_chat_msg]() {
+                // This is a blocking write, but it's on the *target's* strand,
+                // so it's safe and won't block the sender's read loop.
+                try {
+                    session->ws_.write(net::buffer(*shared_chat_msg));
+                }
+                catch (std::exception const& e) {
+                    // Handle write error (e.g., client disconnected)
+                    std::cerr << "Chat broadcast write error: " << e.what() << "\n";
+                }
+                });
+        }
+    }
+    // --- END: Chat Message Handler ---
     else if (message.rfind("MONSTER_SELECTED:", 0) == 0) {
         if (!player_.isFullyInitialized) { ws_.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
         else if (player_.isInCombat) { ws_.write(net::buffer("SERVER:ERROR:You are already in combat!")); }
@@ -724,7 +799,8 @@ void AsyncSession::handle_message(const std::string& message)
             bool first_player = true;
             {
                 std::lock_guard<std::mutex> lock(g_player_registry_mutex);
-                for (const auto& pair : g_player_registry) {
+                // --- FIXED: C++14 compatible loop ---
+                for (auto const& pair : g_player_registry) {
                     if (pair.first == player_.userId) continue;
                     if (pair.second.currentArea == "TOWN" && pair.second.playerClass != PlayerClass::UNSELECTED) {
                         if (!first_player) oss << ",";
