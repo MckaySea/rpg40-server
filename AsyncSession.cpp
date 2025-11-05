@@ -18,7 +18,7 @@
 #include <cmath>
 #include <set>
 #include <queue>
-
+#include <atomic>
 // --- All Game Logic and Globals are now defined in this file ---
 
 // --- Server Data Definitions ---
@@ -203,7 +203,7 @@ MonsterInstance create_monster(int id, std::string type) {
     return monster;
 }
 
-
+static std::atomic<int> g_session_id_counter = 1;
 // --- AsyncSession Method Definitions ---
 
 AsyncSession::AsyncSession(tcp::socket socket)
@@ -247,7 +247,7 @@ void AsyncSession::on_run()
 
                 std::cout << "[" << self->client_address_ << "] Handshake successful. Session started.\n";
 
-                self->player_.userId = "Client_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+                self->player_.userId = "Client_" + std::to_string(g_session_id_counter++);
                 self->player_.currentArea = "TOWN";
                 self->player_.posX = 5;
                 self->player_.posY = 5;
