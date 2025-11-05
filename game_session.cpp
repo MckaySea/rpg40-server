@@ -5,6 +5,7 @@
 // 2. Updated `send_player_stats` to include level and XP.
 // 3. Added debug command `GIVE_XP:` to test leveling.
 // 4. ADDED: Combat logic, MonsterInstance, and combat handlers.
+// 5. ADDED: Global player registry for simple multiplayer.
 //
 #include "game_session.hpp"
 #include <iostream>
@@ -18,6 +19,8 @@
 #include <utility>
 #include <sstream>
 #include <map> // ADDED
+#include <mutex> // ADDED
+#include <memory> // ADDED
 
 namespace beast = boost::beast;
 namespace websocket = beast::websocket;
@@ -56,6 +59,15 @@ static const std::vector<std::string> MONSTER_KEYS = { "SLIME", "GOBLIN", "WOLF"
 
 
 int global_monster_id_counter = 1;
+
+// --- ADDED: Multiplayer Registry ---
+
+// Global registry to track all active players
+// The struct PlayerBroadcastData is now in game_session.hpp
+static std::map<std::string, PlayerBroadcastData> g_player_registry;
+// Mutex to protect the global registry from concurrent access
+static std::mutex g_player_registry_mutex;
+
 
 // --- Class Starting Stats ---
 PlayerStats getStartingStats(PlayerClass playerClass) {
@@ -206,6 +218,8 @@ void check_for_level_up(websocket::stream<tcp::socket>& ws, PlayerState& player)
 // --- Main Session Handler ---
 void do_session(tcp::socket socket) {
     std::string client_address = socket.remote_endpoint().address().to_string();
+    // --- FIXED: Declare userId here for cleanup scope ---
+    std::string userId = "UNKNOWN";
 
     try {
         websocket::stream<tcp::socket> ws{ std::move(socket) };
@@ -215,7 +229,20 @@ void do_session(tcp::socket socket) {
 
         PlayerState player;
         player.userId = "Client_" + std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+        userId = player.userId; // --- FIXED: Assign to outer scope variable ---
         player.currentArea = "TOWN";
+
+        // --- ADDED: Multiplayer Registration ---
+        PlayerBroadcastData broadcastData;
+        broadcastData.userId = player.userId;
+        broadcastData.currentArea = "TOWN";
+
+        // Add to registry immediately
+        {
+            std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+            g_player_registry[player.userId] = broadcastData;
+        }
+        // --- End Registration ---
 
         std::string welcome = "SERVER:WELCOME! Please enter your character name using SET_NAME:YourName";
         ws.write(net::buffer(welcome));
@@ -237,11 +264,18 @@ void do_session(tcp::socket socket) {
                 }
                 else {
                     player.playerName = name;
+                    broadcastData.playerName = name; // <-- ADDED
                     std::string response = "SERVER:NAME_SET:" + name;
                     ws.write(net::buffer(response));
                     std::string class_prompt = "SERVER:PROMPT:Welcome " + name + "! Choose your class: SELECT_CLASS:FIGHTER, SELECT_CLASS:WIZARD, or SELECT_CLASS:ROGUE";
                     ws.write(net::buffer(class_prompt));
                     std::cout << "[" << client_address << "] --- NAME SET: " << name << " ---\n";
+
+                    // Update the global registry
+                    {
+                        std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+                        g_player_registry[player.userId] = broadcastData;
+                    }
                 }
             }
             // Step 2: Select Class
@@ -251,13 +285,16 @@ void do_session(tcp::socket socket) {
 
                 if (class_str == "FIGHTER") {
                     player.currentClass = PlayerClass::FIGHTER;
+                    broadcastData.playerClass = player.currentClass; // <-- ADDED
                 }
                 else if (class_str == "WIZARD") {
                     player.currentClass = PlayerClass::WIZARD;
+                    broadcastData.playerClass = player.currentClass; // <-- ADDED
                     player.spells = { "Fireball", "Lightning", "Freeze" };
                 }
                 else if (class_str == "ROGUE") {
                     player.currentClass = PlayerClass::ROGUE;
+                    broadcastData.playerClass = player.currentClass; // <-- ADDED
                 }
                 else {
                     ws.write(net::buffer("SERVER:ERROR:Invalid class. Choose FIGHTER, WIZARD, or ROGUE."));
@@ -274,6 +311,12 @@ void do_session(tcp::socket socket) {
                 send_player_stats(ws, player);
                 std::string prompt = "SERVER:PROMPT:You have 3 skill points to distribute. Use UPGRADE_STAT:stat_name to spend points.";
                 ws.write(net::buffer(prompt));
+
+                // Update the global registry
+                {
+                    std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+                    g_player_registry[player.userId] = broadcastData;
+                }
             }
             // Step 3: Upgrade Stats
             else if (message.rfind("UPGRADE_STAT:", 0) == 0) {
@@ -350,6 +393,15 @@ void do_session(tcp::socket socket) {
                 }
                 else {
                     std::string target_area = message.substr(6);
+
+                    // --- ADDED: Update broadcast data ---
+                    broadcastData.currentArea = target_area;
+                    {
+                        std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+                        g_player_registry[player.userId] = broadcastData;
+                    }
+                    // --- End update ---
+
                     if (target_area == "TOWN") {
                         player.currentArea = "TOWN";
                         player.currentMonsters.clear();
@@ -369,6 +421,12 @@ void do_session(tcp::socket socket) {
                     }
                     else {
                         ws.write(net::buffer("SERVER:ERROR:Invalid or unknown travel destination."));
+                        // Revert broadcast data if travel failed
+                        broadcastData.currentArea = player.currentArea;
+                        {
+                            std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+                            g_player_registry[player.userId] = broadcastData;
+                        }
                     }
                     std::cout << "[" << client_address << "] --- AREA CHANGED TO: " << player.currentArea << " ---\n";
                 }
@@ -603,6 +661,14 @@ void do_session(tcp::socket socket) {
                     player.stats.health = player.stats.maxHealth / 2; // Recover 50% HP
                     player.stats.mana = player.stats.maxMana;
 
+                    // --- ADDED: Update broadcast data on defeat ---
+                    broadcastData.currentArea = "TOWN";
+                    {
+                        std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+                        g_player_registry[player.userId] = broadcastData;
+                    }
+                    // --- End update ---
+
                     ws.write(net::buffer("SERVER:AREA_CHANGED:TOWN"));
                     send_available_areas(ws);
                     send_player_stats(ws, player); // Send updated (healed) stats
@@ -642,6 +708,38 @@ void do_session(tcp::socket socket) {
                     }
                 }
             }
+            // --- ADDED: Handle Player Request ---
+            else if (message == "REQUEST_PLAYERS") {
+                if (player.currentArea == "TOWN") {
+                    std::ostringstream oss;
+                    oss << "SERVER:PLAYERS_IN_TOWN:[";
+                    bool first_player = true;
+
+                    { // Start lock scope
+                        std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+                        for (const auto& pair : g_player_registry) {
+                            // Don't send the player their own data
+                            if (pair.first == player.userId) {
+                                continue;
+                            }
+
+                            // Only send players who are also in town and have selected a class
+                            if (pair.second.currentArea == "TOWN" && pair.second.playerClass != PlayerClass::UNSELECTED) {
+                                if (!first_player) {
+                                    oss << ",";
+                                }
+                                oss << "{\"id\":\"" << pair.second.userId
+                                    << "\",\"name\":\"" << pair.second.playerName
+                                    << "\",\"class\":" << static_cast<int>(pair.second.playerClass) << "}";
+                                first_player = false;
+                            }
+                        }
+                    } // End lock scope
+
+                    oss << "]";
+                    ws.write(net::buffer(oss.str()));
+                }
+            }
             // Echo/Debug
             else {
                 std::string echo = "SERVER:ECHO: " + message;
@@ -659,6 +757,16 @@ void do_session(tcp::socket socket) {
     catch (std::exception const& e) {
         std::cerr << "[" << client_address << "] Exception: " << e.what() << "\n";
     }
+
+    // --- FIXED: Unregister player on disconnect ---
+    try {
+        std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+        g_player_registry.erase(userId); // Use the outer-scoped userId
+    }
+    catch (std::exception const& e) {
+        std::cerr << "[" << client_address << "] Exception during cleanup: " << e.what() << "\n";
+    }
+    // --- End unregister ---
 
     std::cout << "[" << client_address << "] Client disconnected.\n";
 }

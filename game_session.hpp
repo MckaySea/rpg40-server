@@ -14,6 +14,15 @@ enum class PlayerClass {
     ROGUE
 };
 
+// ADDED: Simple struct for sharing public player data
+// Moved here because it depends on PlayerClass
+struct PlayerBroadcastData {
+    std::string userId;
+    std::string playerName;
+    PlayerClass playerClass = PlayerClass::UNSELECTED;
+    std::string currentArea = "TOWN";
+};
+
 // Player Stats Structure
 struct PlayerStats {
     int health = 0;
