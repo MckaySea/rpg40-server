@@ -1,7 +1,9 @@
 // File: LocalWebSocketServer/game_session.hpp
 #include <string>
 #include <vector>
-#include <boost/optional.hpp> // CHANGED: Replaced <optional>
+#include <deque> // ADDED: For path queue
+#include <chrono> // ADDED: For move timers
+#include <boost/optional.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
 namespace net = boost::asio;
@@ -21,6 +23,9 @@ struct PlayerBroadcastData {
     std::string playerName;
     PlayerClass playerClass = PlayerClass::UNSELECTED;
     std::string currentArea = "TOWN";
+
+    int posX = 0;
+    int posY = 0;
 };
 
 // Player Stats Structure
@@ -68,12 +73,27 @@ struct MonsterInstance {
     }
 };
 
+// --- ADDED: Pathfinding Struct ---
+struct Point {
+    int x, y;
+    bool operator==(const Point& other) const {
+        return x == other.x && y == other.y;
+    }
+    bool operator!=(const Point& other) const {
+        return !(*this == other);
+    }
+};
+
 
 struct PlayerState {
     PlayerClass currentClass = PlayerClass::UNSELECTED;
     std::string userId = "UNKNOWN";
     std::string playerName = "";
     std::string currentArea = "TOWN";
+
+    int posX = 0;
+    int posY = 0;
+
     std::vector<MonsterState> currentMonsters;
 
     // Stats and progression
@@ -83,10 +103,14 @@ struct PlayerState {
     bool hasSpentInitialPoints = false;
     bool isFullyInitialized = false;
 
-    // ADDED: Combat State
+    // Combat State
     bool isInCombat = false;
-    boost::optional<MonsterInstance> currentOpponent; // CHANGED: Using boost::optional
+    boost::optional<MonsterInstance> currentOpponent;
     bool isDefending = false;
+
+    // --- ADDED: Movement State ---
+    std::deque<Point> currentPath; // The A* path
+    std::chrono::steady_clock::time_point lastMoveTime; // Timer
 };
 
 void do_session(tcp::socket socket);

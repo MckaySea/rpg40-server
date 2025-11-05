@@ -3,11 +3,11 @@
   - add -D_WIN32_WINNT=0x0601 to the compiler command line; or
   - add _WIN32_WINNT=0x0601 to your project's Preprocessor Definitions.
   Assuming _WIN32_WINNT=0x0601 (i.e. Windows 7 target).
-C:\Users\mseam\source\repos\LocalWebSocketServer\LocalWebSocketServer\game_session.cpp(100,19): warning C4244: 'initializing': conversion from '_Rep' to 'unsigned int', possible loss of data
-C:\Users\mseam\source\repos\LocalWebSocketServer\LocalWebSocketServer\game_session.cpp(100,19): warning C4244:         with
-C:\Users\mseam\source\repos\LocalWebSocketServer\LocalWebSocketServer\game_session.cpp(100,19): warning C4244:         [
-C:\Users\mseam\source\repos\LocalWebSocketServer\LocalWebSocketServer\game_session.cpp(100,19): warning C4244:             _Rep=std::chrono::system_clock::rep
-C:\Users\mseam\source\repos\LocalWebSocketServer\LocalWebSocketServer\game_session.cpp(100,19): warning C4244:         ]
+C:\Users\mseam\source\repos\LocalWebSocketServer\LocalWebSocketServer\game_session.cpp(120,19): warning C4244: 'initializing': conversion from '_Rep' to 'unsigned int', possible loss of data
+C:\Users\mseam\source\repos\LocalWebSocketServer\LocalWebSocketServer\game_session.cpp(120,19): warning C4244:         with
+C:\Users\mseam\source\repos\LocalWebSocketServer\LocalWebSocketServer\game_session.cpp(120,19): warning C4244:         [
+C:\Users\mseam\source\repos\LocalWebSocketServer\LocalWebSocketServer\game_session.cpp(120,19): warning C4244:             _Rep=std::chrono::system_clock::rep
+C:\Users\mseam\source\repos\LocalWebSocketServer\LocalWebSocketServer\game_session.cpp(120,19): warning C4244:         ]
   server_main.cpp
   Please define _WIN32_WINNT or _WIN32_WINDOWS appropriately. For example:
   - add -D_WIN32_WINNT=0x0601 to the compiler command line; or
