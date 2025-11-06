@@ -90,9 +90,8 @@ void AsyncSession::send_player_stats() {
         oss << ",\"spells\":[]";
     }
     oss << "}";
-    // This is a blocking write, but it's safe because it's
-    // called from within the session's strand.
-    ws.write(net::buffer(oss.str()));
+    std::string stats_message = oss.str();
+    ws.write(net::buffer(stats_message));
 }
 
 /**
@@ -222,7 +221,7 @@ void AsyncSession::send_area_map_data(const std::string& areaName) {
     }
     std::string message = oss.str();
     std::cout << "[DEBUG] Map data message length: " << message.length() << std::endl;
-    ws.write(net::buffer(oss.str()));
+    ws.write(net::buffer(message));
 }
 
 
@@ -461,9 +460,9 @@ void AsyncSession::handle_message(const std::string& message)
                         << "{\"id\":" << player.currentOpponent->id << ",\"type\":\"" << player.currentOpponent->type
                         << "\",\"asset\":\"" << player.currentOpponent->assetKey << "\",\"health\":" << player.currentOpponent->health
                         << ",\"maxHealth\":" << player.currentOpponent->maxHealth << "}";
-                    ws.write(net::buffer(oss.str()));
+                    std::string combat_start_message = oss.str();
+                    ws.write(net::buffer(combat_start_message));
                     ws.write(net::buffer("SERVER:COMBAT_LOG:You engaged the " + player.currentOpponent->type + "!"));
-                    ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
                 }
                 else { ws.write(net::buffer("SERVER:ERROR:Selected monster ID not found.")); }
             }
@@ -615,7 +614,11 @@ void AsyncSession::handle_message(const std::string& message)
             }
         }
         oss << "]";
-        ws.write(net::buffer(oss.str()));
+        // since buffer/websocket ops are async and we're passing it a string thats temporary meaning the buffer/websocket op has a pointer to that string in memory, but as its doing async operations that memory
+        //can change and then our string gets corrupted and sends a corrupted string through to our client IF U HAVE QUUESTIONS ABOUT THIS ASK ME BECASUE IT WAS GIVING ME TROUBLE TIL I REALIZED
+        //WHAT WAS HAPPENING
+        std::string player_list_message = oss.str();
+        ws.write(net::buffer(player_list_message));
 }
 
     // --- Fallback ---
