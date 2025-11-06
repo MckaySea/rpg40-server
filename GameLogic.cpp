@@ -194,18 +194,19 @@ void AsyncSession::check_for_level_up() {
  */
 void AsyncSession::send_area_map_data(const std::string& areaName) {
     auto& ws = getWebSocket();
-    std::cout << "[DEBUG] send_area_map_data called with: '" << areaName << "'" << std::endl;
-    // Use the constants from game_session.hpp
-    int total_tiles = GRID_COLS * GRID_ROWS;
     std::ostringstream oss;
     oss << "SERVER:MAP_DATA:";
 
-    if (areaName == "TOWN") {
-        // Use the globally defined TOWN_GRID from GameData.cpp
+    // Look for the area in our new grid registry
+    auto it = g_area_grids.find(areaName);
+
+    if (it != g_area_grids.end()) {
+        // ok now we're serizling all the found grids
+        const auto& grid = it->second;
         for (int y = 0; y < GRID_ROWS; ++y) {
             for (int x = 0; x < GRID_COLS; ++x) {
-                if (y < TOWN_GRID.size() && x < TOWN_GRID[y].size()) {
-                    oss << TOWN_GRID[y][x]; // '1' for blocked, '0' for open
+                if (y < grid.size() && x < grid[y].size()) {
+                    oss << grid[y][x];
                 }
                 else {
                     oss << '0'; // Fallback for safety
@@ -214,8 +215,9 @@ void AsyncSession::send_area_map_data(const std::string& areaName) {
         }
     }
     else {
-        // For other areas, send an all-open map for now.
-        std::string open_map(total_tiles, '0');
+        // No grid defined for this area.
+        // Send an all-open map (maintains behavior for combat zones)
+        std::string open_map(GRID_COLS * GRID_ROWS, '0');
         oss << open_map;
     }
     std::string message = oss.str();
@@ -347,8 +349,18 @@ void AsyncSession::handle_message(const std::string& message)
     else if (message.rfind("MOVE_TO:", 0) == 0) {
         if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
         else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:Cannot move while in combat!")); }
-        else if (player.currentArea != "TOWN") { ws.write(net::buffer("SERVER:ERROR:Grid movement is only available in TOWN.")); }
         else {
+            // we gotta check to see if players current area even has a grid for it yet
+            auto it = g_area_grids.find(player.currentArea);
+            if (it == g_area_grids.end()) {
+                ws.write(net::buffer("SERVER:ERROR:Grid movement is not available in this area."));
+                return; // Exit if no grid exists for this area
+            }
+
+            // Get the grid for the current area
+            const auto& current_grid = it->second;
+           
+
             try {
                 std::string coords_str = message.substr(8);
                 size_t comma_pos = coords_str.find(',');
@@ -360,14 +372,20 @@ void AsyncSession::handle_message(const std::string& message)
                 if (target_x < 0 || target_x >= GRID_COLS || target_y < 0 || target_y >= GRID_ROWS) {
                     ws.write(net::buffer("SERVER:ERROR:Target coordinates are out of bounds."));
                 }
-                else if (TOWN_GRID[target_y][target_x] != 0) { // Check walkability
+                //checkin walkability using the area we pass in grid instead of the old town grid
+                else if (current_grid[target_y][target_x] != 0) {
                     ws.write(net::buffer("SERVER:ERROR:Cannot move to that location."));
                 }
                 else {
                     // Use A* to find the path
                     Point start_pos = { player.posX, player.posY };
                     Point end_pos = { target_x, target_y };
-                    player.currentPath = A_Star_Search(start_pos, end_pos); // from GameData
+
+                    
+                    // we makin sure to paass the correct grid to the A* function
+                    player.currentPath = A_Star_Search(start_pos, end_pos, current_grid); // from GameData
+                    
+
                     player.lastMoveTime = std::chrono::steady_clock::now() - MOVEMENT_DELAY; // Allow instant first move
                 }
             }
@@ -376,7 +394,7 @@ void AsyncSession::handle_message(const std::string& message)
                 ws.write(net::buffer("SERVER:ERROR:Invalid coordinate format."));
             }
         }
-    }
+        }
 
     // --- Chat System ---
     else if (message.rfind("SEND_CHAT:", 0) == 0) {
@@ -565,33 +583,40 @@ void AsyncSession::handle_message(const std::string& message)
         }
     }
 
-    // --- Multiplayer ---
     else if (message == "REQUEST_PLAYERS") {
-        if (player.currentArea == "TOWN") {
-            std::ostringstream oss;
-            oss << "SERVER:PLAYERS_IN_TOWN:[";
-            bool first_player = true;
-            {
-                std::lock_guard<std::mutex> lock(g_player_registry_mutex);
-                for (auto const& pair : g_player_registry) {
-                    if (pair.first == player.userId) continue; // Don't send self
-                    // Send other initialized players in town
-                    if (pair.second.currentArea == "TOWN" && pair.second.playerClass != PlayerClass::UNSELECTED) {
-                        if (!first_player) oss << ",";
-                        oss << "{\"id\":\"" << pair.second.userId
-                            << "\",\"name\":\"" << pair.second.playerName
-                            << "\",\"class\":" << static_cast<int>(pair.second.playerClass)
-                            << ",\"x\":" << pair.second.posX
-                            << ",\"y\":" << pair.second.posY
-                            << "}";
-                        first_player = false;
-                    }
+        // Send players only if the current area is a grid-based area
+        if (g_area_grids.find(player.currentArea) == g_area_grids.end()) {
+            ws.write(net::buffer("SERVER:PLAYERS_IN_AREA:[]")); // Send empty list
+            return;
+        }
+
+        std::ostringstream oss;
+        // Rename message for clarity (client must be updated)
+        oss << "SERVER:PLAYERS_IN_AREA:[";
+        bool first_player = true;
+        std::string my_area = player.currentArea; // Get player's area
+        {
+            std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+            for (auto const& pair : g_player_registry) {
+                if (pair.first == player.userId) continue; // Don't send self
+
+                // The key change: check against my_area, not hardcoded "TOWN" instead of usin town like we did before we're dynamically,checking what area they are in
+                //todo for mckay:: I NEED TO EVENTUALLY MAKE IT SO IT ONLY BROADCASTS/LISTENS WHEN THE SERVER KNOWS MORE THAN 1 (EXLCUDING URTSLEF) PERSON IS IN THE AREA
+                if (pair.second.currentArea == my_area && pair.second.playerClass != PlayerClass::UNSELECTED) {
+                    if (!first_player) oss << ",";
+                    oss << "{\"id\":\"" << pair.second.userId
+                        << "\",\"name\":\"" << pair.second.playerName
+                        << "\",\"class\":" << static_cast<int>(pair.second.playerClass)
+                        << ",\"x\":" << pair.second.posX
+                        << ",\"y\":" << pair.second.posY
+                        << "}";
+                    first_player = false;
                 }
             }
-            oss << "]";
-            ws.write(net::buffer(oss.str()));
         }
-    }
+        oss << "]";
+        ws.write(net::buffer(oss.str()));
+}
 
     // --- Fallback ---
     else {

@@ -11,6 +11,7 @@
 #include <deque>
 #include <atomic>
 #include <memory> // For std::weak_ptr
+#include <set>    // --- NEW: For GRID_BASED_AREAS ---
 
 // Forward-declare the session class to avoid circular includes
 class AsyncSession;
@@ -18,7 +19,17 @@ class AsyncSession;
 // --- Server Data Definitions ---
 // 'extern' means "this variable is defined in a .cpp file somewhere else"
 extern const std::vector<std::string> ALL_AREAS;
+
+// --- Grid Map Data ---
 extern const std::vector<std::vector<int>> TOWN_GRID;
+// --- NEW: Declare new grids ---
+extern const std::vector<std::vector<int>> FOREST_GRID;
+extern const std::vector<std::vector<int>> DESERT_GRID;
+
+//this is our global grid registry, we'll keep all grids in hur goin forward :D
+extern const std::map<std::string, std::vector<std::vector<int>>> g_area_grids;
+
+
 
 // --- Monster Data ---
 extern const std::map<std::string, std::string> MONSTER_ASSETS;
@@ -40,12 +51,14 @@ extern std::atomic<int> g_session_id_counter;
 // --- Utility Function Declarations ---
 
 /**
- * @brief Finds the shortest walkable path from start to end on the TOWN_GRID.
+ * @brief Finds the shortest walkable path from start to end on a given grid.
  * @param start The starting grid coordinate.
  * @param end The target grid coordinate.
+ * @param grid The collision grid (e.g., TOWN_GRID) to pathfind on.
  * @return A deque of Points representing the path. Empty if no path found.
  */
-std::deque<Point> A_Star_Search(Point start, Point end);
+ 
+std::deque<Point> A_Star_Search(Point start, Point end, const std::vector<std::vector<int>>& grid); // i made it so u can pass in what grid instead oif it jus being town
 
 /**
  * @brief Gets the base stats for a chosen player class.
