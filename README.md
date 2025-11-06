@@ -8,5 +8,5 @@ If you need anything explained or need help just ask me
 
  yousaf - dialogue -- write out what npcs are going to say and label whos saying it, determine which npcs will give quests as well. also name the npcs as you wish
 
- ali - visuals and images for npcs/monsters/objects
+ ali - visuals and images for npcs/monsters/objects - will post list of npc/monsters/object for you to find soon 
 
