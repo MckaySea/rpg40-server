@@ -9,4 +9,10 @@ If you need anything explained or need help just ask me
  yousaf - dialogue -- write out what npcs are going to say and label whos saying it, determine which npcs will give quests as well. also name the npcs as you wish
 
  ali - visuals and images for npcs/monsters/objects - will post list of npc/monsters/object for you to find soon 
-
+ali- // Monster Templates (Type, AssetKey)
+const std::map<std::string, std::string> MONSTER_ASSETS = {
+    {"SLIME", "SLM"}, {"GOBLIN", "GB"}, {"WOLF", "WLF"}, {"BAT", "BAT"},
+    {"SKELETON", "SKL"}, {"GIANT SPIDER", "SPDR"}, {"ORC BRUTE", "ORC"}
+};
+get pngs that match in style for each monsyer dont worry about the abbreviation next to the monster name
+ill give you a list of npcs (basicsllg people-like characters) to find stuff for as well
