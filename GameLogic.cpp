@@ -194,7 +194,7 @@ void AsyncSession::check_for_level_up() {
  */
 void AsyncSession::send_area_map_data(const std::string& areaName) {
     auto& ws = getWebSocket();
-
+    std::cout << "[DEBUG] send_area_map_data called with: '" << areaName << "'" << std::endl;
     // Use the constants from game_session.hpp
     int total_tiles = GRID_COLS * GRID_ROWS;
     std::ostringstream oss;
@@ -218,7 +218,8 @@ void AsyncSession::send_area_map_data(const std::string& areaName) {
         std::string open_map(total_tiles, '0');
         oss << open_map;
     }
-
+    std::string message = oss.str();
+    std::cout << "[DEBUG] Map data message length: " << message.length() << std::endl;
     ws.write(net::buffer(oss.str()));
 }
 
@@ -304,23 +305,35 @@ void AsyncSession::handle_message(const std::string& message)
         else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:Cannot travel while in combat!")); }
         else {
             std::string target_area = message.substr(6);
-            player.currentPath.clear(); // Stop any town movement
+            player.currentPath.clear(); 
             broadcast_data.currentArea = target_area;
             { std::lock_guard<std::mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
 
             if (target_area == "TOWN") {
                 player.currentArea = "TOWN";
                 player.currentMonsters.clear();
-                player.stats.health = player.stats.maxHealth; player.stats.mana = player.stats.maxMana;
-                ws.write(net::buffer("SERVER:AREA_CHANGED:TOWN"));
-                send_area_map_data(player.currentArea); // Send town map
+                player.stats.health = player.stats.maxHealth;
+                player.stats.mana = player.stats.maxMana;
+
+                // I HAVE BEEN TRYING TO FIX THIS FKING STRING CORRUPTION BUG FOR HOURS PLEASE WORK
+                std::string response = "SERVER:AREA_CHANGED:TOWN";
+                std::cout << "[DEBUG] Sending area change: '" << response << "'" << std::endl;
+                std::cout << "[DEBUG] Response length: " << response.length() << std::endl;
+                std::cout << "[DEBUG] Response bytes: ";
+                for (char c : response) {
+                    std::cout << (int)(unsigned char)c << " ";
+                }
+                std::cout << std::endl;
+                ws.write(net::buffer(response));
+
+                send_area_map_data(player.currentArea);
                 send_available_areas();
                 send_player_stats();
             }
             else if (std::find(ALL_AREAS.begin(), ALL_AREAS.end(), target_area) != ALL_AREAS.end()) {
                 player.currentArea = target_area;
                 ws.write(net::buffer("SERVER:AREA_CHANGED:" + target_area));
-                send_area_map_data(player.currentArea); // Send (empty) map
+                send_area_map_data(player.currentArea); 
                 generate_and_send_monsters();
             }
             else {
