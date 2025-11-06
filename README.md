@@ -6,3 +6,7 @@ If you need anything explained or need help just ask me
 
  ----   TODOS   ---- will update this later and assign tasks
 
+ yousaf - dialogue
+
+ ali - visuals and images for npcs/monsters/objects
+
