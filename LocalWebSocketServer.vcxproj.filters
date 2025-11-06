@@ -21,12 +21,21 @@
     <ClCompile Include="AsyncSession.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GameData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GameLogic.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="game_session.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AsyncSession.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GameData.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

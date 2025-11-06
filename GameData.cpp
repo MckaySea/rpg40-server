@@ -1,0 +1,219 @@
+// File: GameData.cpp
+// Description: Defines and implements all global game data, registries,
+// and utility functions (like A* pathfinding).
+
+#include "GameData.hpp"
+#include <set>
+#include <queue>
+#include <cmath> // for std::abs
+
+// --- Server Data Definitions ---
+const std::vector<std::string> ALL_AREAS = {
+    "FOREST", "CAVES", "RUINS", "SWAMP", "MOUNTAINS", "DESERT", "VOLCANO"
+};
+
+// Town Grid Map (0 = walkable, 1 = obstacle)
+const std::vector<std::vector<int>> TOWN_GRID = {
+    //   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 0
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 1
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 2
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 3
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 4
+        {0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0}, // 5 (Top of buildings)
+        {0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 6
+        {0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0}, // 7
+        {0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0}, // 8
+        {0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0}, // 9
+        {0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0}, // 10
+        {0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0}, // 11
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 12 (Path)
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 13 (Path)
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 14 (Path)
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 15 (Path)
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 16
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 17
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 18
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 19
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 20
+        {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}  // 21
+};
+
+// Monster Templates (Type, AssetKey)
+const std::map<std::string, std::string> MONSTER_ASSETS = {
+    {"SLIME", "SLM"}, {"GOBLIN", "GB"}, {"WOLF", "WLF"}, {"BAT", "BAT"},
+    {"SKELETON", "SKL"}, {"GIANT SPIDER", "SPDR"}, {"ORC BRUTE", "ORC"}
+};
+
+// Monster Base Stats (Type -> Stats)
+const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES = {
+    {"SLIME", MonsterInstance(0, "", "", 30, 8, 5, 5, 10)},
+    {"GOBLIN", MonsterInstance(0, "", "", 50, 12, 8, 8, 15)},
+    {"WOLF", MonsterInstance(0, "", "", 40, 15, 6, 12, 12)},
+    {"BAT", MonsterInstance(0, "", "", 20, 10, 4, 15, 8)},
+    {"SKELETON", MonsterInstance(0, "", "", 60, 14, 10, 6, 20)},
+    {"GIANT SPIDER", MonsterInstance(0, "", "", 70, 16, 8, 10, 25)},
+    {"ORC BRUTE", MonsterInstance(0, "", "", 100, 20, 12, 5, 40)}
+};
+const std::vector<std::string> MONSTER_KEYS = { "SLIME", "GOBLIN", "WOLF", "BAT", "SKELETON", "GIANT SPIDER", "ORC BRUTE" };
+
+int global_monster_id_counter = 1;
+
+// --- Multiplayer Registries ---
+std::map<std::string, PlayerBroadcastData> g_player_registry;
+std::mutex g_player_registry_mutex;
+
+std::map<std::string, std::weak_ptr<AsyncSession>> g_session_registry;
+std::mutex g_session_registry_mutex;
+
+// --- Global ID Counter ---
+std::atomic<int> g_session_id_counter = 1;
+
+// --- A* Pathfinding Implementation ---
+namespace { // Use anonymous namespace to keep these helpers file-local
+    /**
+     * @struct Node
+     * @brief A node for A* pathfinding. Includes position, costs, and parent.
+     */
+    struct Node {
+        Point pos;
+        int g, h, f; // g = cost, h = heuristic, f = g + h
+        const Node* parent;
+
+        Node(Point p, int g_val, int h_val, const Node* p_val)
+            : pos(p), g(g_val), h(h_val), f(g_val + h_val), parent(p_val) {
+        }
+
+        // Used by the priority_queue to find the node with the lowest 'f' cost
+        bool operator>(const Node& other) const {
+            return f > other.f;
+        }
+    };
+
+    /**
+     * @brief Checks if a coordinate is within the grid boundaries.
+     */
+    bool is_valid(int x, int y) {
+        return x >= 0 && x < GRID_COLS && y >= 0 && y < GRID_ROWS;
+    }
+
+    /**
+     * @brief Checks if a tile is valid and walkable (not an obstacle).
+     */
+    bool is_walkable(int x, int y) {
+        if (!is_valid(x, y)) return false;
+        return TOWN_GRID[y][x] == 0;
+    }
+
+    /**
+     * @brief Calculates the Manhattan distance heuristic for A*.
+     */
+    int calculate_heuristic(Point a, Point b) {
+        return std::abs(a.x - b.x) + std::abs(a.y - b.y);
+    }
+
+} // end anonymous namespace
+
+/**
+ * @brief Main A* search function.
+ */
+std::deque<Point> A_Star_Search(Point start, Point end) {
+    std::deque<Point> path;
+    // open_list is a min-priority queue (finds lowest 'f' cost)
+    std::priority_queue<Node, std::vector<Node>, std::greater<Node>> open_list;
+    // closed_list stores positions we've already evaluated
+    std::set<std::pair<int, int>> closed_list;
+    // node_storage holds all created nodes to ensure parents are not destroyed
+    std::vector<std::unique_ptr<Node>> node_storage;
+
+    if (!is_walkable(end.x, end.y)) {
+        return path; // Can't walk to the destination
+    }
+
+    // Create the starting node
+    auto start_node = std::make_unique<Node>(start, 0, calculate_heuristic(start, end), nullptr);
+    open_list.push(*start_node);
+    node_storage.push_back(std::move(start_node));
+
+    const int D = 1; // Cost for 4-directional movement
+    int dx[] = { 0, 0, 1, -1 };
+    int dy[] = { 1, -1, 0, 0 };
+    int num_directions = 4;
+
+    while (!open_list.empty()) {
+        Node current = open_list.top();
+        open_list.pop();
+
+        // Path found! Reconstruct it.
+        if (current.pos == end) {
+            const Node* trace = &current;
+            while (trace != nullptr) {
+                path.push_front(trace->pos);
+                trace = trace->parent;
+            }
+            path.pop_front(); // Remove the starting position
+            return path;
+        }
+
+        closed_list.insert({ current.pos.x, current.pos.y });
+
+        // Check all 4 neighbors
+        for (int i = 0; i < num_directions; ++i) {
+            Point next_pos = { current.pos.x + dx[i], current.pos.y + dy[i] };
+
+            // Check if neighbor is valid, walkable, and not already on closed list
+            if (!is_walkable(next_pos.x, next_pos.y) ||
+                closed_list.count({ next_pos.x, next_pos.y })) {
+                continue;
+            }
+
+            int new_g = current.g + D;
+            int new_h = calculate_heuristic(next_pos, end);
+
+            // Find the pointer to the 'current' node in our storage
+            // This is necessary to link the child to its parent
+            const Node* current_node_ptr = nullptr;
+            for (auto it = node_storage.rbegin(); it != node_storage.rend(); ++it) {
+                if ((*it)->pos == current.pos && (*it)->f == current.f) {
+                    current_node_ptr = it->get();
+                    break;
+                }
+            }
+            // Edge case for the very first node
+            if (current_node_ptr == nullptr && current.pos == start) {
+                for (auto it = node_storage.rbegin(); it != node_storage.rend(); ++it) {
+                    if ((*it)->pos == start) {
+                        current_node_ptr = it->get();
+                        break;
+                    }
+                }
+            }
+
+            // Create the neighbor node and add it to storage and open list
+            auto next_node = std::make_unique<Node>(next_pos, new_g, new_h, current_node_ptr);
+            open_list.push(*next_node);
+            node_storage.push_back(std::move(next_node));
+        }
+    }
+    return path; // No path found
+}
+
+
+// --- Class Starting Stats ---
+PlayerStats getStartingStats(PlayerClass playerClass) {
+    switch (playerClass) {
+    case PlayerClass::FIGHTER: return PlayerStats(120, 20, 15, 12, 8);
+    case PlayerClass::WIZARD: return PlayerStats(80, 100, 8, 6, 10);
+    case PlayerClass::ROGUE: return PlayerStats(90, 40, 12, 8, 15);
+    default: return PlayerStats(100, 50, 10, 10, 10);
+    }
+}
+
+// Create a monster instance from a template
+MonsterInstance create_monster(int id, std::string type) {
+    MonsterInstance monster = MONSTER_TEMPLATES.at(type);
+    monster.id = id;
+    monster.type = type;
+    monster.assetKey = MONSTER_ASSETS.at(type);
+    return monster;
+}

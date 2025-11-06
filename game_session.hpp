@@ -1,22 +1,28 @@
-// File: LocalWebSocketServer/game_session.hpp
+// File: game_session.hpp
+// Description: Defines all core game data structures and constants.
+// This file is the "single source of truth" for what game objects look like.
 #pragma once 
 
 #include <string>
 #include <vector>
 #include <deque> 
 #include <chrono> 
-#include <boost/optional.hpp>
-#include <boost/asio/ip/tcp.hpp>
+#include <boost/optional.hpp> // Used for currentOpponent
+#include <boost/asio/ip/tcp.hpp> // For basic networking types
 
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
 
-// --- ADDED: Global game constants ---
-static const int GRID_COLS = 40;
-static const int GRID_ROWS = 22;
-static const std::chrono::milliseconds MOVEMENT_DELAY{ 150 }; // Speed: ms per tile
-static const int SERVER_TICK_RATE_MS = 50; // 20 ticks per second
+// --- Global Game Constants ---
+static const int GRID_COLS = 40; // Width of the town map
+static const int GRID_ROWS = 22; // Height of the town map
+static const std::chrono::milliseconds MOVEMENT_DELAY{ 150 }; // ms per tile
+static const int SERVER_TICK_RATE_MS = 50; // How often the server "ticks" (20 ticks/sec)
 
+/**
+ * @enum PlayerClass
+ * @brief Represents the character class choices.
+ */
 enum class PlayerClass {
     UNSELECTED,
     FIGHTER,
@@ -24,16 +30,24 @@ enum class PlayerClass {
     ROGUE
 };
 
+/**
+ * @struct PlayerBroadcastData
+ * @brief A lightweight struct containing only the data needed
+ * to show other players in the "TOWN" area.
+ */
 struct PlayerBroadcastData {
     std::string userId;
     std::string playerName;
     PlayerClass playerClass = PlayerClass::UNSELECTED;
     std::string currentArea = "TOWN";
-
     int posX = 0;
     int posY = 0;
 };
 
+/**
+ * @struct PlayerStats
+ * @brief Holds all combat and progression stats for a player.
+ */
 struct PlayerStats {
     int health = 0;
     int maxHealth = 0;
@@ -54,12 +68,22 @@ struct PlayerStats {
     }
 };
 
+/**
+ * @struct MonsterState
+ * @brief A lightweight struct representing a monster "in the world"
+ * before combat starts.
+ */
 struct MonsterState {
     int id;
     std::string type;
     std::string assetKey;
 };
 
+/**
+ * @struct MonsterInstance
+ * @brief A full monster object, created when combat begins.
+ * Includes health and stats.
+ */
 struct MonsterInstance {
     int id;
     std::string type;
@@ -76,6 +100,10 @@ struct MonsterInstance {
     }
 };
 
+/**
+ * @struct Point
+ * @brief A simple 2D coordinate for grid movement.
+ */
 struct Point {
     int x, y;
     bool operator==(const Point& other) const {
@@ -86,7 +114,11 @@ struct Point {
     }
 };
 
-
+/**
+ * @struct PlayerState
+ * @brief The complete state for a single connected player.
+ * This is the main "game state" object for a session.
+ */
 struct PlayerState {
     PlayerClass currentClass = PlayerClass::UNSELECTED;
     std::string userId = "UNKNOWN";
@@ -96,6 +128,7 @@ struct PlayerState {
     int posX = 0;
     int posY = 0;
 
+    // List of monsters available to fight in the current area
     std::vector<MonsterState> currentMonsters;
 
     // Stats and progression
@@ -107,6 +140,7 @@ struct PlayerState {
 
     // Combat State
     bool isInCombat = false;
+    // We use boost::optional because a player may not be in combat
     boost::optional<MonsterInstance> currentOpponent;
     bool isDefending = false;
 

@@ -1,13 +1,12 @@
-// File: LocalWebSocketServer/server_main.cpp
-//
-// MODIFIED: Converted to an asynchronous, thread-pooled server model.
-// FIXED: Replaced bind_front_handler with a standard lambda.
-//
-#include "game_session.hpp" 
-#include "AsyncSession.hpp" // --- NEW: Include the session class ---
+// File: server_main.cpp
+// Description: The main entry point for the WebSocket server.
+// Sets up a thread pool and a listener to accept incoming client connections.
+
+#include "game_session.hpp" // For basic types (not strictly needed here, but good practice)
+#include "AsyncSession.hpp" // For the session class
 #include <iostream>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/strand.hpp> // --- ADDED: Include for make_strand ---
+#include <boost/asio/strand.hpp> // For make_strand
 #include <vector>
 #include <thread>
 #include <memory>
@@ -15,13 +14,22 @@
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
 
-// --- NEW: Listener class to handle incoming connections ---
+/**
+ * @class listener
+ * @brief Accepts incoming TCP connections and creates a new AsyncSession for each one.
+ * This class lives as long as it's referenced (e.g., by its own async callbacks).
+ */
 class listener : public std::enable_shared_from_this<listener>
 {
-    net::io_context& ioc_;
-    tcp::acceptor acceptor_;
+    net::io_context& ioc_; // Reference to the main I/O context
+    tcp::acceptor acceptor_; // The Boost.Asio object that accepts connections
 
 public:
+    /**
+     * @brief Constructs the listener.
+     * @param ioc The I/O context to run on.
+     * @param endpoint The IP address and port to bind to.
+     */
     listener(net::io_context& ioc, tcp::endpoint endpoint)
         : ioc_(ioc)
         , acceptor_(ioc)
@@ -36,7 +44,7 @@ public:
             return;
         }
 
-        // Allow address reuse
+        // Allow address reuse (e.g., for quick server restarts)
         acceptor_.set_option(net::socket_base::reuse_address(true), ec);
         if (ec)
         {
@@ -61,26 +69,38 @@ public:
         }
     }
 
-    // Start accepting connections
+    /**
+     * @brief Starts the asynchronous accept loop.
+     */
     void run()
     {
         do_accept();
     }
 
 private:
+    /**
+     * @brief The main accept loop. Waits for a connection.
+     */
     void do_accept()
     {
-        // The new socket for the next connection
-        // We use net::make_strand to ensure all handlers for a session
-        // are sequential, even across threads.
+        // Asynchronously wait for a new connection.
         acceptor_.async_accept(
-            net::make_strand(ioc_), // --- This is correct ---
+            // Use net::make_strand to ensure that the on_accept handler
+            // and the session's I/O operations are serialized,
+            // even in a multi-threaded environment.
+            net::make_strand(ioc_),
             [self = shared_from_this()](beast::error_code ec, tcp::socket socket)
             {
+                // When a connection arrives, call on_accept.
                 self->on_accept(ec, std::move(socket));
             });
     }
 
+    /**
+     * @brief Callback for when a new connection is accepted.
+     * @param ec An error code, if any.
+     * @param socket The new client's socket.
+     */
     void on_accept(beast::error_code ec, tcp::socket socket)
     {
         if (ec)
@@ -89,47 +109,53 @@ private:
         }
         else
         {
-            // Create the AsyncSession and run it
+            // Create a new session for this client, give it the socket,
+            // and start the session's run loop.
             std::make_shared<AsyncSession>(std::move(socket))->run();
         }
 
-        // Accept the next connection
+        // Continue the loop to accept the next connection.
         do_accept();
     }
 };
 
 
+/**
+ * @brief Main server function.
+ */
 int main() {
-    auto const address = net::ip::make_address("0.0.0.0");
-    auto const port = static_cast<unsigned short>(8080);
+    auto const address = net::ip::make_address("0.0.0.0"); // Listen on all interfaces
+    auto const port = static_cast<unsigned short>(8080); // Port to listen on
 
+    // The I/O context is the core of all Asio operations
     net::io_context ioc;
 
     // Create and launch the listener
     std::make_shared<listener>(ioc, tcp::endpoint{ address, port })->run();
 
-    // --- NEW: Thread Pool ---
-    // Run the I/O service on a pool of threads
-    // Use a reasonable number of threads, e.g., hardware concurrency
+    // --- Thread Pool ---
+    // Use a number of threads equal to the hardware concurrency
     unsigned const threads = std::max<int>(1, std::thread::hardware_concurrency());
     std::vector<std::thread> v;
     v.reserve(threads - 1);
 
     std::cout << "Server is listening on port " << port << " with " << threads << " threads...\n";
 
-    // Run one I/O context in each thread
+    // Run the I/O context in each thread
     for (auto i = threads - 1; i > 0; --i)
     {
         v.emplace_back(
             [&ioc]
             {
+                // Each thread will block here, processing async operations
                 ioc.run();
             });
     }
-    // The main thread also participates
+    // The main thread also participates in processing operations
     ioc.run();
 
-    // (This part is never reached, but good practice)
+    // This part is never reached in this example, but it's good practice
+    // if the server had a graceful shutdown mechanism.
     for (auto& t : v)
     {
         t.join();
