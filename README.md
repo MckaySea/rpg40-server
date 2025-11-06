@@ -4,10 +4,5 @@ If you need anything explained or need help just ask me
 
 
 
- ----   TODOS   ----
-  1.
-  2.
-  3.
-  4.
-  5.
-  6.
+ ----   TODOS   ---- will update this later and assign tasks
+
