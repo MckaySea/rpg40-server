@@ -1,1 +1,20 @@
 -yousaf type here
+
+Characters: Architect - Kerney's alias
+in game message - message being printed the the screen
+
+
+IN THE LOBBY
+in game message - "Welcome to Vorath, adventurer, you have been chosen to free us from the evil purging our lands."  1 
+
+(OPTIONAL) Character dialogue - "Why...does this place reek of death and destruction?" 2 
+
+in game message - "Our lands have been ravaged by the Architect. They say he never sleeps... To him, we are nothing but cattle and he is our master. Its up to you to break this endless cycle of hell, advernturer" 3
+
+Area 1:
+-in game message - "Welcome to the lobby, here you can buy equipment from the merchant, spells from the mage, or chat with the guard" 4
+-Wizard default message - "A wise man once said the longer the beard the more experience they have in the field."  5
+-Guard default message - "How did I even get here???" 6
+-Merchant default message - "Im broke and need a toke, anyone got some gold?"  7
+
+
