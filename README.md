@@ -6,7 +6,7 @@ If you need anything explained or need help just ask me
 
  ----   TODOS   ---- will update this later and assign tasks
 
- yousaf - dialogue
+ yousaf - dialogue -- write out what npcs are going to say and label whos saying it, determine which npcs will give quests as well. also name the npcs as you wish
 
  ali - visuals and images for npcs/monsters/objects
 
