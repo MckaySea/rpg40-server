@@ -566,7 +566,7 @@ void AsyncSession::handle_message(const std::string& message)
             }
         }
     }
-    // --- Combat System ---
+        //gonna keep reivising the combat system and make it more intricate :P
     else if (message.rfind("MONSTER_SELECTED:", 0) == 0) {
         if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
         else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:You are already in combat!")); }
@@ -574,16 +574,13 @@ void AsyncSession::handle_message(const std::string& message)
         else {
             try {
                 int selected_id = std::stoi(message.substr(17));
-                // Find the monster in the area list
+                // we find the mob from the area we're in and its in
                 auto it = std::find_if(player.currentMonsters.begin(), player.currentMonsters.end(), [selected_id](const MonsterState& m) { return m.id == selected_id; });
-
                 if (it != player.currentMonsters.end()) {
                     player.isInCombat = true;
-                    // Create a full monster instance for combat
-                    player.currentOpponent = create_monster(it->id, it->type); // from GameData
+                    player.currentOpponent = create_monster(it->id, it->type); // 
                     player.isDefending = false;
-                    player.currentMonsters.erase(it); // Remove from world
-
+                    player.currentMonsters.erase(it); // we gotta delete the mob from the world 
                     std::cout << "[" << client_address << "] --- COMBAT STARTED vs " << player.currentOpponent->type << " ---\n";
                     std::ostringstream oss;
                     oss << "SERVER:COMBAT_START:"
@@ -593,12 +590,46 @@ void AsyncSession::handle_message(const std::string& message)
                     std::string combat_start_message = oss.str();
                     ws.write(net::buffer(combat_start_message));
                     ws.write(net::buffer("SERVER:COMBAT_LOG:You engaged the " + player.currentOpponent->type + "!"));
+                    if (player.stats.speed >= player.currentOpponent->speed) {
+                        ws.write(net::buffer("SERVER:COMBAT_LOG:You are faster! You attack first."));
+                        ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
+                    }
+                    else {
+                        // Monster is faster
+                        ws.write(net::buffer("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " is faster! It attacks first."));
+                        int monster_damage = 0; int player_defense = player.stats.defense;
+                        monster_damage = std::max(1, player.currentOpponent->attack - player_defense);
+                        player.stats.health -= monster_damage;
+                        ws.write(net::buffer("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " attacks you for " + std::to_string(monster_damage) + " damage!"));
+                        send_player_stats();
+
+                        // incase a noob tries to fight a rlly high level mob and gets one shot i just copied logic from combat action lol
+                        if (player.stats.health <= 0) {
+                            player.stats.health = 0;
+                            ws.write(net::buffer("SERVER:COMBAT_DEFEAT:You have been defeated!"));
+                            player.isInCombat = false; player.currentOpponent.reset();
+                            player.currentArea = "TOWN"; player.currentMonsters.clear();
+                            player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
+                            player.posX = 5; player.posY = 5; player.currentPath.clear();
+                            broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
+                            { std::lock_guard<std::mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
+
+                            ws.write(net::buffer("SERVER:AREA_CHANGED:TOWN"));
+                            send_area_map_data(player.currentArea);
+                            send_interactables(player.currentArea); 
+                            send_available_areas();
+                            send_player_stats();
+                        }
+                        else {
+                            ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
+                        }
+                    }
                 }
                 else { ws.write(net::buffer("SERVER:ERROR:Selected monster ID not found.")); }
             }
             catch (const std::exception&) { ws.write(net::buffer("SERVER:ERROR:Invalid monster ID format.")); }
         }
-    }
+        }
     else if (message.rfind("COMBAT_ACTION:", 0) == 0) {
         if (!player.isInCombat || !player.currentOpponent) { ws.write(net::buffer("SERVER:ERROR:You are not in combat.")); }
         else {
@@ -687,8 +718,6 @@ void AsyncSession::handle_message(const std::string& message)
                 send_available_areas(); send_player_stats();
                 return;
             }
-
-            // Combat continues
             ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
         }
     }
