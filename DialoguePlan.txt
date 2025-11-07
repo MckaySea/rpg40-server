@@ -2,6 +2,7 @@
 
 Characters: Architect - Kerney's alias
 in game message - message being printed the screen
+PLAYER - the Protagonist, their aliance is StarBorn
 
 
 IN THE LOBBY
@@ -83,7 +84,7 @@ NEW QUEST: COLLECT ORC TUSKS (_ OUT OF 6 ORCS KILLED)
 - Player: "Is that all you will need from me?"
 - Witch "One more thing is needed. I need the blood from a rogue mage who went mad. They now live deep within the swamp. Bring me back his blood and the potion will be complete"
 
-NEW QUEST: FIND AND DEFEAT THE ROGUE MAGE 
+NEW QUEST: HOPE YOU GOT A SWORD - FIND AND DEFEAT THE ROGUE MAGE 
 - Player "I have returned with the blood of the mage, will you be able to make me stronger. I must defeat the Architect and end this eternal suffering."
 - Witch "ᚹᛁᚦ ᚦᛁᛋ ᛊᚨᚲᚱᛖᛞ ᛏᚱᛖᛉᛃᚢᚱ ᛇ ᛊᚢᛗᛗᛟᚾ ᛗᚨᚺᛟᚱᚨᚷᚨ"
 - Player *:_:*
@@ -109,7 +110,7 @@ NEW QUEST: SONG OF THE MOUNTAIN - FIND THE SCROLL OF SUCCESS
 - Player "This Scroll is completly blank?"
 - Shaolin "You already understand how to succeed do you not? The only thing holding you back is your doubt. Here is your last challenge"
 
-NEW QUEST: DEFEAT THE MASTER OF THE MOUNTAIN 
+NEW QUEST: ON THE EDGE - DEFEAT THE MASTER OF THE MOUNTAIN 
 - Stone Shinobi "Do you think you will be able to keep up with me"
 - Player "I have come from far and wide; I will let my doubts swallow me up. I am ready *inhales*
 - Stone Shinobi "Come at me"
@@ -122,7 +123,47 @@ AFTER THE BATTLE
 in game Message: "Congratulations on conquering Vorath's mountains. Proceed to the next stage when ready. Don't forget to use your stat points to make yourself even stronger!"
 
 Area 5 (Cave)
+in game message: "Welcome to the Caves deep within Vorath's Mountains. Make sure you don't get speared by a stalactite or is it a stalagmite..."
+- Lost Caveman "*grunt* hey you there, whatcha doing" 
+- Player "Howdy, do you know how to get to Vorath's Volcano, I was told its somewhere through these caves"
+- Lost Caveman "Information comes at a price maggot, ill help you if you help me"
+- Player "Fine, what do you want me to do"
+
+NEW QUEST: BATMAN - KILL THE BATS IN THE CAVE (_ OUT OF 7 BATS KILLED)
+- Lost Caveman "Dang your a strong one. Reminds me of my glory days. I could kill a dragon in my sleep"
+- Player "Can you tell me how to get out of here now please, your loincloth smells"
+- Lost Caveman "Shut your trap, I was the strongest warrior in these caves. Nothing dared to come 10 feet within me"
+- Player "Cause you smelled like shit...."
+- Lost Caveman "SHUT UP"
+
+NEW QUEST: ARACHNAPHOBIA - KILL THE SPIDERS ( _ OUT OF 6 SPIDERS KILLED)
+- Player "Spiders killed, guts collected... what else you need from me" 
+- Lost Caveman "HA you only killed the weaklings in here. Tell you what, there is supposedly a boss in this cave taht can only be summoned by skulls. I have collected 2, go find me 3 more"
+- Player "SKULLLSS????"
+
+NEW QUEST: ARE THOSE HUMAN SKULLS - KILL THE SKELETONS (_ OUT OF 3 KILLED)
+
+- Player "I got three more skulls what do I do now??"
+- Lost Caveman "Go to the Cave with an X Slashed on the wall...I have things to do"
+-Player "Your just scared aren't ya, you hairy coward"
+-Lost Caveman "STFU"
+
+NEW QUEST: DEAD MEN TELL NO TALES: DEFEAT THE REAPER OF SOULS
+- Player "oh crap..."
+- REAPER "You have risen the dead mortal, there shall be consequences for your crimes"
+- Player "We shall see" 
+AFTER THE BATTLER
+- Player "I defeated the Reaper Caveman, why didn't you help"
+- Lost Caveman "I had to test you, you could only be as strong as me if you were capable of defeating the hardest enemy"
+- Player "*rolls eyes*
+- Lost Caveman "Anyways, because you were so strong, and I like strong, heres a little something I found while exploring"
+GRANT REWARD
+
+-in game message "Congratulations on beating the Caves of Vorath. Please proceed to the next level. Don't forget those stat points"
+
+ 
 Area 6 (Volcano) 
+- in game message: "Welcome to the hidden Volcano of Vorath Starborn. All roads lead here, not Rome" 
 Area 7 (Ruins)
 Area 8 (Optional) (Tomb of the Tyrant)
  
