@@ -150,21 +150,102 @@ NEW QUEST: ARE THOSE HUMAN SKULLS - KILL THE SKELETONS (_ OUT OF 3 KILLED)
 
 NEW QUEST: DEAD MEN TELL NO TALES: DEFEAT THE REAPER OF SOULS
 - Player "oh crap..."
-- REAPER "You have risen the dead mortal, there shall be consequences for your crimes"
+- REAPER "Who dares disturb the dead. You will meet the edge of my schythe for meddling with my affairs"
 - Player "We shall see" 
-AFTER THE BATTLER
+AFTER THE BATTLE
 - Player "I defeated the Reaper Caveman, why didn't you help"
 - Lost Caveman "I had to test you, you could only be as strong as me if you were capable of defeating the hardest enemy"
-- Player "*rolls eyes*
-- Lost Caveman "Anyways, because you were so strong, and I like strong, heres a little something I found while exploring"
+- Player " *rolls eyes* "
+- Lost Caveman "Anyways, because you were so strong, and I like strong, here's a little something I found while exploring"
+
 GRANT REWARD
 
 -in game message "Congratulations on beating the Caves of Vorath. Please proceed to the next level. Don't forget those stat points"
 
- 
 Area 6 (Volcano) 
-- in game message: "Welcome to the hidden Volcano of Vorath Starborn. All roads lead here, not Rome" 
+- in game message: "Welcome to the hidden Volcano of Vorath Starborn. All roads lead here, not Rome. Find the ash spirit for guidance" 
+- ash wisp "wooooooo wow I haven't seen a human down in forever."
+- Player "Woah what are you?"
+- ash wisp "Im an ash spirit, weeeeeeeee, are you here to beat the big bad dragon?"
+- Player "Dra-gon *gulp*"
+- ash wisp "uh oh, I don't like that confidence, you know what theres a bunch of other meanies in here too"
+
+NEW QUEST: THATS ONE HOT DOG- KILL THE LAVA HOUNDS (_ OUT OF 6 KILLED)
+- Player "Ok that wasn't too bad, all the dogs have been deep fried"
+- ash wisp - "ooooohhhhh wow your not that bad at combat yourself. You still lack confidence. We gotta build make you mentally stronger"
+- Player "I'm willing to do what it takes, how can I get stronger ash wisp?"
+- ash wisp "heheeehee thats the Spirit! Monsters are scary, but don't worry, I've guided each adventurer for over 1000 years, but you seem to special"
+- Player "I have to do whatever it takes to defeat the Architect!"
+- ash wisp "Yaaaay, ok well theres a clan of lava orcs nearby, and they are tough. Beat them down and show me your unbreakable FIGHTING SPIRIT!"
+
+NEW QUEST: UBREAKABLE SPIRIT - KILL THE LAVA ORC CLAN (_ OUT OF 5 KILLED) 
+- Player - "I have defeated every member of the clan, and yet, I feel that that was too easy. I haven't been challenged. I know I can take on even more powerful monsters"
+- ash wisp - "Well then if you say so, I think its time to go take out that evil Dragon" 
+- Player - "Ummmm how cooked do you think I am"
+- ash wisp - "Oh there's only a good 60% chance you might die, weeeeeeeeeeeee"
+- Player - "Uhm thats kind of high...."
+- ash wisp - "I know!"
+
+NEW QUEST: BATTLE IN THE IRON MOUNTAIN: DEFEAT THE FIRE DRAGON
+- Player - "I have emerged victorious, the dragon is dead, and I feel my fighting spirit increasing"
+- ash wisp - "WOW I've never seen anyone do something like that in my whole life! Your kind of special silly human. I like special"
+- Player - "Everyone keeps telling me that, but im not so sure as of right now..."
+- ash wisp - "ah don't worry, you will get stronger, now go get em!!! wheeeeeeeeeeeeeee" 
+
+-in game message - "Congratulations on conquering Vorath's Volcano, continue to the last stage when ready. Don't forget about those stat points!"
+
 Area 7 (Ruins)
+- in game message "Welcome to the ruins of the sealed king, danger lies ahead, but the Architect draws even more closer. You must cast all doubts aside. Speak with the fallen Angel"
+- Player "Are you the fallen Angel?" 
+- Fallen Angel "I fell from the sky, a drop of light fallign from heaven and landing on this planet. I am chained to these grounds lest someone can rid the ruins of the cursed beings that dwell here"
+- Player - "Seems like fun, got anything for me to do"
+- Fallen Angel - "Your behavior is intriguing mortal, I was told of a prophecy of the Starborn, a mortal so strong, he could balance the scales of good and evil"
+- Player - "Honestly, good or evil? I reject them both, im just going to do my own thing; Also, I don't like the idea of an absolute rulers"
+- Fallen Angel - "How...Interesting. Very well, here is your task"
+
+NEW QUEST: DO YOU SMELL DEATH - DEFEAT THE CURSED GUARDIANS OF THE RUINS (_ OUT OF 5 KILLED)
+- Player - "Those guys were difficult but I managed to get it done."
+- Fallen Angel - "Your truly an itneresting individual, never before have I witnessed someone to throw themselves into battle with utmost passion with little regard to consequence. You are wtihout a doubt, a strange mortal"
+- Player - "I have learned from the best, I will defeat the Architect and free the people, because I know that will restore balance"
+- Fallen Angel - "Very well, to get into the depest parts of the tomb, you will have to overcome your limitations. Defeat the shell of High Commander Solarith."
+
+NEW QUEST: DEVIL LURKS IN THE SHADOWS: DEFEAT HIGH COMMANDER SOLARITH 
+- Player - "*breathes heavily* I have never felt so locked in, all my sense were on fire fighting that thing"
+- Fallen Angel - "It looks like you also acquired a drop of sunlight, may I see it"
+- Player - "yes"
+- Fallen Angel - "My power has been restored. Thank you Starborn, two gifts for you: the first is my divine blessing, and the second is to keep your eyes and mind wide open"
+- Player "What????"
+
+in game message - "Congratulations, you have conquered the ruins of Vorath, proceed into the tomb of the Tyrant and confront the Architect. Its all up to you now Starborn"
+
+
 Area 8 (Optional) (Tomb of the Tyrant)
+NEW QUEST: ALL IS NOT WHAT IT SEEMS STAGE 1
+- Architect - "Well so you have finally wandered into my domain you fool. Though I must admit I am surprised you made it this far"
+- Player - "I won't let you keep the people suffering-"
+- Architect - "*Evil laugh* FOOL I WAS THE SAVIOR OF THE PEOPLE. IT WAS I WHO HELPED HUMANITY REACH ITS PEAK I BUILT EVERTHING FROM THE GROUND"
+- Player - "You have abused everyone, yet you believe you were their salvation, thats pretty twisted"
+- Architect - "*Evil laugh* Everything I've done has been precisely calculated. You have just arrived to your funeral "StarBorn" "
+- Player - "Time to Finish this Architect" 
+
+NEW QUEST: ALL IS NOT WHAT IT SEEMS STAGE 2
+- Architect "YOU HAVEN'T WITNESSED.... MY FULL POWER!!!"
+- Player "Oh shit"
+- Architect "I WILL NOT FALL SO EASILY FOOL"
+- Player " *coughs* Nor will I, your my enemy, and I will DEFEAT YOU"
+
+Battle ends...
+- Architect "That was interesting.... but you don't realize that the world is no longer in balance." 
+- Player "I rid Vorath of the evil, the job is done"
+- Architect "*weak laugh* You only tipped the scales Starborn, and right now, they are unbalanced"
+
+in game message "Congratulations Starborn, you have ended the Architects reign!"
+
+- Player - "Even after all that...something is definitely wrong..."
+
+FIN
+
+
+
  
 
