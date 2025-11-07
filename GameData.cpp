@@ -344,15 +344,16 @@ const std::map<std::string, std::vector<std::vector<int>>> g_area_grids = {
    // {"SWAMP", SWAMP_GRID},
 };
 
-// Monster Base Stats (Type -> Stats)
+// 
+// MonsterInstance(id(we incrmnt this when i spawn them into areas so they all unique), type, asset, health, defense, speed, str, dex, int, lck, xp)
 const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES = {
-    {"SLIME", MonsterInstance(0, "", "", 30, 8, 5, 5, 10)},
-    {"GOBLIN", MonsterInstance(0, "", "", 50, 12, 8, 8, 15)},
-    {"WOLF", MonsterInstance(0, "", "", 40, 15, 6, 12, 12)},
-    {"BAT", MonsterInstance(0, "", "", 20, 10, 4, 15, 8)},
-    {"SKELETON", MonsterInstance(0, "", "", 60, 14, 10, 6, 20)},
-    {"GIANT SPIDER", MonsterInstance(0, "", "", 70, 16, 8, 10, 25)},
-    {"ORC BRUTE", MonsterInstance(0, "", "", 100, 20, 12, 5, 40)}
+    {"SLIME", MonsterInstance(0, "", "", 30, 5, 5, 5, 3, 1, 3, 10)},
+    {"GOBLIN", MonsterInstance(0, "", "", 50, 8, 8, 8, 7, 3, 5, 15)},
+    {"WOLF", MonsterInstance(0, "", "", 40, 6, 12, 10, 12, 2, 5, 12)},
+    {"BAT", MonsterInstance(0, "", "", 20, 4, 15, 4, 12, 1, 6, 8)},
+    {"SKELETON", MonsterInstance(0, "", "", 60, 10, 6, 12, 8, 3, 2, 20)},
+    {"GIANT SPIDER", MonsterInstance(0, "", "", 70, 8, 10, 13, 10, 2, 5, 25)},
+    {"ORC BRUTE", MonsterInstance(0, "", "", 100, 12, 5, 18, 6, 2, 3, 40)}
 };
 const std::vector<std::string> MONSTER_KEYS = { "SLIME", "GOBLIN", "WOLF", "BAT", "SKELETON", "GIANT SPIDER", "ORC BRUTE" };
 
@@ -540,10 +541,11 @@ std::deque<Point> A_Star_Search(Point start, Point end, const std::vector<std::v
 // --- Class Starting Stats ---
 PlayerStats getStartingStats(PlayerClass playerClass) {
     switch (playerClass) {
-    case PlayerClass::FIGHTER: return PlayerStats(120, 20, 15, 12, 8);
-    case PlayerClass::WIZARD: return PlayerStats(80, 100, 8, 6, 10);
-    case PlayerClass::ROGUE: return PlayerStats(90, 40, 12, 8, 15);
-    default: return PlayerStats(100, 50, 10, 10, 10);
+                                   // PlayerStats(health, mana, defense, speed, str, dex, intl, lck)
+    case PlayerClass::FIGHTER: return PlayerStats(120, 20, 12, 8, 15, 10, 5, 5);
+    case PlayerClass::WIZARD:  return PlayerStats(80, 100, 6, 10, 5, 8, 15, 7);
+    case PlayerClass::ROGUE:   return PlayerStats(90, 40, 8, 15, 8, 15, 8, 10);
+    default:                   return PlayerStats(100, 50, 10, 10, 10, 10, 10, 5);
     }
 }
 

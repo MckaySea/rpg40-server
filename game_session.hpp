@@ -45,27 +45,27 @@ struct PlayerBroadcastData {
     int posY = 0;
 };
 
-/**
- * @struct PlayerStats
- * @brief Holds all combat and progression stats for a player.
- */
+//i removed attack to make more interesting encounters based on different stats and make some fights harder! Added int,dex,str,luck
 struct PlayerStats {
-    int health = 0;
-    int maxHealth = 0;
-    int mana = 0;
-    int maxMana = 0;
-    int attack = 0;
+    int health = 0, maxHealth = 0;
+    int mana = 0, maxMana = 0;
     int defense = 0;
     int speed = 0;
-    int level = 1;
-    int experience = 0;
-    int experienceToNextLevel = 100;
+    int level = 1, experience = 0, experienceToNextLevel = 100;
+
+    int strength = 0;
+    int dexterity = 0;
+    int intellect = 0;
+    int luck = 0;
+
 
     PlayerStats() = default;
-    PlayerStats(int h, int m, int a, int d, int s, int l = 1, int xp = 0, int nextXp = 100)
-        : health(h), maxHealth(h), mana(m), maxMana(m), attack(a), defense(d), speed(s),
-        level(l), experience(xp), experienceToNextLevel(nextXp)
-    {
+
+    //changed and added more stats
+    PlayerStats(int h, int m, int def, int spd, int str, int dex, int intl, int lck)
+        : health(h), maxHealth(h), mana(m), maxMana(m), defense(def), speed(spd),
+        level(1), experience(0), experienceToNextLevel(100),
+        strength(str), dexterity(dex), intellect(intl), luck(lck) {
     }
 };
 
@@ -82,24 +82,24 @@ struct MonsterState {
     int posY = 0; 
 };
 
-/**
- * @struct MonsterInstance
- * @brief A full monster object, created when combat begins.
- * Includes health and stats.
- */
+//mobs now also have defensde,speed, str, dex, int, and luck. think imma add spell casting eventually so theres harder fights
 struct MonsterInstance {
     int id;
     std::string type;
     std::string assetKey;
-    int health;
-    int maxHealth;
-    int attack;
+    int health, maxHealth;
     int defense;
     int speed;
     int xpReward;
+    int strength;
+    int dexterity;
+    int intellect;
+    int luck;
 
-    MonsterInstance(int i, std::string t, std::string a, int h, int atk, int def, int spd, int xp)
-        : id(i), type(t), assetKey(a), health(h), maxHealth(h), attack(atk), defense(def), speed(spd), xpReward(xp) {
+    MonsterInstance(int id, std::string type, std::string assetKey, int h, int def, int spd, int str, int dex, int intl, int lck, int xp)
+        : id(id), type(type), assetKey(assetKey), health(h), maxHealth(h),
+        defense(def), speed(spd), xpReward(xp),
+        strength(str), dexterity(dex), intellect(intl), luck(lck) {
     }
 };
 

@@ -83,17 +83,20 @@ void AsyncSession::send_player_stats() {
         << ",\"maxHealth\":" << player.stats.maxHealth
         << ",\"mana\":" << player.stats.mana
         << ",\"maxMana\":" << player.stats.maxMana
-        << ",\"attack\":" << player.stats.attack
         << ",\"defense\":" << player.stats.defense
         << ",\"speed\":" << player.stats.speed
         << ",\"level\":" << player.stats.level
         << ",\"experience\":" << player.stats.experience
         << ",\"experienceToNextLevel\":" << player.stats.experienceToNextLevel
         << ",\"availableSkillPoints\":" << player.availableSkillPoints
+        << ",\"strength\":" << player.stats.strength
+        << ",\"dexterity\":" << player.stats.dexterity
+        << ",\"intellect\":" << player.stats.intellect
+        << ",\"luck\":" << player.stats.luck
         << ",\"posX\":" << player.posX
         << ",\"posY\":" << player.posY;
 
-    // Add spells list only if they exist
+    // Add spells list only if they exist (for wizards)
     if (player.currentClass == PlayerClass::WIZARD && !player.spells.empty()) {
         oss << ",\"spells\":[";
         for (size_t i = 0; i < player.spells.size(); ++i) {
@@ -230,17 +233,16 @@ void AsyncSession::check_for_level_up() {
         player.stats.level++;
         player.stats.experience -= player.stats.experienceToNextLevel;
         player.stats.experienceToNextLevel = static_cast<int>(player.stats.experienceToNextLevel * 1.5);
-
-        // Apply stat gains
         player.availableSkillPoints += 3;
-        player.stats.maxHealth += 10;
+        player.stats.maxHealth += 5;
         player.stats.health = player.stats.maxHealth;
         player.stats.maxMana += 5;
         player.stats.mana = player.stats.maxMana;
-        player.stats.attack += 2;
         player.stats.defense += 1;
         player.stats.speed += 1;
-
+        player.stats.dexterity += 1;
+        player.stats.luck += 1;
+        player.stats.intellect += 1;
         std::cout << "[Level Up] Player " << player.playerName << " reached level " << player.stats.level << "\n";
 
         // Notify client
@@ -342,9 +344,15 @@ void AsyncSession::handle_message(const std::string& message)
             bool valid_stat = false;
             if (stat_name == "health") { player.stats.maxHealth += 5; player.stats.health += 5; valid_stat = true; }
             else if (stat_name == "mana") { player.stats.maxMana += 5; player.stats.mana += 5; valid_stat = true; }
-            else if (stat_name == "attack") { player.stats.attack += 1; valid_stat = true; }
+            // else if (stat_name == "attack") { player.stats.attack += 1; valid_stat = true; } // REMOVED
             else if (stat_name == "defense") { player.stats.defense += 1; valid_stat = true; }
             else if (stat_name == "speed") { player.stats.speed += 1; valid_stat = true; }
+            // ADDED
+            else if (stat_name == "strength") { player.stats.strength += 1; valid_stat = true; }
+            else if (stat_name == "dexterity") { player.stats.dexterity += 1; valid_stat = true; }
+            else if (stat_name == "intellect") { player.stats.intellect += 1; valid_stat = true; }
+            else if (stat_name == "luck") { player.stats.luck += 1; valid_stat = true; }
+
 
             if (valid_stat) {
                 player.availableSkillPoints--;
@@ -597,8 +605,19 @@ void AsyncSession::handle_message(const std::string& message)
                     else {
                         // Monster is faster
                         ws.write(net::buffer("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " is faster! It attacks first."));
-                        int monster_damage = 0; int player_defense = player.stats.defense;
-                        monster_damage = std::max(1, player.currentOpponent->attack - player_defense);
+
+                        //subject to change but i wanted more stats to have more effects on coimbat
+                        int monster_attack_value = player.currentOpponent->strength + (player.currentOpponent->dexterity / 4);
+                        int monster_damage = 0;
+                        int player_defense = player.stats.defense;
+                        monster_damage = std::max(1, monster_attack_value - player_defense);
+
+                            //i added the ability for the mob to crit u
+                        float monster_crit_chance = (player.currentOpponent->luck * 0.005f) + (player.currentOpponent->dexterity * 0.0025f);
+                        if (((float)std::rand() / RAND_MAX) < monster_crit_chance) {
+                            monster_damage *= 2;
+                            ws.write(net::buffer("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " lands a critical hit!"));
+                        }
                         player.stats.health -= monster_damage;
                         ws.write(net::buffer("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " attacks you for " + std::to_string(monster_damage) + " damage!"));
                         send_player_stats();
@@ -642,16 +661,48 @@ void AsyncSession::handle_message(const std::string& message)
             // --- Player Turn ---
             int player_damage = 0; int mana_cost = 0; bool fled = false;
             if (action_type == "ATTACK") {
-                int base_damage = std::max(1, player.stats.attack - player.currentOpponent->defense);
+                // --- NEW PLAYER ATTACK CALCULATION ---
+                int player_attack_value = player.stats.strength + (player.stats.dexterity / 2);
+                int base_damage = std::max(1, player_attack_value - player.currentOpponent->defense);
+
                 float variance = 0.8f + ((float)(std::rand() % 41) / 100.0f); // 0.8 to 1.2
                 player_damage = std::max(1, (int)(base_damage * variance));
+
+                // --- NEW: CRITICAL HIT LOGIC ---
+                float crit_chance = (player.stats.luck * 0.005f) + (player.stats.dexterity * 0.0025f);
+                if (((float)std::rand() / RAND_MAX) < crit_chance) {
+                    player_damage *= 2; // Double damage!
+                    ws.write(net::buffer("SERVER:COMBAT_LOG:A critical hit!"));
+                }
+                // --- END CRITICAL HIT LOGIC ---
+
                 ws.write(net::buffer("SERVER:COMBAT_LOG:You attack the " + player.currentOpponent->type + " for " + std::to_string(player_damage) + " damage!"));
             }
             else if (action_type == "SPELL") {
                 int base_damage = 0; mana_cost = 0; float variance = 1.0f;
-                if (action_param == "Fireball") { mana_cost = 20; if (player.stats.mana >= mana_cost) { base_damage = (player.stats.maxMana / 8) + player.stats.attack; variance = 0.8f + ((float)(std::rand() % 41) / 100.0f); } }
-                else if (action_param == "Lightning") { mana_cost = 15; if (player.stats.mana >= mana_cost) { base_damage = (player.stats.maxMana / 10) + player.stats.attack; variance = 0.7f + ((float)(std::rand() % 61) / 100.0f); } }
-                else if (action_param == "Freeze") { mana_cost = 10; if (player.stats.mana >= mana_cost) { base_damage = (player.stats.maxMana / 12) + (player.stats.attack / 2); variance = 0.9f + ((float)(std::rand() % 21) / 100.0f); } }
+
+                // --- NEW SPELL DAMAGE CALCULATION ---
+                if (action_param == "Fireball") {
+                    mana_cost = 25;
+                    if (player.stats.mana >= mana_cost) {
+                        base_damage = (player.stats.intellect * 2) + (player.stats.maxMana / 10);
+                        variance = 0.8f + ((float)(std::rand() % 41) / 100.0f);
+                    }
+                }
+                else if (action_param == "Lightning") {
+                    mana_cost = 15;
+                    if (player.stats.mana >= mana_cost) {
+                        base_damage = (int)(player.stats.intellect * 1.5) + (player.stats.maxMana / 10);
+                        variance = 0.7f + ((float)(std::rand() % 61) / 100.0f);
+                    }
+                }
+                else if (action_param == "Freeze") {
+                    mana_cost = 10;
+                    if (player.stats.mana >= mana_cost) {
+                        base_damage = (player.stats.intellect) + (player.stats.maxMana / 12);
+                        variance = 0.9f + ((float)(std::rand() % 21) / 100.0f);
+                    }
+                }
                 else { ws.write(net::buffer("SERVER:COMBAT_LOG:You don't know that spell!")); return; }
 
                 if (mana_cost > 0 && player.stats.mana >= mana_cost) {
@@ -664,13 +715,14 @@ void AsyncSession::handle_message(const std::string& message)
             }
             else if (action_type == "DEFEND") { player.isDefending = true; ws.write(net::buffer("SERVER:COMBAT_LOG:You brace for the next attack.")); }
             else if (action_type == "FLEE") {
-                float flee_chance = 0.5f + ((float)player.stats.speed - (float)player.currentOpponent->speed) * 0.05f;
+               
+                float flee_chance = 0.5f + ((float)player.stats.speed - (float)player.currentOpponent->speed) * 0.05f + ((float)player.stats.luck * 0.01f);
                 flee_chance = std::max(0.1f, std::min(0.9f, flee_chance)); // Clamp chance
                 if (((float)std::rand() / RAND_MAX) < flee_chance) { fled = true; }
                 else { ws.write(net::buffer("SERVER:COMBAT_LOG:You failed to flee!")); }
             }
 
-            // --- Check Flee ---
+            
             if (fled) {
                 ws.write(net::buffer("SERVER:COMBAT_LOG:You successfully fled from the " + player.currentOpponent->type + "!"));
                 player.isInCombat = false; player.currentOpponent.reset();
@@ -694,10 +746,22 @@ void AsyncSession::handle_message(const std::string& message)
                 send_current_monsters_list(); return;
             }
 
+            
             // --- Monster Turn ---
             int monster_damage = 0; int player_defense = player.stats.defense;
             if (player.isDefending) { player_defense *= 2; player.isDefending = false; }
-            monster_damage = std::max(1, player.currentOpponent->attack - player_defense);
+
+           
+            int monster_attack_value = player.currentOpponent->strength + (player.currentOpponent->dexterity / 4);
+            monster_damage = std::max(1, monster_attack_value - player_defense);
+
+            // crit for monster chance
+            float monster_crit_chance = (player.currentOpponent->luck * 0.005f) + (player.currentOpponent->dexterity * 0.0025f);
+            if (((float)std::rand() / RAND_MAX) < monster_crit_chance) {
+                monster_damage *= 2;
+                ws.write(net::buffer("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " lands a critical hit!"));
+            }
+
             player.stats.health -= monster_damage;
             ws.write(net::buffer("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " attacks you for " + std::to_string(monster_damage) + " damage!"));
             send_player_stats();
