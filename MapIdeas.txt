@@ -1,0 +1,18 @@
+
+OVERALL IDEAS: 
+
+I think we should extend each map by adding another grid (section) to each
+seperate place, so when the character walks off the screen to one part they
+arent immediately in an unknown area, but rather a familiar section. As a
+result, there should be a progression for the maps that could be from 
+TOWN-->FOREST-->SWAMP-->CAVES-->MOUNTAINS/DESERT-->RUINS-->VOLCANO-->FINAL
+BOSS AREA. Maybe increase the difficulty of each puzzle/mob in each new
+section to give off a better progression system? FOR SURE have a lot of
+backround 
+
+
+TOWN:
+
+Maybe give off the comforting feeling of a town-y setting? Adding a windmill
+towards the right side of the map could add some more charm. There a good
+amount of trees, maybe add some diversity with a large oak tree 
