@@ -1,8 +1,60 @@
 -yousaf type here
 
+
+
+
+
+
 Characters: Architect - Kerney's alias
 in game message - message being printed the screen
 PLAYER - the Protagonist, their aliance is StarBorn
+
+
+Player - main character 
+
+1) Town 
+- Wizard
+- Merchant
+- Guard
+- BlackSmith 
+2) Desert 
+- Desert Quest Giver
+- Cactus monsters ( 6 total )
+- Scorpions ( 5 total )
+- ***Gems (for a quest)
+- Sand Golem (final boss of area)
+3) Forest 
+- Forest Quest Giver
+- Enchancted Goblins (8) 
+- Map (1)
+- Chief Goblin (final boss of area)
+4) Swamp 
+- Witch (quest giver)
+- Slimes (8)
+- Orcs (6)
+- Rogue Mage (final boss of area)
+5) Moutains 
+- Shaolin (quest giver)
+- Rock Golems (5)
+- ***Scrolls if not we can do wolves
+- Stone Shinobi (final boss of area)
+6) Cave 
+- Lost Caveman (quest giver)
+- Bats (7)
+- Spiders (6)  
+- Skeletons (need them to get the area boss) (3)
+- Grim Reaper (area boss) 
+7) Volcano 
+- Ash Wisp (quest giver)
+- Lava Hounds (6)
+- Lava Orcs (5)
+- Fire dragon (Area Boss)
+8) Ruins - Fallen Angel
+- Fallen Angel (quest giver)
+- Cursed Guardians (5)
+- High Commander Solarith (Final Boss of Area)
+9) Tomb of the Tyrant - Final Battle
+- Architect (FINAL BOSS OF EVERYTHING)
 
 
 IN THE LOBBY

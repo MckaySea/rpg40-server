@@ -19,6 +19,7 @@ static const int GRID_ROWS = 22; // Height of the town map
 static const std::chrono::milliseconds MOVEMENT_DELAY{ 150 }; // ms per tile
 static const int SERVER_TICK_RATE_MS = 50; // How often the server "ticks" (20 ticks/sec)
 
+
 /**
  * @enum PlayerClass
  * @brief Represents the character class choices.
@@ -77,6 +78,8 @@ struct MonsterState {
     int id;
     std::string type;
     std::string assetKey;
+    int posX = 0; 
+    int posY = 0; 
 };
 
 /**
@@ -114,6 +117,21 @@ struct Point {
     }
 };
 
+//we can add to this eventually
+enum class InteractableType {
+    NPC,
+    ZONE_TRANSITION,
+    QUEST_ITEM,
+    SHOP
+};
+
+//definin what we can interact with come back and look at this or ask me (McKay for help with creeating new ones)
+struct InteractableObject {
+    std::string id;         // Unique ID, e.g., "TOWN_MERCHANT"
+    InteractableType type;  // What kind of object this is
+    Point position;         // The (x, y) grid coordinate
+    std::string data;       // Flexible data (e.g., Dialogue ID, Shop ID, or Target Area Name)
+};
 /**
  * @struct PlayerState
  * @brief The complete state for a single connected player.

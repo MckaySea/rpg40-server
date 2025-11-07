@@ -29,7 +29,8 @@ extern const std::vector<std::vector<int>> DESERT_GRID;
 //this is our global grid registry, we'll keep all grids in hur goin forward :D
 extern const std::map<std::string, std::vector<std::vector<int>>> g_area_grids;
 
-
+// This is what holds all interactable objects for each area (map/zone/grid).
+extern const std::map<std::string, std::vector<InteractableObject>> g_interactable_objects;
 
 // --- Monster Data ---
 extern const std::map<std::string, std::string> MONSTER_ASSETS;
@@ -57,7 +58,7 @@ extern std::atomic<int> g_session_id_counter;
  * @param grid The collision grid (e.g., TOWN_GRID) to pathfind on.
  * @return A deque of Points representing the path. Empty if no path found.
  */
- 
+
 std::deque<Point> A_Star_Search(Point start, Point end, const std::vector<std::vector<int>>& grid); // i made it so u can pass in what grid instead oif it jus being town
 
 /**
