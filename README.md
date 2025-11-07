@@ -9,10 +9,14 @@ If you need anything explained or need help just ask me
  yousaf - dialogue -- write out what npcs are going to say and label whos saying it, determine which npcs will give quests as well. also name the npcs as you wish
 
  ali - visuals and images for npcs/monsters/objects - will post list of npc/monsters/object for you to find soon 
-ali- // Monster Templates (Type, AssetKey)
-const std::map<std::string, std::string> MONSTER_ASSETS = {
-    {"SLIME", "SLM"}, {"GOBLIN", "GB"}, {"WOLF", "WLF"}, {"BAT", "BAT"},
-    {"SKELETON", "SKL"}, {"GIANT SPIDER", "SPDR"}, {"ORC BRUTE", "ORC"}
-};
-get pngs that match in style for each monsyer dont worry about the abbreviation next to the monster name
-ill give you a list of npcs (basicsllg people-like characters) to find stuff for as well
+
+const MONSTER_ASSETS = {
+  SLM: { url: "https://placehold.co/50x50/3cb371/ffffff?text=SLM", width: 50, height: 50 },
+  GB: { url: "https://placehold.co/50x55/8b4513/ffffff?text=GB", width: 50, height: 55 },
+  WLF: { url: "https://placehold.co/60x40/5A5A5A/ffffff?text=WOLF", width: 60, height: 40 },
+  BAT: { url: "https://placehold.co/40x30/4b0082/ffffff?text=BAT", width: 40, height: 30 },
+  SKL: { url: "https://placehold.co/45x60/808080/ffffff?text=SKL", width: 45, height: 60 },      -------- replace the name here with the file you uploaded into the alipics folder in the repo, ill put them on the client`
+  SPDR: { url: "https://placehold.co/70x20/000000/ffffff?text=SPDR", width: 70, height: 20 },
+  ORC: { url: "https://placehold.co/60x40/5A5A5A/ffffff?text=WOLF", width: 60, height: 70 },
+}
+
