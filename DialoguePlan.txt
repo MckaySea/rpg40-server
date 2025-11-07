@@ -1,20 +1,129 @@
 -yousaf type here
 
 Characters: Architect - Kerney's alias
-in game message - message being printed the the screen
+in game message - message being printed the screen
 
 
 IN THE LOBBY
-in game message - "Welcome to Vorath, adventurer, you have been chosen to free us from the evil purging our lands."  1 
+in game message - "Welcome to Vorath, Skyborn, you have been chosen to free us from the evil purging our lands."  1 
 
 (OPTIONAL) Character dialogue - "Why...does this place reek of death and destruction?" 2 
 
-in game message - "Our lands have been ravaged by the Architect. They say he never sleeps... To him, we are nothing but cattle and he is our master. Its up to you to break this endless cycle of hell, advernturer" 3
+in game message - "Our lands have been ravaged by the Architect. They say he never sleeps... To him, we are nothing but cattle and he is our master. It's up to you to break this endless cycle of hell, Skyborn" 3
 
 Area 1:
--in game message - "Welcome to the lobby, here you can buy equipment from the merchant, spells from the mage, or chat with the guard" 4
--Wizard default message - "A wise man once said the longer the beard the more experience they have in the field."  5
--Guard default message - "How did I even get here???" 6
--Merchant default message - "Im broke and need a toke, anyone got some gold?"  7
+-in game message - "Welcome to the lobby, here you can buy equipment from the merchant, spells from the mage, or chat with the guard..." 
 
+-in game message - "This is your stats button, here you can view how powerful you are and your current level. Do quests and kill monsters to level up. As you level up, you can designate stat points to your Health, Mana, Attack, Defense, or Speed" 4
+
+- Wizard default message - "A wise man once said the longer the beard, the more experience they have in the field."  5a
+
+- Wizard message to player - "Oi, you there, would you like to learn a spell?" 5b (6)
+
+- Guard default message - "How did I even get here???" 6a (7)
+
+- Guard message to player - "This place gets scary at night" 6b (8)
+
+- Merchant default message - "I'm broke and need a toke, anyone got some gold?"  7a (9)
+
+- Merchant play message - "You there, got some gold, I've got stuff that might appeal to you" 7b (10)
+-in game message - "Its time to start your journey and save us from the evil lurking in these lands" 11
+
+Area 2 (Desert) 
+- in game message - "Welcome to the desert, watch out for the scorpions...." 12
+
+- Desert Quest giver - "Damn this place is hot, and my throat is dry. Collect some cacti so I can get some water. Come back after"
+
+- QUEST COLLECT 10 CACTI (COLLECTED: _ out of 10)
+- (Once player completes first quest) Desert Quest giver - "*Chug* *Chug* *Chug* Oh thats much better, I haven't slept much cause of all those stupid monsters. Do me a favor pal and kill em for me will ya?" 
+
+- QUEST KILL 5 MONSTERS (_ OUT OF 5 KILLED)
+- Desert Quest giver - "For you help good sir, I'll share a little secret with ya. Me and the boys found out there are some gems buried somewhere in this desert. Help us look for em and we'll give ya some loot"
+
+-QUEST FIND THE GEMS HIDDEN AROUND THE MAP (_ collected out of 5)
+- Desert Quest giver - "Thanks for the help...WTF why is the Ground Shaaaakkkkkinnnggg!?" 
+
+SAND GOLEM HAS SPAWNED
+NEW QUEST: KILL THE SAND GOLEM
+- Desert Quest giver - "Man I thought we were goners, I think im going to have to retire from this job soon. Anyways, here is your reward"
+- In game Message - "You have conquered the desert, feel free to move on to the next stage or return to town, but beware more danger lies ahead. You must get stronger Starborn"
+
+Area 2 (Forest) 
+- in game message - "Welcome to the forest, make sure your not being watched...."
+-Forest quest giver - "Hey there, this place sure is hella creepy huh? Hey what the heck are those things! 
+NEW QUEST: KILL THE ENCHANTED GOBLINS (0/8)
+- Forest quest giver "Woah you took care of those guys so easily, you know what I got a favor to ask of ya. I was doing a survey of the area and I dropped my notebook, which contains 3 years of my work. Can you get it back for me plz"
+
+NEW QUEST: RETRIEVE THE SURVEYER'S MAP (its somewhere along the road)
+- Player "Is this it?" 
+- Forest quest giver - "Oh thank god you found my notebook, this forest it hard to navigate and only last week I saw something really scary at the end of the forest. I sent some people to investigate but they didn't come back"
+- Player - "I'll look into it"
+
+NEW QUEST: FIND YOUR WAY TO THE END OF THE FOREST
+*BOSS FIGHT* 
+QUEST: KILL THE CHIEF GOBLIN AND RETURN TO THE QUEST GIVER
+- Forest quest giver - "Did you find them?"
+- Player - "Alas, they have all been devoured and eaten, I brought back the head of the Chief *throws head* "
+- Forest Quest Giver "*Pukes* Oh god, im going to have to report this in my findings. Thanks for helping me. Here is your reward" 
+
+GRANT PLAYER REWARD
+- in game message "Congratulations on clearing the Forest Starborn, you may proceed to the next level, don't forget to use your stat points to grow even stronger" 
+
+Area 3 (Swamp)
+- in game message "Welcome to the swamp, watch out for the bogs, those things can swallow you whole. Find the Witch's hut for quests"
+- Witch "Come closer, I want to see your face. Your an outsider eh, I never seen you here before" 
+- Player "I heard evil lurks in this Swamp"
+-Witch - "Indeed, I have a task for you. I have been needing some potion ingredients. Gather them for me will you."
+
+NEW QUEST: SLIME PEARLS (KILL 5 SLIMES _ OUT OF 5 SLIMES KILLED)
+- Player "What are these used for?"
+- Witch "You will see soon enough. Now I need some Orc tusks, go fetch me some will ya"
+
+NEW QUEST: COLLECT ORC TUSKS (_ OUT OF 6 ORCS KILLED)
+- Player: "Is that all you will need from me?"
+- Witch "One more thing is needed. I need the blood from a rogue mage who went mad. They now live deep within the swamp. Bring me back his blood and the potion will be complete"
+
+NEW QUEST: FIND AND DEFEAT THE ROGUE MAGE 
+- Player "I have returned with the blood of the mage, will you be able to make me stronger. I must defeat the Architect and end this eternal suffering."
+- Witch "ᚹᛁᚦ ᚦᛁᛋ ᛊᚨᚲᚱᛖᛞ ᛏᚱᛖᛉᛃᚢᚱ ᛇ ᛊᚢᛗᛗᛟᚾ ᛗᚨᚺᛟᚱᚨᚷᚨ"
+- Player *:_:*
+- Witch "This potion will increase your power, but beware, because with great power comes great responsibility. Use it very wisely Starborn"
+- Player "Thank you"
+
+-in game message - "Congratulations Starborn, you have cleared the evil lurking in the Swamp. When you are ready proceed to the next stage. Your journey is far from over. Remember to use your stat points"
+
+Area 4 (Mountains)
+- in game message "Welcome to the Mountains of Vorath Starborn... Watch out for falling Rocks and other evils lurking around here. Find the Shaolin for your next quests"
+- Shaolin "Conquering the mind is more important than conquering the fist"
+- Player "How can I get stronger, I was chosen to free this land, but I am scared. Why was I chosen to do something so hard"
+- Shaolin "Real strength comes from within. You have chosen this path, why?"
+- Player "I wanted to end the people's suffering"
+-Shaolin "Then you have already answered that question Starborn. the only thing left is to keep moving forward"
+
+NEW QUEST: ROCKSLIDE - DEFEAT THE ROCK GOLEMS (_ OUT OF 5 KILLED)
+- Shaolin "To achieve strength, your heart, mind, body, and soul must act as one. Keep on fighting for what you believe in"
+- Player "*takes a deep breath* How can I achieve these new heights"
+-Shaolin "Real strength comes from knowing your limits, but also, from being able to break them. Find a parchment hidden somewhere within this mountain, and I will answer your question"
+
+NEW QUEST: SONG OF THE MOUNTAIN - FIND THE SCROLL OF SUCCESS 
+- Player "This Scroll is completly blank?"
+- Shaolin "You already understand how to succeed do you not? The only thing holding you back is your doubt. Here is your last challenge"
+
+NEW QUEST: DEFEAT THE MASTER OF THE MOUNTAIN 
+- Stone Shinobi "Do you think you will be able to keep up with me"
+- Player "I have come from far and wide; I will let my doubts swallow me up. I am ready *inhales*
+- Stone Shinobi "Come at me"
+
+AFTER THE BATTLE
+-Shaolin "Do you understand it now, Starborn. That name was given to you not as a title, but as a warning...Do you understand what it now means"
+-Player "Yes, I finally understand it now"
+-Shaolin "Very well, here is your reward for your hard work"
+
+in game Message: "Congratulations on conquering Vorath's mountains. Proceed to the next stage when ready. Don't forget to use your stat points to make yourself even stronger!"
+
+Area 5 (Cave)
+Area 6 (Volcano) 
+Area 7 (Ruins)
+Area 8 (Optional) (Tomb of the Tyrant)
+ 
 
