@@ -10,6 +10,24 @@ If you need anything explained or need help just ask me
 
  ali - visuals and images for npcs/monsters/objects - will post list of npc/monsters/object for you to find soon 
 
+ 
+ali- // Monster Templates (Type, AssetKey)
+
+
+
+const std::map<std::string, std::string> MONSTER_ASSETS = {
+
+
+    {"SLIME", "SLM"}, {"GOBLIN", "GB"}, {"WOLF", "WLF"}, {"BAT", "BAT"},
+
+
+    {"SKELETON", "SKL"}, {"GIANT SPIDER", "SPDR"}, {"ORC BRUTE", "ORC"}
+
+
+};
+
+
+
 const MONSTER_ASSETS = {
   SLM: { url: "https://placehold.co/50x50/3cb371/ffffff?text=SLM", width: 50, height: 50 },
   GB: { url: "https://placehold.co/50x55/8b4513/ffffff?text=GB", width: 50, height: 55 },
