@@ -58,7 +58,7 @@ extern std::atomic<int> g_session_id_counter;
  * @param grid The collision grid (e.g., TOWN_GRID) to pathfind on.
  * @return A deque of Points representing the path. Empty if no path found.
  */
- 
+
 std::deque<Point> A_Star_Search(Point start, Point end, const std::vector<std::vector<int>>& grid); // i made it so u can pass in what grid instead oif it jus being town
 
 /**
