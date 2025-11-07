@@ -78,6 +78,8 @@ struct MonsterState {
     int id;
     std::string type;
     std::string assetKey;
+    int posX = 0; 
+    int posY = 0; 
 };
 
 /**

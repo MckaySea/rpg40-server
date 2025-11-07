@@ -47,7 +47,7 @@ void AsyncSession::process_movement()
                             player.currentPath.clear(); // Stop any further movement
                             std::string command = "GO_TO:" + obj.data;
                             handle_message(command); // This will change the area
-                            return; 
+                            return;
                         }
                         // could add other crap here (maybe traps ;D?)
                     }
@@ -157,7 +157,7 @@ void AsyncSession::send_interactables(const std::string& areaName) {
     ws.write(net::buffer(message));
 }
 /**
- * @brief Sends the current list of monsters to the client.
+ * @brief Sends the current list of monsters to the client. i added coords instead oif it jus bein sprites
  */
 void AsyncSession::send_current_monsters_list() {
     PlayerState& player = getPlayerState();
@@ -169,7 +169,9 @@ void AsyncSession::send_current_monsters_list() {
         if (i > 0) json_monsters += ",";
         json_monsters += "{\"id\":" + std::to_string(monster.id) +
             ",\"type\":\"" + monster.type +
-            "\",\"asset\":\"" + monster.assetKey + "\"}";
+            "\",\"asset\":\"" + monster.assetKey + "\"" +
+            ",\"x\":" + std::to_string(monster.posX) +
+            ",\"y\":" + std::to_string(monster.posY) + "}";
     }
     json_monsters += "]";
     std::string response = "SERVER:MONSTERS:" + json_monsters;
@@ -181,16 +183,37 @@ void AsyncSession::send_current_monsters_list() {
  */
 void AsyncSession::generate_and_send_monsters() {
     PlayerState& player = getPlayerState();
-
     player.currentMonsters.clear();
+
+    // Find the grid for the current area
+    auto grid_it = g_area_grids.find(player.currentArea);
+    if (grid_it == g_area_grids.end()) {
+          //send empty list if we using an area where we dont havea  grid to walk around in
+        send_current_monsters_list(); 
+        return;
+    }
+    const auto& grid = grid_it->second;
+
     int monster_count = (std::rand() % 3) + 2;
     for (int i = 0; i < monster_count; ++i) {
         int template_index = std::rand() % MONSTER_KEYS.size();
-        std::string key = MONSTER_KEYS[template_index]; // from GameData
+        std::string key = MONSTER_KEYS[template_index]; 
         MonsterState monster;
-        monster.id = global_monster_id_counter++; // from GameData
+        monster.id = global_monster_id_counter++; 
         monster.type = key;
-        monster.assetKey = MONSTER_ASSETS.at(key); // from GameData
+        monster.assetKey = MONSTER_ASSETS.at(key); 
+
+        // making the monsters have random walk patterns
+        int x, y;
+        do {
+            x = std::rand() % GRID_COLS;
+            y = std::rand() % GRID_ROWS;
+        } while (y >= grid.size() || x >= grid[y].size() || grid[y][x] != 0); // make sure they only move on 0 grid tiles n not 1 so they cant move thru blocked grid cells
+
+        monster.posX = x;
+        monster.posY = y;
+        
+
         player.currentMonsters.push_back(monster);
     }
     send_current_monsters_list();
@@ -346,7 +369,7 @@ void AsyncSession::handle_message(const std::string& message)
         else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:Cannot travel while in combat!")); }
         else {
             std::string target_area = message.substr(6);
-            player.currentPath.clear(); 
+            player.currentPath.clear();
             broadcast_data.currentArea = target_area;
             { std::lock_guard<std::mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
 
@@ -368,14 +391,14 @@ void AsyncSession::handle_message(const std::string& message)
                 ws.write(net::buffer(response));
 
                 send_area_map_data(player.currentArea);
-                send_interactables(player.currentArea); 
+                send_interactables(player.currentArea);
                 send_available_areas();
                 send_player_stats();
             }
             else if (std::find(ALL_AREAS.begin(), ALL_AREAS.end(), target_area) != ALL_AREAS.end()) {
                 player.currentArea = target_area;
                 ws.write(net::buffer("SERVER:AREA_CHANGED:" + target_area));
-                send_area_map_data(player.currentArea); 
+                send_area_map_data(player.currentArea);
                 generate_and_send_monsters();
             }
             else {
@@ -399,7 +422,7 @@ void AsyncSession::handle_message(const std::string& message)
 
             // Get the grid for the current area
             const auto& current_grid = it->second;
-           
+
 
             try {
                 std::string coords_str = message.substr(8);
@@ -421,10 +444,10 @@ void AsyncSession::handle_message(const std::string& message)
                     Point start_pos = { player.posX, player.posY };
                     Point end_pos = { target_x, target_y };
 
-                    
+
                     // we makin sure to paass the correct grid to the A* function
                     player.currentPath = A_Star_Search(start_pos, end_pos, current_grid); // from GameData
-                    
+
 
                     player.lastMoveTime = std::chrono::steady_clock::now() - MOVEMENT_DELAY; // Allow instant first move
                 }
@@ -434,7 +457,7 @@ void AsyncSession::handle_message(const std::string& message)
                 ws.write(net::buffer("SERVER:ERROR:Invalid coordinate format."));
             }
         }
-        }
+    }
 
     // --- Chat System ---
     else if (message.rfind("SEND_CHAT:", 0) == 0) {
@@ -542,7 +565,7 @@ void AsyncSession::handle_message(const std::string& message)
                 ws.write(net::buffer("SERVER:ERROR:Invalid coordinate format."));
             }
         }
-        }
+    }
     // --- Combat System ---
     else if (message.rfind("MONSTER_SELECTED:", 0) == 0) {
         if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
@@ -726,7 +749,7 @@ void AsyncSession::handle_message(const std::string& message)
         //WHAT WAS HAPPENING
         std::string player_list_message = oss.str();
         ws.write(net::buffer(player_list_message));
-}
+    }
 
     // --- Fallback ---
     else {
