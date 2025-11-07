@@ -14,7 +14,7 @@ If you need anything explained or require help with the server code, just ask me
 
 ## ** Current Project To-Dos**
 
-I'll be updating this section later and assigning specific tasks.
+I'll be updating this section as we progress and assigning specific tasks.
 
 | Team Member | Task Description | Status |
 | :--- | :--- | :--- |
