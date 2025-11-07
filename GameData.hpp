@@ -29,7 +29,8 @@ extern const std::vector<std::vector<int>> DESERT_GRID;
 //this is our global grid registry, we'll keep all grids in hur goin forward :D
 extern const std::map<std::string, std::vector<std::vector<int>>> g_area_grids;
 
-
+// This is what holds all interactable objects for each area (map/zone/grid).
+extern const std::map<std::string, std::vector<InteractableObject>> g_interactable_objects;
 
 // --- Monster Data ---
 extern const std::map<std::string, std::string> MONSTER_ASSETS;

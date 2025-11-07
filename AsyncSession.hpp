@@ -94,6 +94,10 @@ private:
      */
     void send_current_monsters_list();
 
+    //this just send the interactables for the current arera the player is in(needed for performance as well lol (12threadsbtw)
+
+    void send_interactables(const std::string& areaName);
+
     /**
      * @brief Checks if the player has enough XP to level up, and processes it.
      */

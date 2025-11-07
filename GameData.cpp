@@ -309,7 +309,7 @@ const std::vector<std::vector<int>> MOUNTAINS_GRID= {
         {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0}, // 9
         {0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0}, // 10
         {0,0,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 11
-        {0,0,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 12 
+        {0,0,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 12                                             
         {0,0,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 13 
         {0,0,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 14 
         {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, // 15 
@@ -357,6 +357,43 @@ const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES = {
 const std::vector<std::string> MONSTER_KEYS = { "SLIME", "GOBLIN", "WOLF", "BAT", "SKELETON", "GIANT SPIDER", "ORC BRUTE" };
 
 int global_monster_id_counter = 1;
+
+const std::map<std::string, std::vector<InteractableObject>> g_interactable_objects = {
+    {
+        "TOWN", {
+        // NPC: Guard (using DialoguePlan.txt 6b)
+        // Placed at (7, 13) in the path.
+        { "TOWN_GUARD", InteractableType::NPC, {7, 13}, "GUARD_DIALOGUE_1" },
+
+        // NPC: Merchant (using DialoguePlan.txt 7b)
+        // Placed at (13, 10) in the path.
+        { "TOWN_MERCHANT", InteractableType::NPC, {13, 10}, "MERCHANT_SHOP_1" },
+
+        // ZONE_TRANSITION: To Forest
+        // Placed at the far right edge of the map (39, 13) in the path.
+        { "TOWN_TO_FOREST", InteractableType::ZONE_TRANSITION, {39, 13}, "FOREST" },
+
+        // ZONE_TRANSITION: To Caves
+        // Placed at the top edge of the map (20, 0)
+        { "TOWN_TO_CAVES", InteractableType::ZONE_TRANSITION, {20, 0}, "CAVES" }
+    }
+},
+{
+    "FOREST", {
+        // ZONE_TRANSITION: Back to Town
+        // Placed at the left edge (0, 10)
+        { "FOREST_TO_TOWN", InteractableType::ZONE_TRANSITION, {0, 10}, "TOWN" }
+    }
+},
+{
+    "CAVES", {
+        // ZONE_TRANSITION: Back to Town
+        // Placed at the bottom edge (20, 21)
+        { "CAVES_TO_TOWN", InteractableType::ZONE_TRANSITION, {20, 21}, "TOWN" }
+    }
+}
+// Add other areas (RUINS, DESERT, etc.....) here
+};
 
 // --- Multiplayer Registries ---
 std::map<std::string, PlayerBroadcastData> g_player_registry;

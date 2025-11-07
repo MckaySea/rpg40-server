@@ -13,7 +13,7 @@
 #include <deque>
 #include <set>
 #include <queue>
-#include <algorithm> // for std::find, std::find_if, std::shuffle
+#include <algorithm> 
 
 /**
  * @brief Processes one tick of player movement.
@@ -37,6 +37,22 @@ void AsyncSession::process_movement()
             player.posY = next_pos.y;
             player.lastMoveTime = now;
 
+            //checking for whehn u walk on an interactable object
+            auto it = g_interactable_objects.find(player.currentArea);
+            if (it != g_interactable_objects.end()) {
+                for (const auto& obj : it->second) {
+                    if (obj.position.x == player.posX && obj.position.y == player.posY) {
+                        // Player has stepped on an interaction tile
+                        if (obj.type == InteractableType::ZONE_TRANSITION) {
+                            player.currentPath.clear(); // Stop any further movement
+                            std::string command = "GO_TO:" + obj.data;
+                            handle_message(command); // This will change the area
+                            return; 
+                        }
+                        // could add other crap here (maybe traps ;D?)
+                    }
+                }
+            }
             // Update public broadcast data
             PlayerBroadcastData& broadcast = getBroadcastData();
             broadcast.posX = player.posX;
@@ -116,6 +132,30 @@ void AsyncSession::send_available_areas() {
     ws.write(net::buffer(response));
 }
 
+//sends all interactable stuff to the client
+void AsyncSession::send_interactables(const std::string& areaName) {
+    auto& ws = getWebSocket();
+    std::ostringstream oss;
+    oss << "SERVER:INTERACTABLES:[";
+
+    auto it = g_interactable_objects.find(areaName);
+    if (it != g_interactable_objects.end()) {
+        bool first = true;
+        for (const auto& obj : it->second) {
+            if (!first) oss << ",";
+            oss << "{\"id\":\"" << obj.id << "\""
+                << ",\"type\":" << static_cast<int>(obj.type) // Send enum as int
+                << ",\"x\":" << obj.position.x
+                << ",\"y\":" << obj.position.y
+                << ",\"data\":\"" << obj.data << "\"}";
+            first = false;
+        }
+    }
+
+    oss << "]";
+    std::string message = oss.str();
+    ws.write(net::buffer(message));
+}
 /**
  * @brief Sends the current list of monsters to the client.
  */
@@ -328,6 +368,7 @@ void AsyncSession::handle_message(const std::string& message)
                 ws.write(net::buffer(response));
 
                 send_area_map_data(player.currentArea);
+                send_interactables(player.currentArea); 
                 send_available_areas();
                 send_player_stats();
             }
@@ -435,7 +476,73 @@ void AsyncSession::handle_message(const std::string& message)
                 });
         }
     }
+    else if (message.rfind("INTERACT_AT:", 0) == 0) {
+        if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
+        else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:Cannot interact while in combat!")); }
+        else {
+            try {
+                std::string coords_str = message.substr(12);
+                size_t comma_pos = coords_str.find(',');
+                if (comma_pos == std::string::npos) throw std::invalid_argument("Invalid coordinate format.");
 
+                int target_x = std::stoi(coords_str.substr(0, comma_pos));
+                int target_y = std::stoi(coords_str.substr(comma_pos + 1));
+
+                // Find the object in the current area our player is in
+                InteractableObject* targetObject = nullptr;
+                auto it = g_interactable_objects.find(player.currentArea);
+                if (it != g_interactable_objects.end()) {
+                    for (auto& obj : it->second) {
+                        if (obj.position.x == target_x && obj.position.y == target_y) {
+                            targetObject = const_cast<InteractableObject*>(&obj);
+                            break;
+                        }
+                    }
+                }
+
+                if (!targetObject) {
+                    ws.write(net::buffer("SERVER:ERROR:No object to interact with at that location."));
+                    return;
+                }
+
+                // Check if player is adjacent to the intractble thing
+                int dist = std::abs(player.posX - target_x) + std::abs(player.posY - target_y);
+                if (dist > 1) {
+                    ws.write(net::buffer("SERVER:ERROR:You are too far away to interact with that."));
+                    // Optional: You could pathfind the player to an adjacent tile here
+                    return;
+                }
+
+                // Player is adjacent lets start interaction
+                player.currentPath.clear(); // Stop playr from moving
+
+                if (targetObject->type == InteractableType::NPC) {
+                    // Send an interaction event to the client with the NPC's data
+                    ws.write(net::buffer("SERVER:NPC_INTERACT:" + targetObject->data));
+
+                    // using yousafs great ass dialogue here :D
+                    if (targetObject->data == "GUARD_DIALOGUE_1") {
+                        ws.write(net::buffer("SERVER:PROMPT:Guard: \"This place gets scary at night\""));
+                    }
+                    else if (targetObject->data == "MERCHANT_SHOP_1") {
+                        ws.write(net::buffer("SERVER:PROMPT:Merchant: \"You there, got some gold, I've got stuff that might appeal to you\""));
+                    }
+                }
+                else if (targetObject->type == InteractableType::ZONE_TRANSITION) {
+                    // This is normally a walk-on, but if clicked, just trigger it
+                    handle_message("GO_TO:" + targetObject->data);
+                }
+                // we'll add shops here soon and other crap
+                else {
+                    ws.write(net::buffer("SERVER:ERROR:Unknown interaction type."));
+                }
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Error parsing INTERACT_AT: " << e.what() << "\n";
+                ws.write(net::buffer("SERVER:ERROR:Invalid coordinate format."));
+            }
+        }
+        }
     // --- Combat System ---
     else if (message.rfind("MONSTER_SELECTED:", 0) == 0) {
         if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
