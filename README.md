@@ -1,40 +1,58 @@
-Mckay -- I had gemini add comments to every line of code to help you guys understand whats going on with the server, remember we aren't using std namespace so you need to prefix stuff like std::cout
-I also seperated logic into multiple files now so it's easier to make edits as a team
-If you need anything explained or need help just ask me
+## **Project Readme: Server Updates for Team**
 
+**McKay - \!**
 
+I've made some significant updates to the server code to make collaboration smoother and help everyone understand the project better:
 
- ----   TODOS   ---- will update this later and assign tasks
+  * **Code Commenting:** I had Gemini add comments to **every line of code** to explain what's happening within the server.
+  * **Namespace Policy:** Remember, we are **not** using the `std` namespace, so you must **prefix** standard library calls (like `cout`) with `std::` (e.g., `std::cout`).
+  * **Modular Design:** I've separated the logic into **multiple files** now. This should make it much easier for the team to make targeted edits.
 
- yousaf - dialogue -- write out what npcs are going to say and label whos saying it, determine which npcs will give quests as well. also name the npcs as you wish
+If you need anything explained or require help with the server code, just ask me\!
 
- ali - visuals and images for npcs/monsters/objects - will post list of npc/monsters/object for you to find soon 
+-----
 
- 
-ali- // Monster Templates (Type, AssetKey)
+## ** Current Project To-Dos**
 
+I'll be updating this section later and assigning specific tasks.
 
+| Team Member | Task Description | Status |
+| :--- | :--- | :--- |
+| **Yousaf** | **Dialogue:** Write out what NPCs are going to say and label who is saying it. Determine which NPCs will give quests. Also, please name the NPCs as you wish. | To Do |
+| **Ali** | **Visuals & Images:** Find and prepare visuals/images for NPCs, monsters, and objects. I will post a list of required assets for you to find soon. | To Do |
 
+-----
+
+## ** Ali's Monster Asset Templates**
+
+Here are the current monster templates and placeholder assets.
+
+### **Server-Side Monster Mapping (C++)**
+
+This map is used to link the monster name (type) to a unique Asset Key for data handling.
+
+```cpp
+// Monster Templates (Type, AssetKey)
 const std::map<std::string, std::string> MONSTER_ASSETS = {
-
-
     {"SLIME", "SLM"}, {"GOBLIN", "GB"}, {"WOLF", "WLF"}, {"BAT", "BAT"},
-
-
     {"SKELETON", "SKL"}, {"GIANT SPIDER", "SPDR"}, {"ORC BRUTE", "ORC"}
-
-
 };
+```
 
+### **Client-Side Monster Asset Details (Example)**
 
+This object holds the specific visual data for the client. **Ali**, please note the file upload instruction below\!
 
+```javascript
 const MONSTER_ASSETS = {
   SLM: { url: "https://placehold.co/50x50/3cb371/ffffff?text=SLM", width: 50, height: 50 },
   GB: { url: "https://placehold.co/50x55/8b4513/ffffff?text=GB", width: 50, height: 55 },
   WLF: { url: "https://placehold.co/60x40/5A5A5A/ffffff?text=WOLF", width: 60, height: 40 },
   BAT: { url: "https://placehold.co/40x30/4b0082/ffffff?text=BAT", width: 40, height: 30 },
-  SKL: { url: "https://placehold.co/45x60/808080/ffffff?text=SKL", width: 45, height: 60 },      -------- replace the name here with the file you uploaded into the alipics folder in the repo, ill put them on the client`
+  SKL: { url: "https://placehold.co/45x60/808080/ffffff?text=SKL", width: 45, height: 60 },
   SPDR: { url: "https://placehold.co/70x20/000000/ffffff?text=SPDR", width: 70, height: 20 },
   ORC: { url: "https://placehold.co/60x40/5A5A5A/ffffff?text=WOLF", width: 60, height: 70 },
 }
+```
 
+> ** Ali's Instruction:** For the `url` values above, please **replace the placeholder text** (`https://placehold.co/...`) with the file path to the image you upload into the **`alipics` folder** in the repository. I will then integrate them into the client\!
