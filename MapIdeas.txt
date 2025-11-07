@@ -1,0 +1,149 @@
+
+OVERALL IDEAS: 
+
+I think we should extend each map by adding another grid (section) to each
+seperate place, so when the character walks off the screen to one part they
+arent immediately in an unknown area, but rather a familiar section. As a
+result, there should be a progression for the maps that could be from 
+TOWN-->FOREST-->SWAMP-->CAVES-->MOUNTAINS/DESERT-->RUINS-->VOLCANO-->FINAL
+BOSS AREA. Maybe increase the difficulty of each puzzle/mob in each new
+section to give off a better progression system? FOR SURE have a lot of
+backround 
+
+-If a player clicks on something that isnt able to be walked on (1 spot on the
+grid) a buzz/wrong noise effect comes up
+
+-Maybe add some layering to the trees to give slightly more expression? Im
+assuming ali is giving textures as we speak so Ill stay out of it
+
+-Ability to walk into houses should be activated by clicking on the door, but
+only when the player in games walks up to it, so that it doesnt immediately
+teleport them out of nowhere
+
+TOWN:
+
+	General: Maybe give off the comforting feeling of a town-y setting? Adding a windmill
+	towards the right side of the map could add some more charm. There are a good
+	amount of trees, maybe add some diversity with a large oak tree. Added trees
+	within the top of the town, best to keep the path at the bottom so players
+	wont feel confused when the map changes to another part of the town. Ideas for
+	each type of house (8 in total): Inn, Blacksmith, General Store, Merchant,
+	Church, Tavern/Bar, Shop, etc.. We may not need to use every house, just a
+	general idea of what we could do if we wanted to...
+
+	Inn: Place for the player to sleep in, maybe they could pay a fee to sleep
+	there for the night (cutscene or something) and they could be restored to full
+	health?
+
+	Shop: Place to buy basic items such as foods or drinks or other materials like
+	ropes or things that may help them in the desert or cave area of the map
+
+	Blacksmith: Ideally best place to upgrade things like defense, offense or
+	speed by giving players an option of what to upgrade if they have money.
+
+	Tavern/Bar: Overall less important of an area but could still be a good place
+	to maybe get quests from strangers with dialogue options or trade materials
+	from what a player has an abundance in.
+
+	Merchant: Could be useful to get items from a very rare place, like rare item
+	drops from wolves/slimes for a higher cost (but still useful in crafting good
+	upgrades). Similarly, also helps with getting money if player gets these rare
+	drops they can sell them to the merchant and give them more incentives to
+	fight rather than avoid mobs.
+
+	Church: Still a work-in-progress, maybe there is some secret mechanic [faith]
+	that increase a luck mechanic, so that critical attacks are more common? Only
+	method for it to work if it was subtle enough to give a hint on how it would
+	be useful in fights but I do not see the trade off like paying something for
+	confessions? IDK
+
+	Player interactions: mayhaps if (the coding isnt too difficult) the NPCs
+	around the world will walk randomly within a 5x5 space. Gives a slight amount
+	of liveliness to the world if there arent other players in the space
+
+FOREST:
+	
+	General: I think we should set this area as the first the playes must
+	conquer through and have to complete an easy puzzle because of the
+	familiarty with an almost town-like setting (so it wont be such a large
+	jump from a place of comfort to like a desert or something). As the player
+	enters the area of foresty green, they will walk from the left side of the
+	path and be seen with three paths to walk towards: up, right, and down.
+	There will be two buildings before the player chooses to walk onto the
+	paths off screen: a small cottage and (maybe) a treehouse
+
+	Treehouse: just a fun idea, probably wont go through unless theres another
+	quest where the player can get a ladder and climb up and be rewarded with
+	a trinkent or rare item
+
+	Mobs: I think IF we introduce any mobs into the area, they shouldnt be too
+	difficult to deal with, as this will be the players' first encounter with
+	a fight and they probably wont know what to do exactly with the class they
+	picked or the effects of the ATK, DEF, or SPD. I think we should add some
+	small mosquitoes, bugs, or even a wolf for some spice.
+
+	Cottage: Im imagining a cottage with a bunch of bushes around it, with
+	roots and vines spurting from the ground to show its connection with the
+	forest and disconnect from the town. Inside we can put a hermit or some
+	random guy that gives a quest or something, maybe there can be a creepy
+	tale where people have gone missing inside the forest and that its cursed
+	or something (which can tie in into the puzzle)
+
+	Puzzle Idea #1: Because this is the first challenge, it (ideally) shouldnt
+	be too difficult for the players to complete; there will be a way to get
+	past into the forest, but the only way is if the player follows a set of
+	directions disguised as a riddle. 
+
+	Design: there should be a bunch of trees around the map, perhaps we should
+	shut off certain sections of the map through stuff like bushes (aside from
+	the treehouse or cottage)
+
+SWAMP:
+
+	General: I think the next logical step in progression should be the swamp
+	section since its closer to being a foresty area instead of a desert or
+	mountain. The swamp should be a slight upgrade in difficulty in both mobs
+	and puzzles with mobs having a higher chance of spawning and a higher
+	health+damage total. Puzzle-wise, I think we can play into the idea of a
+	fantasy-style RPG with a witch and her hut or a troll under bridge. Either
+	the way the main goal should be to outsmart them and, acting as a
+	mini-boss, fight them and defeat them. By defeating either or both of
+	these enemies should grant the player access to a new part of the map.
+
+	Design: for the swamp, there should be a lot more water tiles on the map,
+	but instead of a river or a lake, they should be walkable and kinda
+	stimulate a bunch of puddles that are common with a very muddy place. In
+	addition, the trees and grass in the marsh area should have a more cyan/grey-blue
+	color to them for a grudery feel. Maybe we can add some vines to the
+	trees? Or maybe a foggy effect (though we can save that for the cave
+	instead).
+
+
+
+
+DESERT: 
+
+	General: 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
