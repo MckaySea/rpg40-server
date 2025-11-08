@@ -1,9 +1,8 @@
-// File: GameLogic.cpp
+
 // Description: Implements all game logic handlers for the AsyncSession class.
 // This includes message parsing, combat, movement, and state updates.
-
-#include "AsyncSession.hpp" // For the class definition and accessors
-#include "GameData.hpp"     // For all game data, registries, and utils
+#include "AsyncSession.hpp" 
+#include "GameData.hpp"     
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -14,6 +13,9 @@
 #include <set>
 #include <queue>
 #include <algorithm> 
+#include "Items.hpp"
+#include <random> 
+#include <map>
 
 /**
  * @brief Processes one tick of player movement.
@@ -67,32 +69,491 @@ void AsyncSession::process_movement()
     }
 }
 
+
+auto applyStat = [](PlayerStats& stats, const std::string& statName, int value) {
+    if (statName == "health") { stats.maxHealth += value; }
+    else if (statName == "mana") { stats.maxMana += value; }
+    else if (statName == "defense") { stats.defense += value; }
+    else if (statName == "speed") { stats.speed += value; }
+    else if (statName == "strength") { stats.strength += value; }
+    else if (statName == "dexterity") { stats.dexterity += value; }
+    else if (statName == "intellect") { stats.intellect += value; }
+    else if (statName == "luck") { stats.luck += value; }
+    };
+
+PlayerStats AsyncSession::getCalculatedStats() {
+    PlayerState& player = getPlayerState();
+    PlayerStats finalStats = player.stats; // Start with base stats
+
+    // Iterate over all equipment slots
+    for (const auto& slotPair : player.equipment.slots) {
+        if (slotPair.second.has_value()) { // if an item is equipped
+            uint64_t instanceId = slotPair.second.value();
+
+            if (player.inventory.count(instanceId)) {
+                const ItemInstance& instance = player.inventory.at(instanceId);
+                const ItemDefinition& def = instance.getDefinition();
+
+                // 1. Apply base stats from ItemDefinition
+                for (const auto& statMod : def.stats) {
+                    applyStat(finalStats, statMod.first, statMod.second);
+                }
+
+                // 2. Apply custom random stats from ItemInstance
+                for (const auto& statMod : instance.customStats) {
+                    applyStat(finalStats, statMod.first, statMod.second);
+                }
+            }
+        }
+    }
+
+    // Ensure current health/mana aren't above the new max
+    if (finalStats.health > finalStats.maxHealth) {
+        finalStats.health = finalStats.maxHealth;
+    }
+    if (finalStats.mana > finalStats.maxMana) {
+        finalStats.mana = finalStats.maxMana;
+    }
+
+    // update the player's actual current health/mana just in case max changed
+    player.stats.health = finalStats.health;
+    player.stats.mana = finalStats.mana;
+
+    return finalStats;
+}
+
+
 /**
- * @brief Sends the player's complete stat block to the client.
+ * @brief Adds an item to inventory, rolling for random modifiers.
  */
-void AsyncSession::send_player_stats() {
-    // Access session state
+void AsyncSession::addItemToInventory(const std::string& itemId, int quantity) {
+    PlayerState& player = getPlayerState();
+    if (quantity <= 0) return;
+
+    if (itemDatabase.count(itemId) == 0) {
+        std::cerr << "Error: Attempted to add non-existent item ID: " << itemId << std::endl;
+        return;
+    }
+
+    const ItemDefinition& def = itemDatabase.at(itemId);
+   
+    // gotta handle the stackable items theres only like 6 i made tho
+    if (def.stackable) {
+        for (auto& pair : player.inventory) {
+            ItemInstance& instance = pair.second;
+            if (instance.itemId == itemId) {
+                instance.quantity += quantity;
+                send_inventory_and_equipment(); // Send update
+                return;
+            }
+        }
+
+    }
+    int numInstancesToAdd = def.stackable ? 1 : quantity;
+    int qtyPerInstance = def.stackable ? quantity : 1;
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> bonusRoll(1, 100); // 
+
+    for (int i = 0; i < numInstancesToAdd; ++i) {
+        uint64_t newInstanceId = g_item_instance_id_counter++;
+        ItemInstance newInstance = { newInstanceId, itemId, qtyPerInstance, {} };
+
+        // only equippable stuff should get bonuses obv
+        if (def.equipSlot != EquipSlot::None) {
+
+            //im looping over to see what base stats can even get a bonus roll if any
+            for (const auto& baseStatPair : def.stats) {
+                const std::string& statName = baseStatPair.first;
+                int baseValue = baseStatPair.second;
+                if (baseValue == 0) continue;
+
+                // there s a 30 prcnt chance they even hit an extra roll 
+                if (bonusRoll(gen) <= 30) {
+                    int roll = bonusRoll(gen);
+                    int bonus = 0;
+                    if (roll <= 50) bonus = 1;      // 50% chance
+                    else if (roll <= 80) bonus = 2; // 30% chance
+                    else bonus = 3;                 // 20% chance
+
+                    // just 2 be funny if they had a negative base imma make it go lower lol
+                    if (baseValue < 0) bonus = -bonus;
+
+                    newInstance.customStats[statName] += bonus;
+                }
+            }
+
+            //i had a good ass idea to make it so they have a 5 percent chance to roll another stat that that item normally couldnt even have :D
+            if (bonusRoll(gen) >= 96) {
+
+                
+                const std::vector<std::string> rareStatPool = {
+                    "health", "mana", "strength", "dexterity", "intellect", "defense", "speed", "luck"
+                };
+
+                // then we jus randomly pick one to apply to the item
+                std::uniform_int_distribution<> statPicker(0, rareStatPool.size() - 1);
+                std::string chosenStat = rareStatPool[statPicker(gen)];
+
+                
+                int bonusValue = 0;
+                if (chosenStat == "health") bonusValue = 5; 
+                else if (chosenStat == "mana") bonusValue = 10; 
+                else bonusValue = 2; 
+                
+
+                newInstance.customStats[chosenStat] += bonusValue;
+            }
+        }
+
+        player.inventory[newInstanceId] = newInstance;
+    }
+
+    send_inventory_and_equipment(); 
+}
+
+//equips an item if its allowed to be equipped
+std::string AsyncSession::equipItem(uint64_t itemInstanceId) {
+    PlayerState& player = getPlayerState();
+
+    if (player.inventory.count(itemInstanceId) == 0) {
+        return "Item instance not found in inventory.";
+    }
+
+    const ItemInstance& instance = player.inventory.at(itemInstanceId);
+    const ItemDefinition& def = instance.getDefinition();
+    EquipSlot slot = def.equipSlot;
+
+    if (slot == EquipSlot::None) {
+        return def.name + " cannot be equipped.";
+    }
+    if (player.equipment.slots.count(slot) == 0) {
+        return "Invalid equipment slot."; // Should not happen
+    }
+
+    std::string msg = "";
+    // Check if an item is already in that slot
+    if (player.equipment.slots[slot].has_value()) {
+        uint64_t oldInstanceId = player.equipment.slots[slot].value();
+        const auto& oldDef = player.inventory.at(oldInstanceId).getDefinition();
+        msg = " (replacing " + oldDef.name + ")";
+    }
+
+    // Equip the new itemz instanceId into the slot
+    player.equipment.slots[slot] = itemInstanceId;
+
+    
+  
+    send_player_stats();
+    send_inventory_and_equipment();
+
+    return "Equipped " + def.name + "." + msg;
+}
+
+/**
+ * @brief Attempts to unequip an item from a specific slot.
+ */
+std::string AsyncSession::unequipItem(EquipSlot slotToUnequip) {
+    PlayerState& player = getPlayerState();
+
+    if (player.equipment.slots.count(slotToUnequip) == 0 || slotToUnequip == EquipSlot::None) {
+        return "Invalid equipment slot.";
+    }
+    if (!player.equipment.slots[slotToUnequip].has_value()) {
+        return "No item equipped in that slot.";
+    }
+
+    uint64_t instanceId = player.equipment.slots[slotToUnequip].value();
+    const ItemDefinition& def = player.inventory.at(instanceId).getDefinition();
+
+    // Unequip it by setting the slot to empty
+    player.equipment.slots[slotToUnequip] = std::nullopt;
+
+    // --- VITAL ---
+    send_player_stats();
+    send_inventory_and_equipment();
+
+    return "Unequipped " + def.name + ".";
+}
+
+void AsyncSession::useItem(uint64_t itemInstanceId) {
     PlayerState& player = getPlayerState();
     auto& ws = getWebSocket();
+
+    if (player.inventory.count(itemInstanceId) == 0) {
+        ws.write(net::buffer("SERVER:ERROR:You do not have that item."));
+        return;
+    }
+
+    ItemInstance& instance = player.inventory.at(itemInstanceId);
+    const ItemDefinition& def = instance.getDefinition();
+
+   
+    if (def.equipSlot != EquipSlot::None) {
+        ws.write(net::buffer("SERVER:ERROR:This item cannot be 'used'. Try equipping it."));
+        return;
+    }
+
+    bool itemUsed = false;
+    std::string effectMsg = "";
+
+    
+    if (instance.itemId == "SMALL_HEALTH_POTION") {
+        PlayerStats finalStats = getCalculatedStats(); 
+        int healAmount = 50;
+        if (player.stats.health < finalStats.maxHealth) {
+            player.stats.health = std::min(finalStats.maxHealth, player.stats.health + healAmount);
+            itemUsed = true;
+            effectMsg = "You restore " + std::to_string(healAmount) + " health.";
+        }
+        else {
+            effectMsg = "Your health is already full.";
+        }
+    }
+    else if (instance.itemId == "LARGE_HEALTH_POTION") {
+        PlayerStats finalStats = getCalculatedStats();
+        int healAmount = 250;
+        if (player.stats.health < finalStats.maxHealth) {
+            player.stats.health = std::min(finalStats.maxHealth, player.stats.health + healAmount);
+            itemUsed = true;
+            effectMsg = "You restore " + std::to_string(healAmount) + " health.";
+        }
+        else {
+            effectMsg = "Your health is already full.";
+        }
+    }
+    else if (instance.itemId == "SMALL_MANA_POTION") {
+        PlayerStats finalStats = getCalculatedStats(); // Get max mana
+        int manaAmount = 50;
+        if (player.stats.mana < finalStats.maxMana) {
+            player.stats.mana = std::min(finalStats.maxMana, player.stats.mana + manaAmount);
+            itemUsed = true;
+            effectMsg = "You restore " + std::to_string(manaAmount) + " mana.";
+        }
+        else {
+            effectMsg = "Your mana is already full.";
+        }
+    }
+    // ... ill add more consumable crap here later
+    else {
+        effectMsg = "That item has no use.";
+    }
+
+    ws.write(net::buffer("SERVER:STATUS:" + effectMsg));
+
+    if (itemUsed) {
+        instance.quantity--;
+        if (instance.quantity <= 0) {
+            // Remove the item from inventory
+            player.inventory.erase(itemInstanceId);
+        }
+        send_inventory_and_equipment(); // Update client's inventory view
+        send_player_stats();            // Update client's health/mana
+    }
+}
+
+void AsyncSession::dropItem(uint64_t itemInstanceId, int quantity) {
+    PlayerState& player = getPlayerState();
+    auto& ws = getWebSocket();
+
+    if (quantity <= 0) {
+        ws.write(net::buffer("SERVER:ERROR:Invalid quantity."));
+        return;
+    }
+
+    if (player.inventory.count(itemInstanceId) == 0) {
+        ws.write(net::buffer("SERVER:ERROR:You do not have that item."));
+        return;
+    }
+
+    // needa make sure they cant drop stuff they have on
+    for (const auto& slotPair : player.equipment.slots) {
+        if (slotPair.second.has_value() && slotPair.second.value() == itemInstanceId) {
+            ws.write(net::buffer("SERVER:ERROR:Cannot drop an equipped item. Unequip it first."));
+            return;
+        }
+    }
+
+    ItemInstance& instance = player.inventory.at(itemInstanceId);
+    const ItemDefinition& def = instance.getDefinition();
+
+    if (!def.stackable) {
+        ws.write(net::buffer("SERVER:STATUS:Dropped " + def.name + "."));
+        player.inventory.erase(itemInstanceId);
+    }
+    else {
+        if (quantity >= instance.quantity) {
+            ws.write(net::buffer("SERVER:STATUS:Dropped " + std::to_string(instance.quantity) + "x " + def.name + "."));
+            player.inventory.erase(itemInstanceId);
+        }
+        else {
+            instance.quantity -= quantity;
+            ws.write(net::buffer("SERVER:STATUS:Dropped " + std::to_string(quantity) + "x " + def.name + "."));
+        }
+    }
+
+    send_inventory_and_equipment(); // Update client
+}
+void AsyncSession::sellItem(uint64_t itemInstanceId, int quantity) {
+    PlayerState& player = getPlayerState();
+    auto& ws = getWebSocket();
+
+    if (quantity <= 0) {
+        ws.write(net::buffer("SERVER:ERROR:Invalid quantity."));
+        return;
+    }
+
+    if (player.inventory.count(itemInstanceId) == 0) {
+        ws.write(net::buffer("SERVER:ERROR:You do not have that item."));
+        return;
+    }
+
+    // Check if item is equipped ALWAYS dont forget if u wanna look at these func's
+    for (const auto& slotPair : player.equipment.slots) {
+        if (slotPair.second.has_value() && slotPair.second.value() == itemInstanceId) {
+            ws.write(net::buffer("SERVER:ERROR:Cannot sell an equipped item. Unequip it first."));
+            return;
+        }
+    }
+
+    ItemInstance& instance = player.inventory.at(itemInstanceId);
+    const ItemDefinition& def = instance.getDefinition();
+
+    
+    int buyPrice = 1; 
+    try {
+        buyPrice = g_item_buy_prices.at(def.id);
+    }
+    catch (const std::out_of_range&) {
+        std::cerr << "WARNING: Item " << def.id << " has no defined price. Defaulting to 1." << std::endl;
+    }
+
+    int sellPricePerItem = std::max(1, buyPrice / 4); // Sell for 1/4 of buy price, 1 gold min
+
+    int totalSellPrice = 0;
+
+    if (!def.stackable) {
+        totalSellPrice = sellPricePerItem;
+        ws.write(net::buffer("SERVER:STATUS:Sold " + def.name + " for " + std::to_string(totalSellPrice) + " gold."));
+        player.inventory.erase(itemInstanceId);
+    }
+    else {
+        if (quantity >= instance.quantity) {
+            totalSellPrice = sellPricePerItem * instance.quantity;
+            ws.write(net::buffer("SERVER:STATUS:Sold " + std::to_string(instance.quantity) + "x " + def.name + " for " + std::to_string(totalSellPrice) + " gold."));
+            player.inventory.erase(itemInstanceId);
+        }
+        else {
+            totalSellPrice = sellPricePerItem * quantity;
+            instance.quantity -= quantity;
+            ws.write(net::buffer("SERVER:STATUS:Sold " + std::to_string(quantity) + "x " + def.name + " for " + std::to_string(totalSellPrice) + " gold."));
+        }
+    }
+
+    
+    player.stats.gold += totalSellPrice;
+    send_player_stats();
+    send_inventory_and_equipment();
+}
+/**
+ * @brief Sends the player's full inventory and equipment list to the client.
+ */
+void AsyncSession::send_inventory_and_equipment() {
+    PlayerState& player = getPlayerState();
+    auto& ws = getWebSocket();
+
+    std::ostringstream oss;
+    oss << "SERVER:INVENTORY_UPDATE:";
+
+    // --- 1. Serialize Inventory ---
+    oss << "{\"inventory\":[";
+    bool firstItem = true;
+    for (const auto& pair : player.inventory) {
+        const ItemInstance& instance = pair.second;
+        const ItemDefinition& def = instance.getDefinition();
+        if (!firstItem) oss << ",";
+        oss << "{\"instanceId\":" << instance.instanceId
+            << ",\"itemId\":\"" << instance.itemId << "\""
+            << ",\"name\":\"" << def.name << "\""
+            << ",\"desc\":\"" << def.description << "\""
+            << ",\"imagePath\":\"" << def.imagePath << "\""
+            << ",\"quantity\":" << instance.quantity
+            << ",\"slot\":" << static_cast<int>(def.equipSlot)
+            << ",\"baseStats\":{";
+        // Add base stats
+        bool firstStat = true;
+        for (const auto& statPair : def.stats) {
+            if (!firstStat) oss << ",";
+            oss << "\"" << statPair.first << "\":" << statPair.second;
+            firstStat = false;
+        }
+        oss << "},\"customStats\":{";
+        // Add custom stats
+        firstStat = true;
+        for (const auto& statPair : instance.customStats) {
+            if (!firstStat) oss << ",";
+            oss << "\"" << statPair.first << "\":" << statPair.second;
+            firstStat = false;
+        }
+        oss << "}}";
+        firstItem = false;
+    }
+    oss << "]"; // End inventory array
+
+    // --- 2. Serialize Equipment ---
+    oss << ",\"equipment\":{";
+    firstItem = true;
+    for (const auto& pair : player.equipment.slots) {
+        if (!firstItem) oss << ",";
+        // Send slot enum int as key and instanceId (or null) as value
+        oss << "\"" << static_cast<int>(pair.first) << "\":";
+        if (pair.second.has_value()) {
+            oss << pair.second.value();
+        }
+        else {
+            oss << "null";
+        }
+        firstItem = false;
+    }
+    oss << "}}"; // End equipment object and main object
+    
+    ws.write(net::buffer(oss.str()));
+}
+void AsyncSession::send_player_stats() {
+    // Access session state
+    PlayerState& player = getPlayerState(); // This has BASE stats
+    auto& ws = getWebSocket();
+
+    // --- NEW ---
+    // Get the final, calculated stats *including* equipment
+    PlayerStats finalStats = getCalculatedStats();
+    // --- END NEW ---
 
     // Use ostringstream to build the JSON-like string
     std::ostringstream oss;
     oss << "SERVER:STATS:"
         << "{\"playerName\":\"" << player.playerName << "\""
-        << ",\"health\":" << player.stats.health
-        << ",\"maxHealth\":" << player.stats.maxHealth
-        << ",\"mana\":" << player.stats.mana
-        << ",\"maxMana\":" << player.stats.maxMana
-        << ",\"defense\":" << player.stats.defense
-        << ",\"speed\":" << player.stats.speed
-        << ",\"level\":" << player.stats.level
-        << ",\"experience\":" << player.stats.experience
+
+        // --- MODIFIED ---
+        // Use finalStats for max values, but player.stats for current values
+        << ",\"health\":" << player.stats.health // Current health
+        << ",\"maxHealth\":" << finalStats.maxHealth
+        << ",\"mana\":" << player.stats.mana // Current mana
+        << ",\"maxMana\":" << finalStats.maxMana
+        << ",\"defense\":" << finalStats.defense
+        << ",\"speed\":" << finalStats.speed
+        << ",\"level\":" << player.stats.level // Level is base
+        << ",\"experience\":" << player.stats.experience // XP is base
         << ",\"experienceToNextLevel\":" << player.stats.experienceToNextLevel
         << ",\"availableSkillPoints\":" << player.availableSkillPoints
-        << ",\"strength\":" << player.stats.strength
-        << ",\"dexterity\":" << player.stats.dexterity
-        << ",\"intellect\":" << player.stats.intellect
-        << ",\"luck\":" << player.stats.luck
+        << ",\"strength\":" << finalStats.strength
+        << ",\"dexterity\":" << finalStats.dexterity
+        << ",\"intellect\":" << finalStats.intellect
+        << ",\"luck\":" << finalStats.luck
+        << ",\"gold\":" << finalStats.gold
+        // --- END MODIFIED ---
+
         << ",\"posX\":" << player.posX
         << ",\"posY\":" << player.posY;
 
@@ -112,6 +573,7 @@ void AsyncSession::send_player_stats() {
     std::string stats_message = oss.str();
     ws.write(net::buffer(stats_message));
 }
+
 
 /**
  * @brief Sends a dynamically generated list of available areas.
@@ -556,7 +1018,54 @@ void AsyncSession::handle_message(const std::string& message)
                         ws.write(net::buffer("SERVER:PROMPT:Guard: \"This place gets scary at night\""));
                     }
                     else if (targetObject->data == "MERCHANT_SHOP_1") {
+                        // --- NEW SHOP LOGIC ---
                         ws.write(net::buffer("SERVER:PROMPT:Merchant: \"You there, got some gold, I've got stuff that might appeal to you\""));
+
+                        // Find the shop's inventory
+                        auto shop_it = g_shops.find("MERCHANT_SHOP_1");
+                        if (shop_it == g_shops.end()) {
+                            ws.write(net::buffer("SERVER:ERROR:Shop inventory not found."));
+                            return;
+                        }
+
+                        // Serialize the shop data
+                        std::ostringstream oss;
+                        oss << "SERVER:SHOW_SHOP:{\"shopId\":\"" << shop_it->first << "\",\"items\":[";
+
+                        bool firstItem = true;
+                        for (const std::string& itemId : shop_it->second) {
+                            if (itemDatabase.count(itemId) == 0) continue;
+                            const ItemDefinition& def = itemDatabase.at(itemId);
+
+                            int price = 1; 
+                            try {
+                                price = g_item_buy_prices.at(itemId);
+                            }
+                            catch (const std::out_of_range&) {
+                                std::cerr << "WARNING: Shop item " << itemId << " has no price. Defaulting to 1." << std::endl;
+                            }
+
+
+                            if (!firstItem) oss << ",";
+                            oss << "{\"itemId\":\"" << def.id << "\""
+                                << ",\"name\":\"" << def.name << "\""
+                                << ",\"desc\":\"" << def.description << "\""
+                                << ",\"imagePath\":\"" << def.imagePath << "\""
+                                << ",\"price\":" << price
+                                << ",\"slot\":" << static_cast<int>(def.equipSlot)
+                                << ",\"baseStats\":{";
+                            bool firstStat = true;
+                            for (const auto& statPair : def.stats) {
+                                if (!firstStat) oss << ",";
+                                oss << "\"" << statPair.first << "\":" << statPair.second;
+                                firstStat = false;
+                            }
+                            oss << "}}";
+                            firstItem = false;
+                        }
+                        oss << "]}";
+                        ws.write(net::buffer(oss.str()));
+                        // --- END SHOP LOGIC ---
                     }
                 }
                 else if (targetObject->type == InteractableType::ZONE_TRANSITION) {
@@ -685,21 +1194,21 @@ void AsyncSession::handle_message(const std::string& message)
                 if (action_param == "Fireball") {
                     mana_cost = 25;
                     if (player.stats.mana >= mana_cost) {
-                        base_damage = (player.stats.intellect * 2) + (player.stats.maxMana / 10);
+                        base_damage = static_cast<int>(player.stats.intellect * 1.3) + (player.stats.maxMana / 10);
                         variance = 0.8f + ((float)(std::rand() % 41) / 100.0f);
                     }
                 }
                 else if (action_param == "Lightning") {
-                    mana_cost = 15;
+                    mana_cost = 20;
                     if (player.stats.mana >= mana_cost) {
-                        base_damage = (int)(player.stats.intellect * 1.5) + (player.stats.maxMana / 10);
+                        base_damage = static_cast<int>(player.stats.intellect * 1.1) + (player.stats.maxMana / 8);
                         variance = 0.7f + ((float)(std::rand() % 61) / 100.0f);
                     }
                 }
                 else if (action_param == "Freeze") {
                     mana_cost = 10;
                     if (player.stats.mana >= mana_cost) {
-                        base_damage = (player.stats.intellect) + (player.stats.maxMana / 12);
+                        base_damage = (player.stats.intellect) + (player.stats.maxMana / 10);
                         variance = 0.9f + ((float)(std::rand() % 21) / 100.0f);
                     }
                 }
@@ -740,6 +1249,34 @@ void AsyncSession::handle_message(const std::string& message)
                 int xp_gain = player.currentOpponent->xpReward;
                 ws.write(net::buffer("SERVER:STATUS:Gained " + std::to_string(xp_gain) + " XP."));
                 player.stats.experience += xp_gain;
+                int lootTier = player.currentOpponent->lootTier;
+
+                if (lootTier != -1) { // -1 means no loot
+                    // Player's luck slightly increases drop chance... still gottta figure out a better forumla
+                    int baseDropChance = player.currentOpponent->dropChance;
+                    int finalDropChance = baseDropChance + (player.stats.luck * 10); //  20 luck = +5% chance butttt subject to change if i remmeber
+
+                    if ((std::rand() % 100) < finalDropChance) {
+                        
+                        auto table_it = g_loot_tables.find(lootTier);
+                        if (table_it != g_loot_tables.end()) {
+                            const std::vector<std::string>& lootTable = table_it->second;
+
+                            if (!lootTable.empty()) {
+                                // Pick a random item from the table that monster belonged to
+                                int itemIndex = std::rand() % lootTable.size();
+                                std::string itemId = lootTable[itemIndex];
+
+                                
+                                addItemToInventory(itemId, 1);
+
+                              
+                                const ItemDefinition& def = itemDatabase.at(itemId);
+                                ws.write(net::buffer("SERVER:STATUS:The " + player.currentOpponent->type + " dropped: " + def.name + "!"));
+                            }
+                        }
+                    }
+                }
                 player.isInCombat = false; player.currentOpponent.reset();
                 ws.write(net::buffer("SERVER:COMBAT_VICTORY:Defeated"));
                 check_for_level_up(); send_player_stats();
@@ -843,7 +1380,141 @@ void AsyncSession::handle_message(const std::string& message)
         std::string player_list_message = oss.str();
         ws.write(net::buffer(player_list_message));
     }
+    else if (message.rfind("USE_ITEM:", 0) == 0) {
+        if (!player.isFullyInitialized) {
+            ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+        }
+        else {
+            try {
+                uint64_t instanceId = std::stoull(message.substr(9));
+                useItem(instanceId);
+            }
+            catch (const std::exception&) {
+                ws.write(net::buffer("SERVER:ERROR:Invalid item ID format."));
+            }
+        }
+    }
+    else if (message.rfind("EQUIP_ITEM:", 0) == 0) {
+        if (!player.isFullyInitialized) {
+            ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+        }
+        else {
+            try {
+                uint64_t instanceId = std::stoull(message.substr(11)); // "EQUIP_ITEM:" is 11 chars
+                // Call your existing equipItem function
+                std::string equipMsg = equipItem(instanceId);
+                // Send the success message back
+                ws.write(net::buffer("SERVER:STATUS:" + equipMsg));
+            }
+            catch (const std::exception&) {
+                ws.write(net::buffer("SERVER:ERROR:Invalid item ID format."));
+            }
+        }
+    }
+    else if (message.rfind("DROP_ITEM:", 0) == 0) {
+        if (!player.isFullyInitialized) {
+            ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+        }
+        else {
+            try {
+                std::string params = message.substr(10);
+                size_t colon_pos = params.find(':');
 
+                if (colon_pos == std::string::npos) {
+                    throw std::invalid_argument("Invalid format. Expected DROP_ITEM:instanceId:quantity");
+                }
+
+                uint64_t instanceId = std::stoull(params.substr(0, colon_pos));
+                int quantity = std::stoi(params.substr(colon_pos + 1));
+
+                dropItem(instanceId, quantity);
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Drop item error: " << e.what() << std::endl;
+                ws.write(net::buffer("SERVER:ERROR:Invalid drop command format."));
+            }
+        }
+    }
+    else if (message.rfind("UNEQUIP_ITEM:", 0) == 0) {
+        if (!player.isFullyInitialized) {
+            ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+        }
+        else {
+            try {
+                int slotInt = std::stoi(message.substr(13));
+                EquipSlot slotToUnequip = static_cast<EquipSlot>(slotInt);
+
+                std::string result = unequipItem(slotToUnequip);
+                ws.write(net::buffer("SERVER:STATUS:" + result));
+            }
+            catch (const std::exception& e) {
+                ws.write(net::buffer("SERVER:ERROR:Invalid slot format."));
+            }
+        }
+        }
+    else if (message.rfind("BUY_ITEM:", 0) == 0) {
+        if (!player.isFullyInitialized) {
+            ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+        }
+        else {
+            try {
+                std::string params = message.substr(9);
+                size_t colon_pos = params.find(':');
+
+                if (colon_pos == std::string::npos) {
+                    throw std::invalid_argument("Invalid format. Expected BUY_ITEM:shopId:itemId");
+                }
+
+                std::string shopId = params.substr(0, colon_pos);
+                std::string itemId = params.substr(colon_pos + 1);
+
+                // Verify shop and item exist
+                if (g_shops.count(shopId) == 0) {
+                    ws.write(net::buffer("SERVER:ERROR:Unknown shop."));
+                    return;
+                }
+                if (itemDatabase.count(itemId) == 0) {
+                    ws.write(net::buffer("SERVER:ERROR:Unknown item."));
+                    return;
+                }
+
+                // Check if this shop actually sells this item
+                const auto& shopItems = g_shops.at(shopId);
+                if (std::find(shopItems.begin(), shopItems.end(), itemId) == shopItems.end()) {
+                    ws.write(net::buffer("SERVER:ERROR:This shop does not sell that item."));
+                    return;
+                }
+
+                const ItemDefinition& def = itemDatabase.at(itemId);
+
+                // --- Price Calculation (same as before) ---
+                int price = 1; // Default
+                try {
+                    price = g_item_buy_prices.at(itemId);
+                }
+                catch (const std::out_of_range&) {
+                    std::cerr << "WARNING: Player tried to buy " << itemId << " which has no price." << std::endl;
+                    ws.write(net::buffer("SERVER:ERROR:That item is not for sale."));
+                    return;
+                }
+
+                if (player.stats.gold >= price) {
+                    player.stats.gold -= price;
+                    addItemToInventory(itemId, 1);
+                    ws.write(net::buffer("SERVER:STATUS:Bought " + def.name + " for " + std::to_string(price) + " gold."));
+                    send_player_stats(); // To update gold   <__- dont forget this if u guys wanna make  a shop
+                    
+                }
+                else {
+                    ws.write(net::buffer("SERVER:ERROR:Not enough gold. You need " + std::to_string(price) + "."));
+                }
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Buy item error: " << e.what() << std::endl;
+                ws.write(net::buffer("SERVER:ERROR:Invalid buy command format."));
+            }
+        }
+        }
     // --- Fallback ---
     else {
         std::string echo = "SERVER:ECHO: " + message;
