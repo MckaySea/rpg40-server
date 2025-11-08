@@ -3,7 +3,8 @@
 // Sets up a thread pool and a listener to accept incoming client connections.
 
 #include "game_session.hpp" // For basic types (not strictly needed here, but good practice)
-#include "AsyncSession.hpp" // For the session class
+#include "AsyncSession.hpp" 
+#include "GameData.hpp"
 #include <iostream>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/strand.hpp> // For make_strand
@@ -67,7 +68,9 @@ public:
             std::cerr << "listener listen: " << ec.message() << "\n";
             return;
         }
+        
     }
+
 
     /**
      * @brief Starts the asynchronous accept loop.
@@ -140,7 +143,7 @@ int main() {
     v.reserve(threads - 1);
 
     std::cout << "Server is listening on port " << port << " with " << threads << " threads...\n";
-
+    initialize_item_prices();
     // Run the I/O context in each thread
     for (auto i = threads - 1; i > 0; --i)
     {

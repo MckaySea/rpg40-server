@@ -22,7 +22,6 @@ extern const std::vector<std::string> ALL_AREAS;
 
 // --- Grid Map Data ---
 extern const std::vector<std::vector<int>> TOWN_GRID;
-// --- NEW: Declare new grids ---
 extern const std::vector<std::vector<int>> FOREST_GRID;
 extern const std::vector<std::vector<int>> DESERT_GRID;
 
@@ -37,20 +36,25 @@ extern const std::map<std::string, std::string> MONSTER_ASSETS;
 extern const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES;
 extern const std::vector<std::string> MONSTER_KEYS;
 extern int global_monster_id_counter;
-
-// --- Multiplayer Registries ---
-// These are shared by all sessions, so they must be thread-safe.
+//we're just mapping items to a sell price (which will be whatever tier of gear theyre in)
+extern std::map<std::string, int> g_item_buy_prices;
+extern std::atomic<uint64_t> g_item_instance_id_counter;
 extern std::map<std::string, PlayerBroadcastData> g_player_registry;
 extern std::mutex g_player_registry_mutex;
 
 extern std::map<std::string, std::weak_ptr<AsyncSession>> g_session_registry;
 extern std::mutex g_session_registry_mutex;
 
-// --- Global ID Counter ---
+
+//maps a shop id to a list of item ids it sells for the shops imma make alterable later on so we can have different shops sell different stuff
+extern const std::map<std::string, std::vector<std::string>> g_shops;
+//maps a loot tier to a list of item ids that can drop from that tier, way easier than going through all the items i made lol
+extern const std::map<int, std::vector<std::string>> g_loot_tables;
+
 extern std::atomic<int> g_session_id_counter;
 
 // --- Utility Function Declarations ---
-
+void initialize_item_prices();
 /**
  * @brief Finds the shortest walkable path from start to end on a given grid.
  * @param start The starting grid coordinate.

@@ -3,15 +3,17 @@
 // and utility functions (like A* pathfinding).
 
 #include "GameData.hpp"
+#include "Items.hpp" 
+#include <iostream>
 #include <set>
 #include <queue>
 #include <cmath> // for std::abs
-
+ 
 // --- Server Data Definitions ---
 const std::vector<std::string> ALL_AREAS = {
     "FOREST", "CAVES", "RUINS", "SWAMP", "MOUNTAINS", "DESERT", "VOLCANO"
 };
-
+std::atomic<uint64_t> g_item_instance_id_counter = 1;
 // Town Grid Map (0 = walkable, 1 = obstacle)
 const std::vector<std::vector<int>> TOWN_GRID = {
     //   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 
@@ -323,7 +325,20 @@ const std::vector<std::vector<int>> MOUNTAINS_GRID = {
 // Monster Templates (Type, AssetKey)
 const std::map<std::string, std::string> MONSTER_ASSETS = {
     {"SLIME", "SLM"}, {"GOBLIN", "GB"}, {"WOLF", "WLF"}, {"BAT", "BAT"},
-    {"SKELETON", "SKL"}, {"GIANT SPIDER", "SPDR"}, {"ORC BRUTE", "ORC"}
+    {"SKELETON", "SKL"}, {"GIANT SPIDER", "SPDR"}, {"ORC BRUTE", "ORC"},
+
+    // --- Easy Monsters ---
+    {"GIANT_RAT", "RAT"}, {"KOBOLD", "KBLD"}, {"SWAMP_THING", "SWMP"},
+    {"FOREST_SPRITE", "SPRT"}, {"CAVE_CRAB", "CRB"}, {"GOBLIN_PEON", "GBP"},
+
+    // --- Medium Monsters ---
+    {"GOBLIN_SHAMAN", "GBSH"}, {"ORC_SCOUT", "ORCS"}, {"UNDEAD_GUARD", "UDG"},
+    {"GIANT_SCORPION", "SCRP"}, {"HARPY", "HRPY"}, {"ROCK_GOLEM", "GLM"},
+    {"DARK_WIZARD", "DKWZ"}, {"TREANT", "TRNT"},
+
+    // --- Hard Monsters ---
+    {"OGRE_WARRIOR", "OGRE"}, {"LAVA_ELEMENTAL", "LAVA"}, {"GRIFFIN", "GRFN"},
+    {"MINOTAUR", "MNTR"}, {"NECROMANCER", "NECRO"}, {"WYVERN", "WYV"}
 };
 
 
@@ -340,21 +355,698 @@ const std::map<std::string, std::vector<std::vector<int>>> g_area_grids = {
     {"SWAMP", SWAMP_GRID },
     {"VOLCANO", VOLCANO_GRID },
     {"MOUNTAINS", MOUNTAINS_GRID}
-    // example how we combine maps to their grids here :D
-   // {"SWAMP", SWAMP_GRID},
+ 
 };
 
-// Monster Base Stats (Type -> Stats)
+// 
+// MonsterInstance(id(we incrmnt this when i spawn them into areas so they all unique), type, asset, health, defense, speed, str, dex, int, lck, xp)
+// Constructor reminder:
+// MonsterInstance(id, type, assetKey, health, def, speed, str, dex, int, lck, xp, L_Tier, D_Chance)
 const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES = {
-    {"SLIME", MonsterInstance(0, "", "", 30, 8, 5, 5, 10)},
-    {"GOBLIN", MonsterInstance(0, "", "", 50, 12, 8, 8, 15)},
-    {"WOLF", MonsterInstance(0, "", "", 40, 15, 6, 12, 12)},
-    {"BAT", MonsterInstance(0, "", "", 20, 10, 4, 15, 8)},
-    {"SKELETON", MonsterInstance(0, "", "", 60, 14, 10, 6, 20)},
-    {"GIANT SPIDER", MonsterInstance(0, "", "", 70, 16, 8, 10, 25)},
-    {"ORC BRUTE", MonsterInstance(0, "", "", 100, 20, 12, 5, 40)}
+    {"SLIME", MonsterInstance(0, "", "", 30, 5, 5, 5, 3, 1, 3, 10, 99, 50)},
+    {"GOBLIN", MonsterInstance(0, "", "", 50, 8, 8, 8, 7, 3, 5, 15, 0, 25)},
+    {"WOLF", MonsterInstance(0, "", "", 40, 6, 12, 10, 12, 2, 5, 12, 99, 15)},
+    {"BAT", MonsterInstance(0, "", "", 20, 4, 15, 4, 12, 1, 6, 8, -1, 0)},
+    {"SKELETON", MonsterInstance(0, "", "", 60, 10, 6, 12, 8, 3, 2, 20, 1, 10)},
+    {"GIANT SPIDER", MonsterInstance(0, "", "", 70, 8, 10, 13, 10, 2, 5, 25, 1, 15)},
+    {"ORC BRUTE", MonsterInstance(0, "", "", 100, 12, 5, 18, 6, 2, 3, 40, 2, 5)},
+
+    // --- Easy Monsters ---
+    {"GIANT_RAT", MonsterInstance(0, "", "", 25, 4, 10, 6, 8, 1, 8, 9, 0, 20)},
+    {"KOBOLD", MonsterInstance(0, "", "", 35, 6, 9, 7, 7, 2, 5, 11, 0, 25)},
+    {"SWAMP_THING", MonsterInstance(0, "", "", 60, 5, 3, 9, 2, 1, 2, 12, 0, 30)},
+    {"FOREST_SPRITE", MonsterInstance(0, "", "", 15, 2, 18, 2, 15, 8, 10, 10, 99, 15)},
+    {"CAVE_CRAB", MonsterInstance(0, "", "", 40, 12, 5, 8, 5, 1, 3, 13, 0, 10)},
+    {"GOBLIN_PEON", MonsterInstance(0, "", "", 40, 7, 7, 7, 6, 2, 4, 13, 0, 15)},
+
+    // --- Medium Monsters ---
+    {"GOBLIN_SHAMAN", MonsterInstance(0, "", "", 60, 8, 8, 5, 8, 15, 7, 30, 1, 10)},
+    {"ORC_SCOUT", MonsterInstance(0, "", "", 80, 10, 14, 13, 15, 3, 6, 35, 1, 15)},
+    {"UNDEAD_GUARD", MonsterInstance(0, "", "", 110, 15, 4, 16, 6, 2, 1, 40, 1, 20)},
+    {"GIANT_SCORPION", MonsterInstance(0, "", "", 90, 12, 10, 15, 10, 2, 5, 45, 1, 15)},
+    {"HARPY", MonsterInstance(0, "", "", 70, 7, 18, 12, 18, 6, 8, 42, 1, 15)},
+    {"ROCK_GOLEM", MonsterInstance(0, "", "", 150, 25, 2, 20, 3, 1, 2, 60, 2, 5)},
+    {"DARK_WIZARD", MonsterInstance(0, "", "", 80, 9, 10, 6, 10, 22, 7, 55, 2, 10)},
+    {"TREANT", MonsterInstance(0, "", "", 180, 14, 3, 22, 4, 8, 4, 65, 2, 10)},
+
+    // --- Hard Monsters ---
+    {"OGRE_WARRIOR", MonsterInstance(0, "", "", 250, 18, 4, 28, 6, 3, 3, 100, 2, 20)},
+    {"LAVA_ELEMENTAL", MonsterInstance(0, "", "", 160, 15, 8, 20, 10, 18, 5, 110, 2, 25)},
+    {"GRIFFIN", MonsterInstance(0, "", "", 200, 16, 16, 25, 20, 8, 10, 150, 3, 10)},
+    {"MINOTAUR", MonsterInstance(0, "", "", 300, 20, 6, 35, 8, 2, 4, 180, 3, 15)},
+    {"NECROMANCER", MonsterInstance(0, "", "", 180, 14, 10, 10, 12, 30, 8, 160, 3, 15)},
+    {"WYVERN", MonsterInstance(0, "", "", 280, 18, 15, 30, 18, 10, 7, 200, 3, 20)}
 };
-const std::vector<std::string> MONSTER_KEYS = { "SLIME", "GOBLIN", "WOLF", "BAT", "SKELETON", "GIANT SPIDER", "ORC BRUTE" };
+const std::vector<std::string> MONSTER_KEYS = {
+    "SLIME", "GOBLIN", "WOLF", "BAT", "SKELETON", "GIANT SPIDER", "ORC BRUTE",
+    "GIANT_RAT", "KOBOLD", "SWAMP_THING", "FOREST_SPRITE", "CAVE_CRAB", "GOBLIN_PEON",
+    "GOBLIN_SHAMAN", "ORC_SCOUT", "UNDEAD_GUARD", "GIANT_SCORPION", "HARPY", "ROCK_GOLEM",
+    "DARK_WIZARD", "TREANT", "OGRE_WARRIOR", "LAVA_ELEMENTAL", "GRIFFIN",
+    "MINOTAUR", "NECROMANCER", "WYVERN"
+};
+
+
+const std::map<int, std::vector<std::string>> g_loot_tables = {
+    {
+        // Tier 0: Trash
+        0, {
+            "RUSTY_SWORD", "WET_SHIRT", "BROKEN_SANDALS", "DULL_AXE", "BENT_DAGGER",
+            "SPLINTERED_STICK", "SOILED_TROUSERS", "BARELY_BOOTS", "CRACKED_WAND"
+        }
+    },
+    {
+        // Tier 1: Basic Starter
+        1, {
+            "WORN_LEATHER_CAP", "TORN_SHIRT", "PATCHED_PANTS", "FLIMSY_SANDALS",
+            "CLOTH_CAP", "LEAKY_HELMET", "MOTH_EATEN_CLOAK", "LOINCLOTH",
+            "PEASANTS_HAT", "OLD_FARMERS_SHIRT", "ROUGHSPUN_PANTS"
+        }
+    },
+    {
+        // Tier 2: Common - Light & Caster
+        2, {
+            "LEATHER_COWL", "LEATHER_TUNIC", "LEATHER_PANTS", "SOFT_LEATHER_BOOTS",
+            "OAK_STAFF", "POINTY_HAT", "SIMPLE_ROBE", "CLOTH_TROUSERS",
+            "ENCHANTED_SANDALS", "APPRENTICES_GRIMOIRE", "FEATHERED_CAP",
+            "APPRENTICES_ROBE", "HIKING_BOOTS"
+        }
+    },
+    {
+        // Tier 3: Common - Heavy & Martial
+        3, {
+            "IRON_BROADSWORD", "IRON_HELMET", "CHAINMAIL_SHIRT", "IRON_GREAVES",
+            "STEEL_BOOTS", "STEEL_DAGGER", "IRON_SPEAR", "HEAVY_IRON_HELM",
+            "QUILTED_ARMOR", "STURDY_BREECHES", "CHAINMAIL_LEGGINGS",
+            "HEAVY_STEEL_BOOTS"
+        }
+    },
+    {
+        // Tier 4: Mid-Grade - Warrior
+        4, {
+            "KNIGHTS_GREATHELM", "TITANIUM_PLATEBODY", "BERSERKERS_AXE",
+            "WARHAMMER_OF_THE_ZEALOT", "OBSIDIAN_MACE", "BARBARIAN_WARHELM",
+            "SPIKED_PLATE_ARMOR", "PLATE_LEGGINGS_OF_THE_GUARDIAN",
+            "SABATONS_OF_THE_BERSERKER", "EXECUTIONERS_AXE", "KNIGHTS_CUIRASS",
+            "PLATE_LEGGINGS"
+        }
+    },
+    {
+        // Tier 5: Mid-Grade - Rogue
+        5, {
+            "ASSASSINS_MASK", "SHADOW_LEATHER_CHAPS", "POISONED_STILETTO",
+            "TRICKSTERS_CAP", "PHANTOM_CLOAK", "SILKEN_SLIPPERS", "JESTERS_TIGHTS",
+            "RAPIER_OF_THE_DUELIST", "ROGUES_LEGGINGS", "BOOTS_OF_THE_EXPLORER"
+        }
+    },
+    {
+        // Tier 6: Mid-Grade - Mage
+        6, {
+            "ARCHMAGE_CIRCLET", "ROBES_OF_THE_SCHOLAR", "CRYSTAL_TOME",
+            "GOGGLES_OF_PERCEPTION", "DRUIDS_RAIMENT", "MAGES_BREECHES",
+            "BOOTS_OF_THE_SCHOLAR", "WIZARD_HAT_OF_THE_OWL"
+        }
+    },
+    {
+        // Tier 7: Unique - Hybrid & Positive
+        7, {
+            "BATTLEMAGE_PLATE", "SPELLTHIEF_GLOVES", "SWASHBUCKLERS_BOOTS",
+            "CROWN_OF_COMMAND", "RUNE_BLADE", "SCEPTER_OF_THE_PRIEST",
+            "ROBE_OF_THE_CHAMELEON", "MANTLE_OF_THE_MAGMA", "BARBED_ARMOR",
+            "PANTS_OF_THE_GIANT", "GREAVES_OF_THE_WIND", "POISONERS_PANTS",
+            "BOOTS_OF_THE_STAMPEDE", "MAGES_SHOES", "KILT_OF_THE_HIGHLANDER"
+        }
+    },
+    {
+        // Tier 8: Unique - Gambit & Specialty
+        8, {
+            "HELM_OF_THE_GAMBLER", "CLOAK_OF_MISFORTUNE", "BOOTS_OF_BLINDING_SPEED",
+            "PANTS_OF_THE_TITAN", "ROBE_OF_THE_ARCHLICH", "RABBITS_FOOT_AMULET",
+            "PLAGUE_DOCTOR_MASK", "HARLEQUIN_VEST", "GOBLIN_ROCKET_BOOTS",
+            "BLOODTHIRSTY_BLADE", "FROZEN_WAND", "FOOLS_DAGGER",
+            "HELM_OF_THE_SLEEPLESS", "JUGGERNAUTS_VISAGE", "CROWN_OF_THE_FALSE_KING",
+            "LUCKY_PANTS", "FLOATING_SHOES", "BOOTS_OF_THE_GAMBLER", "SILK_PANTS",
+            "SORCERERS_SKIRT"
+        }
+    },
+    {
+        // Tier 9: Legendary
+        9, {
+            "VOIDWALKER_BOOTS", "ETHEREAL_BLADE", "PHOENIX_HELM", "MASK_OF_THE_SHADOW",
+            "FOUNDATION_GREAVES", "HERMES_SANDALS", "COLOSSUS_TREADS"
+        }
+    },
+    {
+        // Tier 10: Mythic
+        10, {
+            "DRAGONSCALE_MAIL", "HEARTSEEKER_BOW", "STAFF_OF_THE_COSMOS",
+            "CELESTIAL_RAIMENT", "TITANS_PLATE", "VOIDWALKER_LEGGINGS", "INFINITY_EDGE"
+        }
+    },
+    {
+        // Special Tier 99: Consumables
+        99, {
+            "SMALL_HEALTH_POTION", "LARGE_HEALTH_POTION", "SMALL_MANA_POTION",
+            "LARGE_MANA_POTION", "ELIXIR_OF_SPEED", "ELIXIR_OF_GIANTS_STRENGTH"
+        }
+    }
+};
+
+
+
+const std::map<std::string, ItemDefinition> itemDatabase = {
+
+    // --- Tier 0: "Bad" / Starter Items (20 Items) ---
+    {"RUSTY_SWORD", {
+        "RUSTY_SWORD", "Rusty Sword", "Barely holds an edge.",
+        "RUSTY_SWORD", EquipSlot::Weapon, {{"strength", 1}, {"speed", -1}}, false
+    }},
+    {"WORN_LEATHER_CAP", {
+        "WORN_LEATHER_CAP", "Worn Leather Cap", "Thin and cracked.",
+        "WORN_LEATHER_CAP", EquipSlot::Hat, {{"defense", 1}}, false
+    }},
+    {"TORN_SHIRT", {
+        "TORN_SHIRT", "Torn Shirt", "Better than nothing. Maybe.",
+        "TORN_SHIRT", EquipSlot::Top, {{"defense", 1}}, false
+    }},
+    {"PATCHED_PANTS", {
+        "PATCHED_PANTS", "Patched Pants", "Very drafty.",
+        "PATCHED_PANTS", EquipSlot::Bottom, {{"defense", 1}}, false
+    }},
+    {"FLIMSY_SANDALS", {
+        "FLIMSY_SANDALS", "Flimsy Sandals", "Your toes are exposed.",
+        "FLIMSY_SANDALS", EquipSlot::Boots, {{"speed", 1}}, false
+    }},
+    {"CRACKED_WAND", {
+        "CRACKED_WAND", "Cracked Wand", "Splinters and leaks mana.",
+        "CRACKED_WAND", EquipSlot::Weapon, {{"intellect", 1}, {"mana", -5}}, false
+    }},
+    {"BENT_DAGGER", {
+        "BENT_DAGGER", "Bent Dagger", "Hard to get a good grip.",
+        "BENT_DAGGER", EquipSlot::Weapon, {{"dexterity", 1}, {"strength", -1}}, false
+    }},
+    {"SPLINTERED_STICK", {
+        "SPLINTERED_STICK", "Splintered Stick", "A weapon of last resort.",
+        "SPLINTERED_STICK", EquipSlot::Weapon, {{"strength", 1}, {"defense", -1}}, false
+    }},
+    {"CLOTH_CAP", {
+        "CLOTH_CAP", "Cloth Cap", "Keeps the sun off, but not much else.",
+        "CLOTH_CAP", EquipSlot::Hat, {{"defense", 1}}, false
+    }},
+    {"WET_SHIRT", {
+        "WET_SHIRT", "Wet Shirt", "It's damp and uncomfortable.",
+        "WET_SHIRT", EquipSlot::Top, {{"defense", 1}, {"speed", -2}}, false
+    }},
+    {"SOILED_TROUSERS", {
+        "SOILED_TROUSERS", "Soiled Trousers", "Embarrassing.",
+        "SOILED_TROUSERS", EquipSlot::Bottom, {{"defense", 1}, {"luck", -1}}, false
+    }},
+    {"BROKEN_SANDALS", {
+        "BROKEN_SANDALS", "Broken Sandals", "The strap is gone.",
+        "BROKEN_SANDALS", EquipSlot::Boots, {{"speed", -1}}, false
+    }},
+    {"DULL_AXE", {
+        "DULL_AXE", "Dull Axe", "Might be better for chopping wood.",
+        "DULL_AXE", EquipSlot::Weapon, {{"strength", 2}, {"speed", -3}}, false
+    }},
+    {"LEAKY_HELMET", {
+        "LEAKY_HELMET", "Leaky Helmet", "Water drips in.",
+        "LEAKY_HELMET", EquipSlot::Hat, {{"defense", 2}, {"luck", -1}}, false
+    }},
+    {"MOTH_EATEN_CLOAK", {
+        "MOTH_EATEN_CLOAK", "Moth-Eaten Cloak", "More holes than fabric.",
+        "MOTH_EATEN_CLOAK", EquipSlot::Top, {{"defense", 1}, {"dexterity", 1}}, false
+    }},
+    {"LOINCLOTH", {
+        "LOINCLOTH", "Loincloth", "The pinnacle of basic.",
+        "LOINCLOTH", EquipSlot::Bottom, {{"defense", 1}}, false
+    }},
+    {"BARELY_BOOTS", {
+        "BARELY_BOOTS", "Barely Boots", "Soles held on with twine.",
+        "BARELY_BOOTS", EquipSlot::Boots, {{"defense", 1}, {"speed", -1}}, false
+    }},
+    {"PEASANTS_HAT", {
+        "PEASANTS_HAT", "Peasant's Hat", "A simple straw hat.",
+        "PEASANTS_HAT", EquipSlot::Hat, {{"luck", 1}}, false
+    }},
+    {"OLD_FARMERS_SHIRT", {
+        "OLD_FARMERS_SHIRT", "Old Farmer's Shirt", "Smells faintly of soil.",
+        "OLD_FARMERS_SHIRT", EquipSlot::Top, {{"health", 5}}, false
+    }},
+    {"ROUGHSPUN_PANTS", {
+        "ROUGHSPUN_PANTS", "Roughspun Pants", "Itchy.",
+        "ROUGHSPUN_PANTS", EquipSlot::Bottom, {{"defense", 2}, {"speed", -1}}, false
+    }},
+
+    // --- Tier 1: Common Items (25 Items) ---
+    {"IRON_BROADSWORD", {
+        "IRON_BROADSWORD", "Iron Broadsword", "A reliable steel blade.",
+        "IRON_BROADSWORD", EquipSlot::Weapon, {{"strength", 5}}, false
+    }},
+    {"IRON_HELMET", {
+        "IRON_HELMET", "Iron Helmet", "Good, solid head protection.",
+        "IRON_HELMET", EquipSlot::Hat, {{"defense", 5}, {"health", 10}}, false
+    }},
+    {"CHAINMAIL_SHIRT", {
+        "CHAINMAIL_SHIRT", "Chainmail Shirt", "A standard chestpiece for any warrior.",
+        "CHAINMAIL_SHIRT", EquipSlot::Top, {{"defense", 10}, {"speed", -2}}, false
+    }},
+    {"IRON_GREAVES", {
+        "IRON_GREAVES", "Iron Greaves", "Sturdy leg protection.",
+        "IRON_GREAVES", EquipSlot::Bottom, {{"defense", 7}, {"health", 5}}, false
+    }},
+    {"STEEL_BOOTS", {
+        "STEEL_BOOTS", "Steel Boots", "Heavy and protective.",
+        "STEEL_BOOTS", EquipSlot::Boots, {{"defense", 4}, {"speed", -3}}, false
+    }},
+    {"STEEL_DAGGER", {
+        "STEEL_DAGGER", "Steel Dagger", "Sharp and fast.",
+        "STEEL_DAGGER", EquipSlot::Weapon, {{"dexterity", 4}, {"speed", 1}}, false
+    }},
+    {"LEATHER_COWL", {
+        "LEATHER_COWL", "Leather Cowl", "Keeps the wind out of your face.",
+        "LEATHER_COWL", EquipSlot::Hat, {{"defense", 2}, {"dexterity", 2}}, false
+    }},
+    {"LEATHER_TUNIC", {
+        "LEATHER_TUNIC", "Leather Tunic", "Flexible and light.",
+        "LEATHER_TUNIC", EquipSlot::Top, {{"defense", 5}, {"dexterity", 3}}, false
+    }},
+    {"LEATHER_PANTS", {
+        "LEATHER_PANTS", "Leather Pants", "Allows for quiet movement.",
+        "LEATHER_PANTS", EquipSlot::Bottom, {{"defense", 3}, {"speed", 2}}, false
+    }},
+    {"SOFT_LEATHER_BOOTS", {
+        "SOFT_LEATHER_BOOTS", "Soft Leather Boots", "Silent footsteps.",
+        "SOFT_LEATHER_BOOTS", EquipSlot::Boots, {{"defense", 1}, {"speed", 4}}, false
+    }},
+    {"OAK_STAFF", {
+        "OAK_STAFF", "Oak Staff", "A simple focus for spells.",
+        "OAK_STAFF", EquipSlot::Weapon, {{"intellect", 5}}, false
+    }},
+    {"POINTY_HAT", {
+        "POINTY_HAT", "Pointy Hat", "The classic wizard look.",
+        "POINTY_HAT", EquipSlot::Hat, {{"intellect", 2}, {"mana", 10}}, false
+    }},
+    {"SIMPLE_ROBE", {
+        "SIMPLE_ROBE", "Simple Robe", "Dyed a deep, arcane blue.",
+        "SIMPLE_ROBE", EquipSlot::Top, {{"defense", 2}, {"intellect", 3}, {"mana", 15}}, false
+    }},
+    {"CLOTH_TROUSERS", {
+        "CLOTH_TROUSERS", "Cloth Trousers", "Comfortable for long hours of study.",
+        "CLOTH_TROUSERS", EquipSlot::Bottom, {{"defense", 1}, {"mana", 10}}, false
+    }},
+    {"ENCHANTED_SANDALS", {
+        "ENCHANTED_SANDALS", "Enchanted Sandals", "You feel a slight hum of energy.",
+        "ENCHANTED_SANDALS", EquipSlot::Boots, {{"intellect", 1}, {"speed", 2}}, false
+    }},
+    {"IRON_SPEAR", {
+        "IRON_SPEAR", "Iron Spear", "Good for keeping foes at a distance.",
+        "IRON_SPEAR", EquipSlot::Weapon, {{"strength", 4}, {"dexterity", 2}, {"speed", -1}}, false
+    }},
+    {"APPRENTICES_GRIMOIRE", {
+        "APPRENTICES_GRIMOIRE", "Apprentice's Grimoire", "Contains basic incantations.",
+        "APPRENTICES_GRIMOIRE", EquipSlot::Weapon, {{"intellect", 4}, {"mana", 15}}, false
+    }},
+    {"HEAVY_IRON_HELM", {
+        "HEAVY_IRON_HELM", "Heavy Iron Helm", "A thick, protective helmet.",
+        "HEAVY_IRON_HELM", EquipSlot::Hat, {{"defense", 6}, {"speed", -2}}, false
+    }},
+    {"FEATHERED_CAP", {
+        "FEATHERED_CAP", "Feathered Cap", "A jaunty cap with a long feather.",
+        "FEATHERED_CAP", EquipSlot::Hat, {{"dexterity", 2}, {"speed", 1}}, false
+    }},
+    {"QUILTED_ARMOR", {
+        "QUILTED_ARMOR", "Quilted Armor", "Padded armor worn under chainmail.",
+        "QUILTED_ARMOR", EquipSlot::Top, {{"defense", 8}, {"speed", -1}}, false
+    }},
+    {"APPRENTICES_ROBE", {
+        "APPRENTICES_ROBE", "Apprentice's Robe", "Slightly singed at the cuffs.",
+        "APPRENTICES_ROBE", EquipSlot::Top, {{"intellect", 4}, {"mana", 10}, {"defense", 2}}, false
+    }},
+    {"STURDY_BREECHES", {
+        "STURDY_BREECHES", "Sturdy Breeches", "Well-made trousers for travel.",
+        "STURDY_BREECHES", EquipSlot::Bottom, {{"defense", 4}}, false
+    }},
+    {"CHAINMAIL_LEGGINGS", {
+        "CHAINMAIL_LEGGINGS", "Chainmail Leggings", "Protects the upper legs.",
+        "CHAINMAIL_LEGGINGS", EquipSlot::Bottom, {{"defense", 8}, {"speed", -2}}, false
+    }},
+    {"HIKING_BOOTS", {
+        "HIKING_BOOTS", "Hiking Boots", "Made for long journeys.",
+        "HIKING_BOOTS", EquipSlot::Boots, {{"speed", 2}, {"defense", 2}}, false
+    }},
+    {"HEAVY_STEEL_BOOTS", {
+        "HEAVY_STEEL_BOOTS", "Heavy Steel Boots", "Also known as Sabatons.",
+        "HEAVY_STEEL_BOOTS", EquipSlot::Boots, {{"defense", 7}, {"speed", -4}}, false
+    }},
+
+    // --- Tier 2: Mid-Grade / Specialization (30 Items) ---
+    {"KNIGHTS_GREATHELM", {
+        "KNIGHTS_GREATHELM", "Knight's Greathelm", "A fully enclosed helm for jousts and war.",
+        "KNIGHTS_GREATHELM", EquipSlot::Hat, {{"defense", 12}, {"health", 25}, {"intellect", -3}}, false
+    }},
+    {"TITANIUM_PLATEBODY", {
+        "TITANIUM_PLATEBODY", "Titanium Platebody", "Lighter than steel, stronger than iron.",
+        "TITANIUM_PLATEBODY", EquipSlot::Top, {{"defense", 22}, {"strength", 5}}, false
+    }},
+    {"ASSASSINS_MASK", {
+        "ASSASSINS_MASK", "Assassin's Mask", "Hides your identity and sharpens your senses.",
+        "ASSASSINS_MASK", EquipSlot::Hat, {{"dexterity", 8}, {"luck", 5}, {"speed", 2}}, false
+    }},
+    {"SHADOW_LEATHER_CHAPS", {
+        "SHADOW_LEATHER_CHAPS", "Shadow Leather Chaps", "Dyed black with nightshade.",
+        "SHADOW_LEATHER_CHAPS", EquipSlot::Bottom, {{"defense", 8}, {"dexterity", 10}, {"speed", 5}}, false
+    }},
+    {"ARCHMAGE_CIRCLET", {
+        "ARCHMAGE_CIRCLET", "Archmage's Circlet", "A silver band that hums with power.",
+        "ARCHMAGE_CIRCLET", EquipSlot::Hat, {{"intellect", 12}, {"mana", 50}, {"health", -10}}, false
+    }},
+    {"ROBES_OF_THE_SCHOLAR", {
+        "ROBES_OF_THE_SCHOLAR", "Robes of the Scholar", "Covered in runes of protection.",
+        "ROBES_OF_THE_SCHOLAR", EquipSlot::Top, {{"defense", 6}, {"intellect", 10}, {"mana", 30}}, false
+    }},
+    {"BERSERKERS_AXE", {
+        "BERSERKERS_AXE", "Berserker's Axe", "A heavy, unbalanced axe that loves to bite.",
+        "BERSERKERS_AXE", EquipSlot::Weapon, {{"strength", 20}, {"defense", -5}, {"speed", -3}}, false
+    }},
+    {"WARHAMMER_OF_THE_ZEALOT", {
+        "WARHAMMER_OF_THE_ZEALOT", "Warhammer of the Zealot", "A heavy hammer for smiting foes.",
+        "WARHAMMER_OF_THE_ZEALOT", EquipSlot::Weapon, {{"strength", 12}, {"intellect", 5}, {"health", 15}}, false
+    }},
+    {"OBSIDIAN_MACE", {
+        "OBSIDIAN_MACE", "Obsidian Mace", "A heavy mace carved from volcanic glass.",
+        "OBSIDIAN_MACE", EquipSlot::Weapon, {{"strength", 18}, {"speed", -5}, {"defense", 3}}, false
+    }},
+    {"BARBARIAN_WARHELM", {
+        "BARBARIAN_WARHELM", "Barbarian Warhelm", "Adorned with horns. Intimidating.",
+        "BARBARIAN_WARHELM", EquipSlot::Hat, {{"strength", 7}, {"health", 20}, {"intellect", -2}}, false
+    }},
+    {"SPIKED_PLATE_ARMOR", {
+        "SPIKED_PLATE_ARMOR", "Spiked Plate Armor", "Deals minor damage to attackers.",
+        "SPIKED_PLATE_ARMOR", EquipSlot::Top, {{"defense", 25}, {"strength", 5}, {"speed", -5}}, false
+    }},
+    {"PLATE_LEGGINGS_OF_THE_GUARDIAN", {
+        "PLATE_LEGGINGS_OF_THE_GUARDIAN", "Guardian's Plate Leggings", "Built to withstand a siege.",
+        "PLATE_LEGGINGS_OF_THE_GUARDIAN", EquipSlot::Bottom, {{"defense", 20}, {"health", 30}, {"speed", -4}}, false
+    }},
+    {"SABATONS_OF_THE_BERSERKER", {
+        "SABATONS_OF_THE_BERSERKER", "Berserker's Sabatons", "For stomping, not for running.",
+        "SABATONS_OF_THE_BERSERKER", EquipSlot::Boots, {{"strength", 6}, {"defense", 6}, {"speed", -2}}, false
+    }},
+    {"POISONED_STILETTO", {
+        "POISONED_STILETTO", "Poisoned Stiletto", "A rogue's best friend.",
+        "POISONED_STILETTO", EquipSlot::Weapon, {{"dexterity", 12}, {"luck", 7}, {"strength", -2}}, false
+    }},
+    {"TRICKSTERS_CAP", {
+        "TRICKSTERS_CAP", "Trickster's Cap", "Feathered and slightly ridiculous.",
+        "TRICKSTERS_CAP", EquipSlot::Hat, {{"dexterity", 5}, {"speed", 5}, {"luck", 5}}, false
+    }},
+    {"PHANTOM_CLOAK", {
+        "PHANTOM_CLOAK", "Phantom Cloak", "You feel lighter, almost ethereal.",
+        "PHANTOM_CLOAK", EquipSlot::Top, {{"dexterity", 10}, {"speed", 8}, {"defense", -5}}, false
+    }},
+    {"SILKEN_SLIPPERS", {
+        "SILKEN_SLIPPERS", "Silken Slippers", "For the nimble and the quiet.",
+        "SILKEN_SLIPPERS", EquipSlot::Boots, {{"dexterity", 7}, {"speed", 7}, {"defense", -1}}, false
+    }},
+    {"JESTERS_TIGHTS", {
+        "JESTERS_TIGHTS", "Jester's Tights", "Un-coordinated colors. Confuses the enemy.",
+        "JESTERS_TIGHTS", EquipSlot::Bottom, {{"luck", 12}, {"speed", 6}, {"defense", -3}}, false
+    }},
+    {"CRYSTAL_TOME", {
+        "CRYSTAL_TOME", "Crystal Tome", "A book that reads itself aloud. (Weapon Slot)",
+        "CRYSTAL_TOME", EquipSlot::Weapon, {{"intellect", 15}, {"mana", 75}, {"defense", -3}}, false
+    }},
+    {"GOGGLES_OF_PERCEPTION", {
+        "GOGGLES_OF_PERCEPTION", "Goggles of Perception", "The lenses whirl and click.",
+        "GOGGLES_OF_PERCEPTION", EquipSlot::Hat, {{"intellect", 7}, {"dexterity", 7}}, false
+    }},
+    {"DRUIDS_RAIMENT", {
+        "DRUIDS_RAIMENT", "Druid's Raiment", "Woven from living leaves and moonlight.",
+        "DRUIDS_RAIMENT", EquipSlot::Top, {{"intellect", 8}, {"health", 25}, {"mana", 25}}, false
+    }},
+    {"MAGES_BREECHES", {
+        "MAGES_BREECHES", "Mage's Breeches", "Embroidered with runes of power.",
+        "MAGES_BREECHES", EquipSlot::Bottom, {{"intellect", 7}, {"mana", 30}, {"speed", 2}}, false
+    }},
+    {"BOOTS_OF_THE_SCHOLAR", {
+        "BOOTS_OF_THE_SCHOLAR", "Boots of the Scholar", "You feel smarter just wearing them.",
+        "BOOTS_OF_THE_SCHOLAR", EquipSlot::Boots, {{"intellect", 5}, {"mana", 20}}, false
+    }},
+    {"EXECUTIONERS_AXE", {
+        "EXECUTIONERS_AXE", "Executioner's Axe", "A terrifyingly large, heavy-bladed axe.",
+        "EXECUTIONERS_AXE", EquipSlot::Weapon, {{"strength", 15}, {"speed", -8}, {"luck", 5}}, false
+    }},
+    {"RAPIER_OF_THE_DUELIST", {
+        "RAPIER_OF_THE_DUELIST", "Duelist's Rapier", "A light blade that rewards precision.",
+        "RAPIER_OF_THE_DUELIST", EquipSlot::Weapon, {{"dexterity", 12}, {"speed", 5}, {"strength", -2}}, false
+    }},
+    {"WIZARD_HAT_OF_THE_OWL", {
+        "WIZARD_HAT_OF_THE_OWL", "Owl's Wizard Hat", "Wide-brimmed and grants wisdom.",
+        "WIZARD_HAT_OF_THE_OWL", EquipSlot::Hat, {{"intellect", 8}, {"mana", 20}, {"speed", -1}}, false
+    }},
+    {"KNIGHTS_CUIRASS", {
+        "KNIGHTS_CUIRASS", "Knight's Cuirass", "Polished steel plate.",
+        "KNIGHTS_CUIRASS", EquipSlot::Top, {{"defense", 18}, {"strength", 5}, {"health", 20}}, false
+    }},
+    {"ROGUES_LEGGINGS", {
+        "ROGUES_LEGGINGS", "Rogue's Leggings", "Fitted leather with many hidden pockets.",
+        "ROGUES_LEGGINGS", EquipSlot::Bottom, {{"dexterity", 8}, {"speed", 4}, {"defense", 5}}, false
+    }},
+    {"PLATE_LEGGINGS", {
+        "PLATE_LEGGINGS", "Plate Leggings", "Standard issue for foot soldiers.",
+        "PLATE_LEGGINGS", EquipSlot::Bottom, {{"defense", 15}, {"health", 20}}, false
+    }},
+    {"BOOTS_OF_THE_EXPLORER", {
+        "BOOTS_OF_THE_EXPLORER", "Explorer's Boots", "Comfortable, durable, and well-worn.",
+        "BOOTS_OF_THE_EXPLORER", EquipSlot::Boots, {{"speed", 6}, {"luck", 3}}, false
+    }},
+
+    // --- Tier 3: Unique & Hybrid Items (35 Items) ---
+    {"BATTLEMAGE_PLATE", {
+        "BATTLEMAGE_PLATE", "Battlemage Plate", "Steel plate inscribed with mana conduits.",
+        "BATTLEMAGE_PLATE", EquipSlot::Top, {{"defense", 15}, {"intellect", 8}, {"mana", 25}, {"speed", -4}}, false
+    }},
+    {"SPELLTHIEF_GLOVES", { // (Using Top slot for "Gloves")
+        "SPELLTHIEF_GLOVES", "Spellthief Gloves", "Lets you 'borrow' magical energy.",
+        "SPELLTHIEF_GLOVES", EquipSlot::Top, {{"dexterity", 10}, {"intellect", 10}, {"mana", 20}}, false
+    }},
+    {"SWASHBUCKLERS_BOOTS", {
+        "SWASHBUCKLERS_BOOTS", "Swashbuckler's Boots", "Stylish boots with reinforced toes for kicking.",
+        "SWASHBUCKLERS_BOOTS", EquipSlot::Boots, {{"defense", 5}, {"strength", 5}, {"dexterity", 5}, {"speed", 5}}, false
+    }},
+    {"HELM_OF_THE_GAMBLER", {
+        "HELM_OF_THE_GAMBLER", "Helm of the Gambler", "Lady Luck is on your side. Usually.",
+        "HELM_OF_THE_GAMBLER", EquipSlot::Hat, {{"luck", 25}, {"defense", -5}}, false
+    }},
+    {"CLOAK_OF_MISFORTUNE", {
+        "CLOAK_OF_MISFORTUNE", "Cloak of Misfortune", "You feel... unlucky. But strangely durable.",
+        "CLOAK_OF_MISFORTUNE", EquipSlot::Top, {{"defense", 20}, {"health", 50}, {"luck", -20}}, false
+    }},
+    {"BOOTS_OF_BLINDING_SPEED", {
+        "BOOTS_OF_BLINDING_SPEED", "Boots of Blinding Speed", "So fast you can't see straight.",
+        "BOOTS_OF_BLINDING_SPEED", EquipSlot::Boots, {{"speed", 30}, {"dexterity", -10}, {"defense", -5}}, false
+    }},
+    {"PANTS_OF_THE_TITAN", {
+        "PANTS_OF_THE_TITAN", "Pants of the Titan", "Impossibly heavy, impossibly strong.",
+        "PANTS_OF_THE_TITAN", EquipSlot::Bottom, {{"strength", 20}, {"health", 50}, {"defense", 15}, {"speed", -15}}, false
+    }},
+    {"ROBE_OF_THE_ARCHLICH", {
+        "ROBE_OF_THE_ARCHLICH", "Robe of the Archlich", "Vast power, at the cost of vitality.",
+        "ROBE_OF_THE_ARCHLICH", EquipSlot::Top, {{"intellect", 30}, {"mana", 100}, {"health", -75}, {"defense", 5}}, false
+    }},
+    {"CROWN_OF_COMMAND", {
+        "CROWN_OF_COMMAND", "Crown of Command", "A crown for a true leader.",
+        "CROWN_OF_COMMAND", EquipSlot::Hat, {{"strength", 8}, {"intellect", 8}, {"dexterity", 8}}, false
+    }},
+    {"RABBITS_FOOT_AMULET", { // (Using Hat slot for "Amulet")
+        "RABBITS_FOOT_AMULET", "Rabbit's Foot Amulet", "It's... just a rabbit's foot. Or is it?",
+        "RABBITS_FOOT_AMULET", EquipSlot::Hat, {{"luck", 10}}, false
+    }},
+    {"RUNE_BLADE", {
+        "RUNE_BLADE", "Rune-Blade", "The blade changes its edge based on your thoughts.",
+        "RUNE_BLADE", EquipSlot::Weapon, {{"strength", 12}, {"intellect", 12}, {"mana", 30}}, false
+    }},
+    {"PLAGUE_DOCTOR_MASK", {
+        "PLAGUE_DOCTOR_MASK", "Plague Doctor Mask", "Filled with sweet-smelling, dubious herbs.",
+        "PLAGUE_DOCTOR_MASK", EquipSlot::Hat, {{"intellect", 10}, {"luck", 5}, {"health", -15}}, false
+    }},
+    {"HARLEQUIN_VEST", {
+        "HARLEQUIN_VEST", "Harlequin Vest", "A chaotic, multi-colored vest.",
+        "HARLEQUIN_VEST", EquipSlot::Top, {{"luck", 20}, {"strength", -5}, {"intellect", 5}, {"dexterity", 5}}, false
+    }},
+    {"KILT_OF_THE_HIGHLANDER", {
+        "KILT_OF_THE_HIGHLANDER", "Highlander's Kilt", "Surprisingly freeing in a fight.",
+        "KILT_OF_THE_HIGHLANDER", EquipSlot::Bottom, {{"strength", 8}, {"speed", 8}, {"defense", 3}}, false
+    }},
+    {"GOBLIN_ROCKET_BOOTS", {
+        "GOBLIN_ROCKET_BOOTS", "Goblin Rocket Boots", "WARNING: Unstable.",
+        "GOBLIN_ROCKET_BOOTS", EquipSlot::Boots, {{"speed", 40}, {"health", -25}, {"defense", -10}, {"luck", -5}}, false
+    }},
+    {"SCEPTER_OF_THE_PRIEST", {
+        "SCEPTER_OF_THE_PRIEST", "Priest's Scepter", "A heavy scepter that channels healing light.",
+        "SCEPTER_OF_THE_PRIEST", EquipSlot::Weapon, {{"intellect", 8}, {"health", 25}, {"mana", 25}}, false
+    }},
+    {"BLOODTHIRSTY_BLADE", {
+        "BLOODTHIRSTY_BLADE", "Bloodthirsty Blade", "It feeds on your vitality.",
+        "BLOODTHIRSTY_BLADE", EquipSlot::Weapon, {{"strength", 10}, {"health", -20}}, false
+    }},
+    {"FROZEN_WAND", {
+        "FROZEN_WAND", "Frozen Wand", "Permanently cold to the touch.",
+        "FROZEN_WAND", EquipSlot::Weapon, {{"intellect", 15}, {"speed", -5}}, false
+    }},
+    {"FOOLS_DAGGER", {
+        "FOOLS_DAGGER", "Fool's Dagger", "Looks impressive, but the hilt is backwards.",
+        "FOOLS_DAGGER", EquipSlot::Weapon, {{"luck", 20}, {"dexterity", 5}, {"strength", -5}}, false
+    }},
+    {"HELM_OF_THE_SLEEPLESS", {
+        "HELM_OF_THE_SLEEPLESS", "Helm of the Sleepless", "You no longer feel tired, but you look it.",
+        "HELM_OF_THE_SLEEPLESS", EquipSlot::Hat, {{"mana", 50}, {"health", -20}, {"intellect", 5}}, false
+    }},
+    {"JUGGERNAUTS_VISAGE", {
+        "JUGGERNAUTS_VISAGE", "Juggernaut's Visage", "You can't be stopped. You also can't turn well.",
+        "JUGGERNAUTS_VISAGE", EquipSlot::Hat, {{"defense", 20}, {"health", 50}, {"speed", -10}, {"dexterity", -10}}, false
+    }},
+    {"CROWN_OF_THE_FALSE_KING", {
+        "CROWN_OF_THE_FALSE_KING", "False King's Crown", "All the style, none of the responsibility.",
+        "CROWN_OF_THE_FALSE_KING", EquipSlot::Hat, {{"luck", 15}, {"strength", 5}, {"dexterity", 5}, {"intellect", 5}, {"defense", -15}}, false
+    }},
+    {"ROBE_OF_THE_CHAMELEON", {
+        "ROBE_OF_THE_CHAMELEON", "Chameleon Robe", "Changes color to match your surroundings.",
+        "ROBE_OF_THE_CHAMELEON", EquipSlot::Top, {{"defense", 8}, {"dexterity", 8}, {"intellect", 8}, {"strength", -5}}, false
+    }},
+    {"MANTLE_OF_THE_MAGMA", {
+        "MANTLE_OF_THE_MAGMA", "Mantle of the Magma", "Drips lava, but doesn't burn you.",
+        "MANTLE_OF_THE_MAGMA", EquipSlot::Top, {{"defense", 15}, {"intellect", 10}, {"strength", 5}}, false
+    }},
+    {"BARBED_ARMOR", {
+        "BARBED_ARMOR", "Barbed Armor", "Hugs are ill-advised.",
+        "BARBED_ARMOR", EquipSlot::Top, {{"defense", 20}, {"strength", 5}}, false
+    }},
+    {"PANTS_OF_THE_GIANT", {
+        "PANTS_OF_THE_GIANT", "Giant's Pants", "Absurdly large, but magically resize.",
+        "PANTS_OF_THE_GIANT", EquipSlot::Bottom, {{"strength", 15}, {"health", 40}, {"speed", -8}}, false
+    }},
+    {"GREAVES_OF_THE_WIND", {
+        "GREAVES_OF_THE_WIND", "Greaves of the Wind", "A constant breeze follows you.",
+        "GREAVES_OF_THE_WIND", EquipSlot::Bottom, {{"speed", 15}, {"defense", 5}, {"dexterity", 5}}, false
+    }},
+    {"POISONERS_PANTS", {
+        "POISONERS_PANTS", "Poisoner's Pants", "Lined with pockets for vials and reagents.",
+        "POISONERS_PANTS", EquipSlot::Bottom, {{"dexterity", 7}, {"intellect", 7}}, false
+    }},
+    {"LUCKY_PANTS", {
+        "LUCKY_PANTS", "Lucky Pants", "You found a coin in the pocket!",
+        "LUCKY_PANTS", EquipSlot::Bottom, {{"luck", 25}, {"defense", -5}}, false
+    }},
+    {"SORCERERS_SKIRT", {
+        "SORCERERS_SKIRT", "Sorcerer's Skirt", "A fine silk skirt, surprisingly practical.",
+        "SORCERERS_SKIRT", EquipSlot::Bottom, {{"intellect", 10}, {"mana", 25}, {"defense", 3}}, false
+    }},
+    {"BOOTS_OF_THE_STAMPEDE", {
+        "BOOTS_OF_THE_STAMPEDE", "Boots of the Stampede", "Heavy, hoof-like boots.",
+        "BOOTS_OF_THE_STAMPEDE", EquipSlot::Boots, {{"strength", 10}, {"speed", 5}, {"defense", 3}}, false
+    }},
+    {"FLOATING_SHOES", {
+        "FLOATING_SHOES", "Floating Shoes", "You hover an inch off the ground.",
+        "FLOATING_SHOES", EquipSlot::Boots, {{"speed", 10}, {"defense", -2}}, false
+    }},
+    {"BOOTS_OF_THE_GAMBLER", {
+        "BOOTS_OF_THE_GAMBLER", "Gambler's Boots", "These boots have seen better days.",
+        "BOOTS_OF_THE_GAMBLER", EquipSlot::Boots, {{"speed", 5}, {"luck", 15}, {"defense", -3}}, false
+    }},
+    {"MAGES_SHOES", {
+        "MAGES_SHOES", "Mage's Shoes", "Comfortable velvet shoes.",
+        "MAGES_SHOES", EquipSlot::Boots, {{"intellect", 5}, {"mana", 15}, {"speed", 3}}, false
+    }},
+    {"SILK_PANTS", {
+        "SILK_PANTS", "Silk Pants", "Very light and comfortable.",
+        "SILK_PANTS", EquipSlot::Bottom, {{"intellect", 3}, {"mana", 10}}, false
+    }},
+
+    // --- Tier 4: Legendary Items (14 Items) ---
+    {"DRAGONSCALE_MAIL", {
+        "DRAGONSCALE_MAIL", "Dragonscale Mail", "Shimmers with every color. Impervious to flame.",
+        "DRAGONSCALE_MAIL", EquipSlot::Top, {{"defense", 35}, {"strength", 10}, {"health", 50}}, false
+    }},
+    {"HEARTSEEKER_BOW", {
+        "HEARTSEEKER_BOW", "Heartseeker", "An arrow from this bow never misses its mark.",
+        "HEARTSEEKER_BOW", EquipSlot::Weapon, {{"dexterity", 30}, {"luck", 15}, {"speed", 10}}, false
+    }},
+    {"STAFF_OF_THE_COSMOS", {
+        "STAFF_OF_THE_COSMOS", "Staff of the Cosmos", "You can hear the stars whispering.",
+        "STAFF_OF_THE_COSMOS", EquipSlot::Weapon, {{"intellect", 40}, {"mana", 200}, {"speed", 5}}, false
+    }},
+    {"VOIDWALKER_BOOTS", {
+        "VOIDWALKER_BOOTS", "Voidwalker Boots", "These boots don't touch the ground.",
+        "VOIDWALKER_BOOTS", EquipSlot::Boots, {{"speed", 15}, {"dexterity", 10}, {"intellect", 10}, {"defense", 5}}, false
+    }},
+    {"ETHEREAL_BLADE", {
+        "ETHEREAL_BLADE", "Ethereal Blade", "A blade that cuts between worlds.",
+        "ETHEREAL_BLADE", EquipSlot::Weapon, {{"dexterity", 20}, {"intellect", 20}, {"defense", -10}}, false
+    }},
+    {"PHOENIX_HELM", {
+        "PHOENIX_HELM", "Phoenix Helm", "A helm of golden feathers. Warm to the touch.",
+        "PHOENIX_HELM", EquipSlot::Hat, {{"defense", 10}, {"health", 30}, {"intellect", 10}}, false
+    }},
+    {"MASK_OF_THE_SHADOW", {
+        "MASK_OF_THE_SHADOW", "Mask of the Shadow", "You are one with the darkness.",
+        "MASK_OF_THE_SHADOW", EquipSlot::Hat, {{"dexterity", 20}, {"speed", 10}, {"defense", 5}, {"health", -25}}, false
+    }},
+    {"CELESTIAL_RAIMENT", {
+        "CELESTIAL_RAIMENT", "Celestial Raiment", "Woven from starlight.",
+        "CELESTIAL_RAIMENT", EquipSlot::Top, {{"defense", 20}, {"intellect", 20}, {"mana", 100}, {"health", 50}}, false
+    }},
+    {"TITANS_PLATE", {
+        "TITANS_PLATE", "Titan's Plate", "Armor forged for a demigod.",
+        "TITANS_PLATE", EquipSlot::Top, {{"strength", 30}, {"defense", 40}, {"speed", -20}}, false
+    }},
+    {"VOIDWALKER_LEGGINGS", {
+        "VOIDWALKER_LEGGINGS", "Voidwalker Leggings", "Your legs phase in and out of reality.",
+        "VOIDWALKER_LEGGINGS", EquipSlot::Bottom, {{"intellect", 15}, {"dexterity", 15}, {"speed", 10}, {"defense", 8}}, false
+    }},
+    {"FOUNDATION_GREAVES", {
+        "FOUNDATION_GREAVES", "Foundation Greaves", "The very bedrock of a good defense.",
+        "FOUNDATION_GREAVES", EquipSlot::Bottom, {{"defense", 25}, {"health", 100}, {"speed", -10}}, false
+    }},
+    {"HERMES_SANDALS", {
+        "HERMES_SANDALS", "Sandals of Hermes", "Tiny wings flutter at your ankles.",
+        "HERMES_SANDALS", EquipSlot::Boots, {{"speed", 25}, {"dexterity", 10}}, false
+    }},
+    {"COLOSSUS_TREADS", {
+        "COLOSSUS_TREADS", "Colossus Treads", "Each step shakes the ground.",
+        "COLOSSUS_TREADS", EquipSlot::Boots, {{"strength", 15}, {"defense", 15}, {"health", 50}, {"speed", -5}}, false
+    }},
+    {"INFINITY_EDGE", {
+        "INFINITY_EDGE", "Infinity Edge", "A sword that folds space.",
+        "INFINITY_EDGE", EquipSlot::Weapon, {{"strength", 25}, {"dexterity", 25}, {"luck", 10}}, false
+    }},
+
+    // --- Consumables (6 Items) ---
+    {"SMALL_HEALTH_POTION", {
+        "SMALL_HEALTH_POTION", "Small Health Potion", "Restores 50 Health.",
+        "SMALL_HEALTH_POTION", EquipSlot::None, {}, true
+    }},
+    {"LARGE_HEALTH_POTION", {
+        "LARGE_HEALTH_POTION", "Large Health Potion", "Restores 250 Health.",
+        "LARGE_HEALTH_POTION", EquipSlot::None, {}, true
+    }},
+    {"SMALL_MANA_POTION", {
+        "SMALL_MANA_POTION", "Small Mana Potion", "Restores 50 Mana.",
+        "SMALL_MANA_POTION", EquipSlot::None, {}, true
+    }},
+    {"LARGE_MANA_POTION", {
+        "LARGE_MANA_POTION", "Large Mana Potion", "Restores 250 Mana.",
+        "LARGE_MANA_POTION", EquipSlot::None, {}, true
+    }},
+    {"ELIXIR_OF_SPEED", {
+        "ELIXIR_OF_SPEED", "Elixir of Speed", "Temporarily grants +20 Speed.",
+        "ELIXIR_OF_SPEED", EquipSlot::None, {}, true
+    }},
+    {"ELIXIR_OF_GIANTS_STRENGTH", {
+        "ELIXIR_OF_GIANTS_STRENGTH", "Elixir of Giant's Strength", "Temporarily grants +20 Strength.",
+        "ELIXIR_OF_GIANTS_STRENGTH", EquipSlot::None, {}, true
+    }}
+};
 
 int global_monster_id_counter = 1;
 
@@ -394,11 +1086,24 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 }
 // Add other areas (RUINS, DESERT, etc.....) here
 };
+const std::map<std::string, std::vector<std::string>> g_shops = {
+    {
+        "MERCHANT_SHOP_1", {
+            "SMALL_HEALTH_POTION",
+            "SMALL_MANA_POTION",
+            "RUSTY_SWORD",
+            "TORN_SHIRT",
+            "PATCHED_PANTS",
+            "FLIMSY_SANDALS"
+        }
+    }
+    // can add more shop:  "WEAPONSMITH_1", {"IRON_BROADSWORD", ...}
+};
 
 // --- Multiplayer Registries ---
 std::map<std::string, PlayerBroadcastData> g_player_registry;
 std::mutex g_player_registry_mutex;
-
+std::map<std::string, int> g_item_buy_prices;
 std::map<std::string, std::weak_ptr<AsyncSession>> g_session_registry;
 std::mutex g_session_registry_mutex;
 
@@ -540,10 +1245,11 @@ std::deque<Point> A_Star_Search(Point start, Point end, const std::vector<std::v
 // --- Class Starting Stats ---
 PlayerStats getStartingStats(PlayerClass playerClass) {
     switch (playerClass) {
-    case PlayerClass::FIGHTER: return PlayerStats(120, 20, 15, 12, 8);
-    case PlayerClass::WIZARD: return PlayerStats(80, 100, 8, 6, 10);
-    case PlayerClass::ROGUE: return PlayerStats(90, 40, 12, 8, 15);
-    default: return PlayerStats(100, 50, 10, 10, 10);
+                                   // PlayerStats(health, mana, defense, speed, str, dex, intl, lck)
+    case PlayerClass::FIGHTER: return PlayerStats(120, 20, 12, 8, 15, 10, 5, 5);
+    case PlayerClass::WIZARD:  return PlayerStats(80, 100, 6, 10, 5, 8, 15, 7);
+    case PlayerClass::ROGUE:   return PlayerStats(90, 40, 8, 15, 8, 15, 8, 10);
+    default:                   return PlayerStats(100, 50, 10, 10, 10, 10, 10, 5);
     }
 }
 
@@ -554,4 +1260,37 @@ MonsterInstance create_monster(int id, std::string type) {
     monster.type = type;
     monster.assetKey = MONSTER_ASSETS.at(type);
     return monster;
+}
+void initialize_item_prices() {
+    std::map<int, int> tierBuyPrices = {
+        {0, 15},     // Tier 0 (Junk)
+        {1, 50},     // Tier 1 (Common)
+        {2, 120},    // Tier 2 mid
+        {3, 1350},    // Tier 3 (Unique)
+        {4, 6000},   // Tier 4 (Legendary)
+        {99, 0}      // Tier 99 consums 
+    };
+
+    
+    for (const auto& tierPair : g_loot_tables) {
+        int tier = tierPair.first;
+        if (tier == 99) continue; 
+
+        int price = tierBuyPrices[tier];
+        const auto& itemList = tierPair.second;
+
+        for (const std::string& itemId : itemList) {
+            g_item_buy_prices[itemId] = price;
+        }
+    }
+
+    // gonna manually set pots because i have them at tier 99
+    g_item_buy_prices["SMALL_HEALTH_POTION"] = 10;
+    g_item_buy_prices["LARGE_HEALTH_POTION"] = 80;
+    g_item_buy_prices["SMALL_MANA_POTION"] = 15;
+    g_item_buy_prices["LARGE_MANA_POTION"] = 160;
+    g_item_buy_prices["ELIXIR_OF_SPEED"] = 80;
+    g_item_buy_prices["ELIXIR_OF_GIANTS_STRENGTH"] = 80;
+
+    std::cout << "Item prices initialized. " << g_item_buy_prices.size() << " items priced." << std::endl;
 }
