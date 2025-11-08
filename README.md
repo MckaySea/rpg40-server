@@ -21,8 +21,8 @@ I'll be updating this section as we progress and assigning specific tasks.
 | **Yousaf** | **Dialogue:** Write out what NPCs are going to say and label who is saying it. Determine which NPCs will give quests. Also, please name the NPCs as you wish. | To Do |
 | **Ali** | **Visuals & Images:** Find and prepare visuals/images for NPCs, monsters, and objects. I will post a list of required assets for you to find soon. | To Do |
 | **McKay** | **Feature development:** Change spawn rates on some maps, so you arent trapped behind blocked areas and cant move to the desired area that was intended | To Do |
-| **McKay** | **Feature development:** Interaction system for npcs/objects/monsters | To Do |
-| **McKay** | **Feature development:** Character customization | In the air |
+| **McKay** | **Feature development:** Quests now that interaction system is done, with a dialogue system| To Do |
+| **McKay** | **Feature development:** Skills for melee players like wizards have spells. | In the air |
 -----
 
 ## ** Ali's Monster Asset Templates**
