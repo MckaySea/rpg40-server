@@ -8,11 +8,12 @@
 #include <deque> 
 #include <chrono> 
 #include <map>
-#include <boost/optional.hpp> // Used for currentOpponent
-#include <boost/asio/ip/tcp.hpp> // For basic networking types
+#include <memory> // For std::unique_ptr
 #include <optional>  
-#include <atomic>     
-#include "Items.hpp"  
+#include <atomic>   
+#include <boost/asio/ip/tcp.hpp> // For basic networking types
+#include "Items.hpp"  // <-- Includes ItemInstance, Inventory, Equipment, etc.
+
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
 
@@ -21,66 +22,34 @@ static const int GRID_COLS = 40; // Width of the town map
 static const int GRID_ROWS = 22; // Height of the town map
 static const std::chrono::milliseconds MOVEMENT_DELAY{ 150 }; // ms per tile
 static const int SERVER_TICK_RATE_MS = 50; // How often the server "ticks" (20 ticks/sec)
-extern std::atomic<uint64_t> g_item_instance_id_counter;
 
 
-
-
-
-
-struct ItemInstance {
-    uint64_t instanceId;         // EVERY ITEM WLL HAVE A UNIQUE ID FOR  A VRY SPECIAL REASON XD
-    std::string itemId;          // name of the item basically
-    int quantity;
-
-    // every item has a unique id so we can roll variance to items that would otherwise be the same, so u could get multiple of the same item names but all have different worse n better stats
-    std::map<std::string, int> customStats;
-
-    // this is to get the actual items (without modifiers or anything basically the base versionns of em
-    const ItemDefinition& getDefinition() const {
-        return itemDatabase.at(itemId); 
-    }
+/**
+* @enum PlayerClass
+* @brief Represents the character class choices.
+*/
+enum class PlayerClass : int {
+    UNSELECTED = 0,
+    FIGHTER = 1,
+    WIZARD = 2,
+    ROGUE = 3
+};
+enum class StatusType {
+    NONE = 0,
+    BURN,
+    BLEED,
+    DEFENSE_UP,
+    ATTACK_UP,
+    SPEED_UP,
+    SPEED_DOWN,
+    STUN
 };
 
-
-using Inventory = std::map<uint64_t, ItemInstance>; 
-
-
-struct Equipment {
-
-    // Maps a specific equipment slot to the unique instanceId of the item
-    std::map<EquipSlot, std::optional<uint64_t>> slots;
-
-    Equipment() {
-        slots[EquipSlot::Weapon] = std::nullopt;
-        slots[EquipSlot::Hat] = std::nullopt;
-        slots[EquipSlot::Top] = std::nullopt;
-        slots[EquipSlot::Bottom] = std::nullopt;
-        slots[EquipSlot::Boots] = std::nullopt;
-    }
-
-    std::optional<uint64_t> getEquippedItemId(EquipSlot slot) const {
-        if (slots.count(slot)) {
-            return slots.at(slot);
-        }
-        return std::nullopt;
-    }
-};
-    
-    
-    /**
-* 
-* 
-* 
-* 
- * @enum PlayerClass
- * @brief Represents the character class choices.
- */
-enum class PlayerClass {
-    UNSELECTED,
-    FIGHTER,
-    WIZARD,
-    ROGUE
+struct StatusEffect {
+    StatusType type = StatusType::NONE;
+    int remainingTurns = 0;   // how many turns left
+    int magnitude = 0;        // strength of the effect (damage per turn, bonus DEF, etc.)
+    bool appliedByPlayer = false;
 };
 
 /**
@@ -117,7 +86,7 @@ struct PlayerStats {
     PlayerStats(int h, int m, int def, int spd, int str, int dex, int intl, int lck)
         : health(h), maxHealth(h), mana(m), maxMana(m), defense(def), speed(spd),
         level(1), experience(0), experienceToNextLevel(100),
-        strength(str), dexterity(dex), intellect(intl), luck(lck), gold(10) { 
+        strength(str), dexterity(dex), intellect(intl), luck(lck), gold(10) {
     }
 };
 
@@ -130,8 +99,8 @@ struct MonsterState {
     int id;
     std::string type;
     std::string assetKey;
-    int posX = 0; 
-    int posY = 0; 
+    int posX = 0;
+    int posY = 0;
 };
 
 //mobs now also have defensde,speed, str, dex, int, and luck. think imma add spell casting eventually so theres harder fights
@@ -147,14 +116,14 @@ struct MonsterInstance {
     int dexterity;
     int intellect;
     int luck;
-    int lootTier;   
-	int dropChance; //imma make use of these as 0-100 representing percentage chance to drop loot from mobs i think
-
+    int lootTier;
+    int dropChance; //imma make use of these as 0-100 representing percentage chance to drop loot from mobs i think
+    std::vector<StatusEffect> activeStatusEffects;
     MonsterInstance(int id, std::string type, std::string assetKey, int h, int def, int spd, int str, int dex, int intl, int lck, int xp, int lTier, int dChance)
         : id(id), type(type), assetKey(assetKey), health(h), maxHealth(h),
         defense(def), speed(spd), xpReward(xp),
         strength(str), dexterity(dex), intellect(intl), luck(lck),
-        lootTier(lTier), dropChance(dChance) { 
+        lootTier(lTier), dropChance(dChance) {
     }
 };
 
@@ -170,6 +139,10 @@ struct Point {
     bool operator!=(const Point& other) const {
         return !(*this == other);
     }
+    // Added for use in std::map if needed
+    bool operator<(const Point& other) const {
+        return std::tie(x, y) < std::tie(other.x, other.y);
+    }
 };
 
 //we can add to this eventually
@@ -182,11 +155,23 @@ enum class InteractableType {
 
 //definin what we can interact with come back and look at this or ask me (McKay for help with creeating new ones)
 struct InteractableObject {
-    std::string id;         // Unique ID, e.g., "TOWN_MERCHANT"
+    std::string id;      // Unique ID, e.g., "TOWN_MERCHANT"
     InteractableType type;  // What kind of object this is
-    Point position;         // The (x, y) grid coordinate
-    std::string data;       // Flexible data (e.g., Dialogue ID, Shop ID, or Target Area Name)
+    Point position;      // The (x, y) grid coordinate
+    std::string data;      // Flexible data (e.g., Dialogue ID, Shop ID, or Target Area Name)
 };
+
+// --- NEW: Struct to hold all skill data from the 'skills' JSONB column ---
+struct PlayerSkills {
+    // For permanently learned spells
+    std::vector<std::string> spells;
+
+    // For "Woodcutting: 10", "Fishing: 5", etc.
+    std::map<std::string, int> life_skills;
+};
+// --- END NEW ---
+
+
 /**
  * @struct PlayerState
  * @brief The complete state for a single connected player.
@@ -206,21 +191,31 @@ struct PlayerState {
 
     // Stats and progression
     PlayerStats stats;
-    std::vector<std::string> spells;
+
+    // --- MODIFIED: Replaced old 'spells' vector ---
+    // Holds data loaded from the DB (learned spells, life skills)
+    PlayerSkills skills;
+    // Holds the *runtime* list of spells (learned + item-granted)
+    // This is populated by getCalculatedStats()
+    std::vector<std::string> temporary_spells_list;
+    // --- END MODIFIED ---
+
     int availableSkillPoints = 0;
     bool hasSpentInitialPoints = false;
     bool isFullyInitialized = false;
 
-
+    // --- These structs are now included from Items.hpp ---
     Inventory inventory;
     Equipment equipment;
-
+    // --- ---
 
     // Combat State
     bool isInCombat = false;
-    // We use boost::optional because a player may not be in combat
-    boost::optional<MonsterInstance> currentOpponent;
+	//using optional to cyheck if there's a current opponent
+    std::optional<MonsterInstance> currentOpponent;
     bool isDefending = false;
+
+    std::vector<StatusEffect> activeStatusEffects;
 
     // Movement State
     std::deque<Point> currentPath; // The A* path
