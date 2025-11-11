@@ -1,20 +1,24 @@
-// File: AsyncSession.cpp
+#include "AsyncSession.hpp"
+#include "GameData.hpp"
+#include <iostream>
+
+
+
 // Description: Implements the networking and session management logic for AsyncSession.
 // Handles connections, disconnections, async reads, writes, and timers.
-
-#include "AsyncSession.hpp"
-#include "GameData.hpp" // For global registries and ID counters
-#include <iostream>
 
 /**
  * @brief Constructs the session, moving the socket into the WebSocket stream.
  */
-AsyncSession::AsyncSession(tcp::socket socket)
+AsyncSession::AsyncSession(
+    tcp::socket socket,
+    std::shared_ptr<DatabaseManager> db_manager // <-- ADD THIS
+)
     : ws_(std::move(socket))
-    , move_timer_(ws_.get_executor()) // Initialize timer on the same strand
+    , move_timer_(ws_.get_executor())
     , client_address_(ws_.next_layer().remote_endpoint().address().to_string())
+    , db_manager_(db_manager) // <-- STORE THE MANAGER
 {
-    // Set timer to be "expired" so it doesn't run until we start it
     move_timer_.expires_at(std::chrono::steady_clock::time_point::max());
     std::cout << "--- New Client Connected from: " << client_address_ << " ---" << std::endl;
 }
@@ -188,7 +192,17 @@ void AsyncSession::on_session_end()
 {
     // Stop the movement timer
     move_timer_.cancel();
+    // Stop the movement timer
 
+    // --- ADD THIS BLOCK ---
+    // Save the character data immediately on disconnect
+    try {
+        save_character();
+    }
+    catch (std::exception const& e) {
+        std::cerr << "[" << client_address_ << "] CRITICAL: FAILED TO SAVE on disconnect: " << e.what() << "\n";
+    }
+    // --- END ADDED BLOCK ---
     // Remove player from the broadcast registry
     try {
         std::lock_guard<std::mutex> lock(g_player_registry_mutex);
@@ -209,4 +223,38 @@ void AsyncSession::on_session_end()
 
     std::cout << "[" << client_address_ << "] Client disconnected.\n";
     // The session (shared_ptr) will be destroyed when this handler finishes
+}
+/**
+ * @brief Sends a non-blocking shutdown warning to the client.
+ */
+void AsyncSession::send_shutdown_warning(int seconds)
+{
+    auto shared_msg = std::make_shared<std::string>(
+        "SERVER:SHUTDOWN:" + std::to_string(seconds)
+    );
+    // Post the write operation to the session's strand to ensure thread safety
+    net::dispatch(ws_.get_executor(),
+        [self = shared_from_this(), shared_msg]()
+        {
+            // We use async_write but don't need a handler
+            self->ws_.async_write(net::buffer(*shared_msg),
+                [](beast::error_code, std::size_t) {
+                    // Log error if you want, but don't stop the shutdown
+                });
+        });
+}
+
+/**
+ * @brief Posts a disconnect operation to the session's strand.
+ */
+void AsyncSession::disconnect()
+{
+    // Post the close operation to this session's strand
+    net::dispatch(ws_.get_executor(),
+        [self = shared_from_this()]()
+        {
+            beast::error_code ec;
+            // This will trigger on_session_end(), which runs save_character()
+            self->ws_.close(websocket::close_code::service_restart, ec);
+        });
 }

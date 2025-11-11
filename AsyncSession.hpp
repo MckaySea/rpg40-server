@@ -3,7 +3,8 @@
 // all asynchronous I/O operations and holding the player's state.
 #pragma once
 
-#include "game_session.hpp" // Includes PlayerState, Point, etc.
+#include "game_session.hpp" 
+#include "DatabaseManager.hpp"// Includes PlayerState, Point, etc.
 #include <boost/beast/websocket.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -11,7 +12,7 @@
 #include <memory>
 #include <string>
 #include <functional>
-
+#include <atomic>
 namespace beast = boost::beast;
 namespace websocket = beast::websocket;
 namespace net = boost::asio;
@@ -21,41 +22,51 @@ using tcp = net::ip::tcp;
 class AsyncSession : public std::enable_shared_from_this<AsyncSession>
 {
     // --- Networking Members ---
-    websocket::stream<tcp::socket> ws_; // The WebSocket stream
+    websocket::stream<tcp::socket> ws_;// The WebSocket stream
     net::steady_timer move_timer_; // Timer for player movement ticks
     beast::flat_buffer buffer_; // Buffer for reading messages
     std::string client_address_; // Client's IP for logging
-
-   
+    std::shared_ptr<DatabaseManager> db_manager_;
+    std::atomic<bool> is_authenticated_ = false;
+    std::atomic<int> account_id_ = 0;
     PlayerState player_; // This session's unique player state
     PlayerBroadcastData broadcast_data_; // Public data for other players
 
 public:
     // Take ownership of the socket
-    explicit AsyncSession(tcp::socket socket);
+    explicit AsyncSession(
+        tcp::socket socket,
+        std::shared_ptr<DatabaseManager> db_manager
+    );
 
     // Destructor for proper cleanup
-    ~AsyncSession();
+    ~AsyncSession() noexcept;
 
     // Start the session's asynchronous operations
     void run();
-
-   
+    void save_character();
+    void send_shutdown_warning(int seconds); // <-- ADD THIS
+    void disconnect();
     // These allow the game logic functions to interact with the session
     PlayerState& getPlayerState() { return player_; }
     PlayerBroadcastData& getBroadcastData() { return broadcast_data_; }
     websocket::stream<tcp::socket>& getWebSocket() { return ws_; }
-
-private:
+    void handle_register(const std::string& credentials);
+    void handle_login(const std::string& credentials);
     
-    void on_run(); 
-    void do_read(); 
-    void on_read(beast::error_code ec, std::size_t bytes_transferred); // Read complete
-    void on_write(beast::error_code ec, std::size_t bytes_transferred); // Write complete
-    void do_move_tick(beast::error_code ec); 
+private:
+    void load_character(int accountId);
+    void on_run();
+    void do_read();
+    void on_read(beast::error_code ec, std::size_t bytes_transferred);
+    void on_write(beast::error_code ec, std::size_t bytes_transferred);
+    void do_move_tick(beast::error_code ec);
     void on_session_end();
     void useItem(uint64_t itemInstanceId);
     void dropItem(uint64_t itemInstanceId, int quantity);
+
+    // --- ADD THESE FOUR LINES ---
+
     /**
      * @brief Processes a single movement tick.
      * Called by the move_timer_ (do_move_tick).
@@ -103,6 +114,7 @@ private:
     void send_area_map_data(const std::string& areaName);
 
     
+
 
      //gets the plyrs final stats with equips and all
     PlayerStats getCalculatedStats();
