@@ -110,6 +110,10 @@ SWAMP:
 	mini-boss, fight them and defeat them. By defeating either or both of
 	these enemies should grant the player access to a new part of the map.
 
+	Quest: Get the quest from the witch to get the ingredients for the potion
+	(i.e. slay them from the mobs and kill the rogue to get them all).
+	Assemble them for the witch to gain a reward.
+
 	Design: for the swamp, there should be a lot more water tiles on the map,
 	but instead of a river or a lake, they should be walkable and kinda
 	stimulate a bunch of puddles that are common with a very muddy place. In
@@ -125,10 +129,25 @@ DESERT:
 
 	General: 
 
+	Quest: Kill ten cacti.
 
+VOLCANO:
 
+	General: The hardest map (with mobs) in the game. 
 
+	Quest: To slay the dragon
 
+RUINS:
+
+	General: Very similar to the town layout: all the houses are in their
+	general spots with a path leading from the bottom of the map. The houses
+	are disheveled and some of them are destroyed. The trees are dead and
+	there is no river or windmill. The grass terrain is more grayish-green
+	than a lively green. 
+
+	Quest: Get the quest from the fallen angel 
+
+	
 
 
 

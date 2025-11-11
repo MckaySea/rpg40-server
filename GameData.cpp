@@ -403,15 +403,15 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 	{
 		"MAYOR_WELCOME_DIALOGUE",
 		{
-			{"Mayor",  "Welcome to our town, traveler. We don’t get many heroes these days.", "MAYOR"},
-			{"Mayor",  "If you’re looking for work, the guards at the gates always need help.", "MAYOR"},
+			{"Mayor",  "Welcome to our town, traveler. We donâ€™t get many heroes these days.", "MAYOR"},
+			{"Mayor",  "If youâ€™re looking for work, the guards at the gates always need help.", "MAYOR"},
 			{"Mayor",  "Stay within the walls at night. The wilderness is unforgiving.",       "MAYOR"}
 		}
 	},
 	{
 		"OLD_MAN_LORE_DIALOGUE",
 		{
-			{"Old Man", "Ahh… another soul chasing glory. I’ve seen many like you.", "OLD_MAN"},
+			{"Old Man", "Ahhâ€¦ another soul chasing glory. Iâ€™ve seen many like you.", "OLD_MAN"},
 			{"Old Man", "The Caves to the north hide things better left undisturbed.", "OLD_MAN"},
 			{"Old Man", "If you insist on going, at least bring a potion or two.", "OLD_MAN"}
 		}
@@ -419,8 +419,8 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 	{
 		"HUNTER_FOREST_DIALOGUE",
 		{
-			{"Hunter", "Keep your eyes open. The forest is noisy when it’s safe…", "HUNTER"},
-			{"Hunter", "When it goes quiet? That’s when something is hunting you.", "HUNTER"}
+			{"Hunter", "Keep your eyes open. The forest is noisy when itâ€™s safeâ€¦", "HUNTER"},
+			{"Hunter", "When it goes quiet? Thatâ€™s when something is hunting you.", "HUNTER"}
 		}
 	},
 	{
@@ -450,7 +450,7 @@ void initialize_skill_definitions() {
 	// WIZARD SPELLS (show up under "Spells" tab client-side)
 	// -------------------------------------------------
 
-	// Fireball – classic INT-based nuke
+	// Fireball â€“ classic INT-based nuke
 	g_skill_defs["Fireball"] = SkillDefinition{
 		"Fireball",
 		SkillClass::WIZARD,         // requiredClass
@@ -473,7 +473,7 @@ void initialize_skill_definitions() {
 		true                        // autoGranted (new & existing wizards get it)
 	};
 
-	// Lightning – slightly lower INT scaling but can be thought of as more "bursty"
+	// Lightning â€“ slightly lower INT scaling but can be thought of as more "bursty"
 	g_skill_defs["Lightning"] = SkillDefinition{
 		"Lightning",
 		SkillClass::WIZARD,
@@ -494,7 +494,7 @@ void initialize_skill_definitions() {
 		true                        // autoGranted to wizards
 	};
 
-	// Freeze – cheaper spell, lower damage (you can later give it a slow debuff if you add such a status)
+	// Freeze â€“ cheaper spell, lower damage (you can later give it a slow debuff if you add such a status)
 	g_skill_defs["Freeze"] = SkillDefinition{
 		"Freeze",
 		SkillClass::WIZARD,
@@ -515,7 +515,7 @@ void initialize_skill_definitions() {
 		true                        // autoGranted to wizards
 	};
 
-	// Ignite – INT-based spell + Burn DoT
+	// Ignite â€“ INT-based spell + Burn DoT
 	g_skill_defs["Ignite"] = SkillDefinition{
 		"Ignite",
 		SkillClass::WIZARD,
@@ -540,7 +540,7 @@ void initialize_skill_definitions() {
 	// ROGUE ABILITIES (show up under "Skills" tab client-side)
 	// -------------------------------------------------
 
-	// BloodStrike – DEX-heavy + Bleed
+	// BloodStrike â€“ DEX-heavy + Bleed
 	g_skill_defs["BloodStrike"] = SkillDefinition{
 		"BloodStrike",
 		SkillClass::ROGUE,
@@ -565,7 +565,7 @@ void initialize_skill_definitions() {
 	// WARRIOR ABILITIES
 	// -------------------------------------------------
 
-	// ShieldWall – self DEF_UP buff
+	// ShieldWall â€“ self DEF_UP buff
 	g_skill_defs["ShieldWall"] = SkillDefinition{
 		"ShieldWall",
 		SkillClass::WARRIOR,
@@ -856,7 +856,7 @@ const std::vector<std::string> MONSTER_KEYS = {
 	"MINOTAUR", "NECROMANCER", "WYVERN", "Hellhound Alpha", "Frost Giant"," Blood Knight","Void Stalker","Storm Titan"
 };
 void initialize_suffix_pools() {
-	// TIER 1–2: Common / Uncommon Stat Boosts
+	// TIER 1â€“2: Common / Uncommon Stat Boosts
 	g_effect_suffix_pools["STRENGTH_EFFECT"] = {
 		"of Power", "of the Bear", "of Might", "of Brawn", "of Titans", "of Crushing Force"
 	};
@@ -911,7 +911,7 @@ void initialize_suffix_pools() {
 		"of Corrosion", "of the Ooze", "of Decay", "of Dissolution", "of Acid", "of the Slime"
 	};
 	g_effect_suffix_pools["BLOOM_EFFECT"] = {
-		"of Growth", "of the Grove", "of Nature’s Touch", "of Blossoms", "of Renewal", "of Blooming Life"
+		"of Growth", "of the Grove", "of Natureâ€™s Touch", "of Blossoms", "of Renewal", "of Blooming Life"
 	};
 
 	// Tier 3: Rare / Curses / Utility Spells
@@ -937,7 +937,7 @@ void initialize_suffix_pools() {
 		"of Shadows", "of Invisibility", "of the Nightblade", "of Cloaked Veil", "of Stealth", "of the Phantom"
 	};
 
-	// Tier 4: Epic – Strong Stats & Spells
+	// Tier 4: Epic â€“ Strong Stats & Spells
 	g_effect_suffix_pools["ORDER_EFFECT"] = {
 		"of Order", "of Balance", "of Harmony", "of Equilibrium", "of Unity", "of the Trinity"
 	};
@@ -951,7 +951,7 @@ void initialize_suffix_pools() {
 		"of Pestilence", "of the Plague", "of Blight", "of Corruption", "of Disease", "of Rot"
 	};
 
-	// Tier 5: Legendary – Ultimate Power
+	// Tier 5: Legendary â€“ Ultimate Power
 	g_effect_suffix_pools["CELESTIAL_EFFECT"] = {
 		"of the Heavens", "of Celestial Light", "of the Cosmos", "of the Archon", "of Radiance", "of Divinity"
 	};
@@ -2995,7 +2995,7 @@ std::optional<MonsterInstance> create_monster(int id, const std::string& type) {
 
 	// If SLIME template somehow missing, pick first valid key
 	if (!MONSTER_KEYS.empty()) {
-		std::cerr << "WARNING: 'SLIME' missing — using first valid template '"
+		std::cerr << "WARNING: 'SLIME' missing â€” using first valid template '"
 			<< MONSTER_KEYS.front() << "'." << std::endl;
 		return make_monster(MONSTER_KEYS.front());
 	}
