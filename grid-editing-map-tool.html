@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Grid Collision Editor with Coordinates</title>
+    <style>
+      body {
+        background: #111;
+        color: #eee;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 20px;
+      }
+      #grid {
+        border: 1px solid #555;
+        image-rendering: pixelated;
+        cursor: pointer;
+      }
+      #output {
+        width: 90vw;
+        max-width: 900px;
+        height: 250px;
+        background: #000;
+        color: #0f0;
+        border: 1px solid #555;
+        padding: 8px;
+        font-family: monospace;
+        font-size: 12px;
+        white-space: pre;
+        overflow: auto;
+      }
+      button {
+        padding: 8px 14px;
+        background: #333;
+        color: #eee;
+        border: 1px solid #888;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #444;
+      }
+      #info {
+        font-family: monospace;
+        font-size: 14px;
+        margin-top: 4px;
+        color: #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Collision Grid Editor (40 x 22)</h2>
+    <canvas id="grid"></canvas>
+    <div id="info">Hover: (-,-)</div>
+
+    <div style="display: flex; gap: 8px; margin-top: 8px">
+      <button id="clear">Clear (all 0)</button>
+      <button id="fill">Fill (all 1)</button>
+      <button id="copy">Copy C++ Grid</button>
+    </div>
+    <textarea id="output" readonly></textarea>
+
+    <script>
+      const COLS = 40;
+      const ROWS = 22;
+      const CELL_SIZE = 24; // bigger cells for easier reading
+
+      const canvas = document.getElementById("grid");
+      const ctx = canvas.getContext("2d");
+      const output = document.getElementById("output");
+      const info = document.getElementById("info");
+
+      // Set canvas size based on grid
+      canvas.width = COLS * CELL_SIZE;
+      canvas.height = ROWS * CELL_SIZE;
+
+      let grid = [];
+
+      function initGrid(value = 0) {
+        grid = [];
+        for (let y = 0; y < ROWS; y++) {
+          const row = [];
+          for (let x = 0; x < COLS; x++) {
+            row.push(value);
+          }
+          grid.push(row);
+        }
+        drawGrid();
+        generateCpp();
+      }
+
+      function drawGrid() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "10px monospace"; // larger text
+
+        for (let y = 0; y < ROWS; y++) {
+          for (let x = 0; x < COLS; x++) {
+            const val = grid[y][x];
+
+            // Background color: high contrast
+            ctx.fillStyle = val === 1 ? "#222" : "#f8f8f8";
+            ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+
+            // Grid border
+            ctx.strokeStyle = "#888";
+            ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+
+            // Text color: bright on dark, dark on light
+            ctx.fillStyle = val === 1 ? "#ffeb3b" : "#000000";
+            ctx.fillText(
+              `${x},${y}`,
+              x * CELL_SIZE + CELL_SIZE / 2,
+              y * CELL_SIZE + CELL_SIZE / 2
+            );
+          }
+        }
+      }
+
+      function toggleCell(x, y) {
+        if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return;
+        grid[y][x] = grid[y][x] === 0 ? 1 : 0;
+        drawGrid();
+        generateCpp();
+      }
+
+      canvas.addEventListener("click", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const cx = (e.clientX - rect.left) * scaleX;
+        const cy = (e.clientY - rect.top) * scaleY;
+        const gridX = Math.floor(cx / CELL_SIZE);
+        const gridY = Math.floor(cy / CELL_SIZE);
+        toggleCell(gridX, gridY);
+      });
+
+      // Show coordinates and value on hover
+      canvas.addEventListener("mousemove", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const cx = (e.clientX - rect.left) * scaleX;
+        const cy = (e.clientY - rect.top) * scaleY;
+        const gridX = Math.floor(cx / CELL_SIZE);
+        const gridY = Math.floor(cy / CELL_SIZE);
+
+        if (gridX >= 0 && gridX < COLS && gridY >= 0 && gridY < ROWS) {
+          const val = grid[gridY][gridX];
+          info.textContent = `Hover: (${gridX}, ${gridY}) = ${val}`;
+        } else {
+          info.textContent = "Hover: (-,-)";
+        }
+      });
+
+      function generateCpp() {
+        let lines = [];
+        lines.push("const std::vector<std::vector<int>> MY_GRID = {");
+        lines.push(
+          "    //   " + Array.from({ length: COLS }, (_, i) => i % 10).join(" ")
+        );
+        for (let y = 0; y < ROWS; y++) {
+          const row = grid[y].join(",");
+          const comment = ` // ${y}`;
+          lines.push("    {" + row + "}," + comment);
+        }
+        lines.push("};");
+        output.value = lines.join("\n");
+      }
+
+      document.getElementById("clear").addEventListener("click", () => {
+        initGrid(0);
+      });
+
+      document.getElementById("fill").addEventListener("click", () => {
+        initGrid(1);
+      });
+
+      document.getElementById("copy").addEventListener("click", () => {
+        output.select();
+        document.execCommand("copy");
+      });
+
+      initGrid(0);
+    </script>
+  </body>
+</html>
