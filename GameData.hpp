@@ -118,7 +118,14 @@ struct SkillDefinition {
 	bool isMagic = false;
 	bool autoGranted = false;
 };
+struct SpawnPoint
+{
+	int x;
+	int y;
+};
 
+// Declaration only – no initializer here
+const std::unordered_map<std::string, SpawnPoint>& get_area_spawns();
 // Global registry of all skills by name (e.g. "Ignite", "BloodStrike")
 extern std::unordered_map<std::string, SkillDefinition> g_skill_defs;
 

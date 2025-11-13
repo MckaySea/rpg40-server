@@ -1924,6 +1924,15 @@ void AsyncSession::handle_message(const string& message)
 		// --- Update player + broadcast data ---
 		player.currentArea = target_area;
 		broadcast_data.currentArea = target_area;
+		const auto& spawns = get_area_spawns();
+
+		auto spawnIt = spawns.find(target_area);
+		if (spawnIt != spawns.end())
+		{
+			player.posX = spawnIt->second.x;
+			player.posY = spawnIt->second.y;
+		}
+
 
 		{
 			std::lock_guard<std::mutex> lock(g_player_registry_mutex);

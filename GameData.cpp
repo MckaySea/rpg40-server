@@ -13,7 +13,7 @@
 #include <vector>
 #include <string>
 #include "AreaData.hpp"
-
+#include <unordered_map>
 // All global variables are defined here, at the top, so all functions in this file can see them.
 
 const std::vector<std::string> ALL_AREAS = {
@@ -788,7 +788,27 @@ void initialize_skill_definitions() {
 		true                        // autoGranted for warriors
 	};
 }
-
+const std::unordered_map<std::string, SpawnPoint>& get_area_spawns()
+{
+	static const std::unordered_map<std::string, SpawnPoint> area_spawns{
+{"TOWN",         {18, 12}},
+{"FOREST",       {17, 2}},
+{"VOLCANO",      {4, 12}},
+{"OVERWORLD",    {16, 19}},
+{"CAVES",        {0, 0}},
+{"RUINS",        {9, 17}},
+{"SWAMP",        {25, 19}},
+{"LAKE",         {12, 19}},
+{"CASTLEINSIDE", {18, 19}},
+{"MOUNTAINS",    {0, 0}},
+{"DESERT",       {9, 16}},
+{"TOWN3",        {0, 0}},
+{"FOREST2",      {0, 0}},
+{"FOREST3",      {0, 0}},
+{"MARKET",       {0, 0}}
+	};
+	return area_spawns;
+}
 void initializeAreas() {
 	std::cout << "[Init] Starting scalable area initialization..." << std::endl;
 
@@ -820,6 +840,8 @@ void initializeAreas() {
 
 		{"MARKET", "/market.png", &MARKET_GRID}
 	};
+
+
 
 	//  Step 2: Populate base data
 	for (const auto& base : areaTemplates) {
