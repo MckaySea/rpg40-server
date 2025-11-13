@@ -44,9 +44,9 @@ extern const std::map<std::string, std::vector<InteractableObject>> g_interactab
 //dialogue stuff
 
 struct DialogueLine {
-    std::string speaker;
-    std::string text;
-    std::string portraitKey; // e.g. "MAYOR", "HUNTER", maps to a PNG on client
+	std::string speaker;
+	std::string text;
+	std::string portraitKey; // e.g. "MAYOR", "HUNTER", maps to a PNG on client
 };
 
 extern const std::map<std::string, std::vector<DialogueLine>> g_dialogues;
@@ -69,45 +69,53 @@ extern std::mutex g_session_registry_mutex;
 // This struct links a cosmetic suffix pool (e.g., "FIRE_EFFECT")
 // to a tangible gameplay mechanic (e.g., +5 strength) and a rarity.
 struct RandomEffectDefinition {
-    std::string effect_key; // Links to a suffix pool, e.g., "FIRE_EFFECT"
-    ItemEffect gameplay_effect; // The actual effect, e.g., {"GRANT_STAT", {{"stat", "strength"}, {"value", "5"}}}
-    int rarity_weight; // How common? (Higher = more common, e.g., 100)
-    int power_level;   // Tier of the effect (1-5)
+	std::string effect_key; // Links to a suffix pool, e.g., "FIRE_EFFECT"
+	ItemEffect gameplay_effect; // The actual effect, e.g., {"GRANT_STAT", {{"stat", "strength"}, {"value", "5"}}}
+	int rarity_weight; // How common? (Higher = more common, e.g., 100)
+	int power_level;   // Tier of the effect (1-5)
 };
 
 enum class SkillTarget {
-    SELF,
-    ENEMY
+	SELF,
+	ENEMY
 };
 
 enum class SkillClass {
-    ANY,
-    WARRIOR,
-    ROGUE,
-    WIZARD
+	ANY,
+	WARRIOR,
+	ROGUE,
+	WIZARD
+};
+
+// NEW: explicitly distinguishes between spell-like and physical abilities
+enum class SkillType {
+	SPELL,
+	ABILITY
 };
 
 struct SkillDefinition {
-    std::string name;
-    SkillClass requiredClass;
-    int manaCost;
-    int cooldownTurns;
-    SkillTarget target;
+	std::string name;
+	SkillClass requiredClass = SkillClass::ANY;
+	SkillType type = SkillType::ABILITY; // default to ABILITY unless defined otherwise
+	int manaCost = 0;
+	int cooldownTurns = 0;
+	SkillTarget target = SkillTarget::ENEMY;
 
-    // Stat scaling for this skill
-    float strScale;
-    float dexScale;
-    float intScale;
-    float flatDamage;
+	// Stat scaling
+	float strScale = 0.0f;
+	float dexScale = 0.0f;
+	float intScale = 0.0f;
+	float flatDamage = 0.0f;
 
-    // Status effect applied by this skill (uses StatusType, as requested)
-    bool      appliesStatus = false;
-    StatusType statusType = StatusType::NONE;
-    int       statusMagnitude = 0; // e.g. damage per turn or buff amount
-    int       statusDuration = 0; // in turns
+	// Status effect
+	bool appliesStatus = false;
+	StatusType statusType = StatusType::NONE;
+	int statusMagnitude = 0;
+	int statusDuration = 0;
 
-    bool isDefensive = false; // buffs / stances
-    bool isMagic = false; // whether to use magic-style mitigation later
+	bool isDefensive = false;
+	bool isMagic = false;
+	bool autoGranted = false;
 };
 
 // Global registry of all skills by name (e.g. "Ignite", "BloodStrike")

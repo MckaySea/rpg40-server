@@ -18,11 +18,13 @@ I'll be updating this section as we progress and assigning specific tasks.
 
 | Team Member | Task Description | Status |
 | :--- | :--- | :--- |
-| **Yousaf** | **Dialogue:** Write out what NPCs are going to say and label who is saying it. Determine which NPCs will give quests. Also, please name the NPCs as you wish. | To Do |
-| **Ali** | **Visuals & Images:** Find and prepare visuals/images for NPCs, monsters, and objects. I will post a list of required assets for you to find soon. | To Do |
-| **McKay** | **Feature development:** Change spawn rates on some maps, so you arent trapped behind blocked areas and cant move to the desired area that was intended | To Do |
+| **Yousaf** | **Dialogue:** Write out what NPCs are going to say and label who is saying it. Determine which NPCs will give quests. Also, please name the NPCs as you wish. | Close to finished |
+| **Ali** | **Visuals & Images:** Find and prepare visuals/images for NPCs, monsters, and objects. I will post a list of required assets for you to find soon. | HALF DONE |
+| **McKay** | **Feature development:** Change spawn rates on some maps, so you arent trapped behind blocked areas and cant move to the desired area that was intended | HALF DONE |
 | **McKay** | **Feature development:** Quests now that interaction system is done, with a dialogue system| To Do |
-| **McKay** | **Feature development:** Skills for melee players like wizards have spells. | In the air |
+| **McKay** | **Feature development:** Skills for melee players like wizards have spells. | DONE |
+| **Nicola** | **Feature development:** Use map tool to update map obstacles for the grids | In progress |
+
 -----
 
 ## ** Ali's Monster Asset Templates**
