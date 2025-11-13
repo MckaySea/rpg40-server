@@ -33,7 +33,8 @@ extern const std::vector<std::vector<int>> FOREST_GRID;
 extern const std::vector<std::vector<int>> DESERT_GRID;
 extern const std::vector<std::vector<int>> CAVES_GRID;
 extern const std::vector<std::vector<int>> VOLCANO_GRID;
-
+extern const std::vector<std::vector<int>> LAKE_GRID;
+extern const std::vector<std::vector<int>> CASTLEINSIDE_GRID;
 //this is our global grid registry, we'll keep all grids in hur goin forward :D
 extern const std::map<std::string, std::vector<std::vector<int>>> g_area_grids;
 extern std::unordered_map<std::string, AreaData> g_areas;

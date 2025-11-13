@@ -1843,7 +1843,7 @@ void AsyncSession::handle_message(const string& message)
 
 				ws.write(net::buffer("SERVER:STAT_UPGRADED:" + stat_name));
 				send_player_stats();
-				if (player.availableSkillPoints == 0 && player.currentClass != PlayerClass::UNSELECTED) {
+				if (player.availableSkillPoints == 0 && !player.isFullyInitialized) {
 					player.isFullyInitialized = true;
 					player.hasSpentInitialPoints = true;
 					ws.write(net::buffer("SERVER:CHARACTER_COMPLETE:Character creation complete! You can now explore."));
@@ -1933,10 +1933,12 @@ void AsyncSession::handle_message(const string& message)
 		// --- Handle special zones (Town heals & clears combat) ---
 		if (target_area == "TOWN")
 		{
+			PlayerStats finalStats = getCalculatedStats(); // Calculate maxes WITH equipment
 			player.isInCombat = false;
 			player.currentMonsters.clear();
-			player.stats.health = player.stats.maxHealth;
-			player.stats.mana = player.stats.maxMana;
+			// Now, heal to the newly calculated maxes
+			player.stats.health = finalStats.maxHealth;
+			player.stats.mana = finalStats.maxMana;
 		}
 
 		// --- Notify client of area change ---
@@ -2242,13 +2244,11 @@ void AsyncSession::handle_message(const string& message)
 							player.currentMonsters.clear();
 							player.stats.health = player.stats.maxHealth / 2;
 							player.stats.mana = player.stats.maxMana;
-							player.posX = 5;
-							player.posY = 5;
+							player.posX = 26;
+							player.posY = 12;
 							player.currentPath.clear();
 
 							broadcast_data.currentArea = "TOWN";
-							broadcast_data.posX = player.posX;
-							broadcast_data.posY = player.posY;
 							{
 								std::lock_guard<std::mutex> lock(g_player_registry_mutex);
 								g_player_registry[player.userId] = broadcast_data;
@@ -2258,6 +2258,8 @@ void AsyncSession::handle_message(const string& message)
 							send_area_map_data(player.currentArea);
 							send_available_areas();
 							send_player_stats();
+							broadcast_data.posX = player.posX;
+							broadcast_data.posY = player.posY;
 						}
 						else {
 							ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
@@ -2794,7 +2796,7 @@ void AsyncSession::handle_message(const string& message)
 				player.isInCombat = false; player.currentOpponent.reset();
 				player.currentArea = "TOWN"; player.currentMonsters.clear();
 				player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
-				player.posX = 5; player.posY = 5; player.currentPath.clear();
+				player.posX = 26; player.posY = 12; player.currentPath.clear();
 				broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
 				{ lock_guard<mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
 
