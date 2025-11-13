@@ -659,6 +659,7 @@ const std::vector<std::vector<int>> MOUNTAINS3_GRID = {
 
 const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 	{
+//TOWN DIALOGUE
 		"MAYOR_WELCOME_DIALOGUE",
 		{
 			{"Mayor",  "Welcome to our town, traveler. We don’t get many heroes these days.", "MAYOR"},
@@ -674,14 +675,25 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 			{"Old Man", "If you insist on going, at least bring a potion or two.", "OLD_MAN"}
 		}
 	},
-	{
-		"HUNTER_FOREST_DIALOGUE",
-		{
-			{"Hunter", "Keep your eyes open. The forest is noisy when it’s safe…", "HUNTER"},
-			{"Hunter", "When it goes quiet? That’s when something is hunting you.", "HUNTER"}
+	{	
+	"GUARD_CAPTAIN_DIALOGUE",
+	 {
+			{"Captain", "Another hero has come, prove to me that your better than the rest", "CAPTAIN"},
+			{"Captain", "Our lands have been plundered and the soldiers are growing weary. This war has decimated us ", "CAPTAIN"},
+			{"Captain", "Help us in this hellish war and you will be rewarded beyond your wildest dreams.", "CAPTAIN"}
 		}
-	},
+	 },
+	 {
+       "ORACLE_PROPHECY_DIALOGUE",
+     {
+			{ "Oracle", "Welcome Starborn, the one who was prophesized to be the slayer of the wicked Architect", "Oracle" },
+			{ "Oracle", "The Architect ist he ruler of the land, he resides over us by controling our fate. To him, we are nothing but cattle in a pen", "Oracle" },
+			{ "Oracle", "You must accomplish the prophecy that foretold your fate, only then can you free these lands from madness", "Oracle" },
+			{ "Oracle", "The lands are swallowed with madness, the kingdom kneels to the tyrant, the halls echo with saddness, only the Starborn will remain defiant, its up to them to dig this land up from its grave", "Oracle" }
+        }
+    },
 
+//MOVE LATER
 	{
 		"HERMIT_CAVE_DIALOGUE",
 		{
@@ -703,7 +715,64 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 			{"Archaeologist", "If you find any strange relics, bring them to me.", "ARCHAEOLOGIST"}
 		}
 	},
-
+//OVERWORLD DIALOGUE
+	{
+     "ANGEL_OVERWORLD_GUIDE",
+    {
+			{ "Heavenly Guide", "Hello Starborn, you can acess all parts of the map here. Look for the glowing green squares", "HEAVENLY GUIDE"  },
+			{ "Heavenly Guide", "Start your journey in the Forest, proceed to the swamps, journey through Vorath's desert and Mountains. Explore the Caves and dive into the Volacno", "HEAVENLY GUIDE"  },
+			{ "Heavenly Guide", "Overcoming adversary means you start small. Gain confidence by defeating weaker monsters and then chase your destiny Starborn", "HEAVENLY GUIDE" }
+        }
+    },
+	{
+       "FOREST_GUARDIAN_DIALOGUE",
+    {
+			{ "Forest Guardian" "Hello Starborn, you may start your journey in the Forest, be wary of danger", "FOREST GUARDIAN"  },
+			{ "Forest Guardian" "Good luck, you must overcome the monsters in this area and finish all quests before you proceed to the next part of the map", "FOREST GUARDIAN" }
+        }
+    }, 
+//FOREST DIALOGUE
+	{ 
+	   "HUNTER_FOREST_DIALOGUE",
+        {
+            {"Hunter", "Keep your eyes open. The forest is noisy when it’s safe…", "HUNTER"},
+            {"Hunter", "When it goes quiet? That’s when something is hunting you.", "HUNTER"},
+            {"Hunter", "Holly hell, what are those things?!", "HUNTER"}, //MAIN QUEST: GOBLIN SLAYER: KILL 5 GOBLINS
+			{"Hunter", "Thanks, those goblins come in herds. Why is that tree moving?", "HUNTER" } //FOREST BOSS QUEST: KILL THE TREEANT  
+        }
+    },
+	{
+	   "EXPLORER_FOREST_DIALOGUE",
+        {
+            {"Explorer", "Man this place sure is creepy huh?", "HUNTER"},
+            {"Explorer", "Tell ya what, I've been trying to deal with some monsters around here. Could use the help", "EXPLORER"}, //SIDE QUEST (FOREST): FEELING BLOBBY: KILL 5 SLIMES
+            {"Explorer", "Woah your really strong. I also need help dealing with some spiders. They freak me out", "EXPLORER"}, //SIDE QUEST (FOREST): ARACHNAPHOBIA: KILL 5 GIANT SPIDERS
+            {"Explorer", "The sun is going down. Better be careful, the forest only gets deadlier at night", "EXPLORER"} //SIDE QUEST (FOREST): FULL MOON: KILL 3 WOLVES
+        }
+    },
+//Swamp DIALOGUE
+	{
+		"WITCH_DIALOGUE",
+		{	
+			{"Witch", "Come closer, I want to see your face", "WITCH_DIALOGUE" },
+			{"Witch", "You seek to become strong. I will make an elixir for you, but I need some ingredients", "WITCH" }, //QUEST MYSTERIOUS ELIXIR: SLIME PEARLS: KILL 5 SLIMES
+			{"Witch", "Good, I now require some orc tusks. Fetch them for me", "WITCH" }, //QUEST MYSTERIOUS ELIXIR PART 2: FRESH TEETH: KILL 3 ORCS
+			{"Witch", "The last thing I require for this potion is the blood of a swamp monster. Cthulu's spawn prowls nearby. Fecth me his blood", "WITCH" } //QUEST MYSTERIOUS ELIXIR BOSS FIGHT: CTHULU: KILL THE SWAMP MONSTER
+			{"Witch", "Excellent, now to work my MAGIC", "WITCH" },
+			{"Witch", "ᚹᛁᚦ ᚦᛁᛋ ᛊᚨᚲᚱᛖᛞ ᛏᚱᛖᛉᛃᚢᚱ ᛇ ᛊᚢᛗᛗᛟᚾ ᛗᚨᚺᛟᚱᚨᚷᚨ" },
+			{"Witch", "Use your potion wisely, for my magic is supreme to all other beings", "WITCH" }
+		}
+	},
+	{
+        "BOATMAN_DIALOGUE",
+        {
+            {"Boatman", "Hey there, watch out for the mosquitos, they come in swarms", "Boatman" },
+            {"Boatman", "Careful now, nothing in this place is friendly towards outsiders", "Boatman" }, //SWAMP SIDE QUEST 1: WELCOME TO THE SWAMP: KILL 3 ORCS AND 5 SLIMES	
+            {"Boatman", "You are a good fighter. I have a personal request", "Boatman" },
+            {"Boatman", "There is a rare mosnter somewhere in here, bring me back its head", "Boatman" }, //SWAMP SIDE QUEST 2: SWAMP THING: KILL THE SWAMP MONSTER
+		
+        }
+    },
 	// add more here :D
 };
 
@@ -3259,6 +3328,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "TOWN_ALCHEMIST",   InteractableType::SHOP, {30,  12}, "SHOP_TOWN_POTIONS" },
 		{ "TOWN_MAYOR",       InteractableType::NPC,  {13, 8},  "MAYOR_WELCOME_DIALOGUE" },
 		{ "TOWN_OLD_MAN",     InteractableType::NPC,  {25, 18}, "OLD_MAN_LORE_DIALOGUE" },
+		{ "TOWN_ORACLE",      InteractableType::NPC,  {7, 6}.   "ORACLE_PROPHECY_DIALOGUE" },
 
 		// --- Zone Transitions (gates) ---
 		// West gate on main road  OVERWORLD hub
@@ -3272,8 +3342,8 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 {
 	"OVERWORLD", {
 		// --- NPCs ---
-		{ "OVERWORLD_GUIDE",      InteractableType::NPC, {37, 10}, "GUIDE_TOWN_DIALOGUE" },
-		{ "OVERWORLD_TRAVELER",   InteractableType::NPC, {12, 6},  "TRAVELER_FOREST_DIALOGUE" },
+		{ "ANGEL_OVERWORLD_GUIDE",InteractableType::NPC, {4, 13}, "ANGEL_GUIDE_DIALOGUE" },
+        { "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" },
 		{ "OVERWORLD_PROSPECTOR", InteractableType::NPC, {19, 2},  "PROSPECTOR_MTN_DIALOGUE" },
 		{ "OVERWORLD_NOMAD",      InteractableType::NPC, {34, 20}, "NOMAD_DESERT_DIALOGUE" },
 
@@ -3303,7 +3373,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 {
 	"FOREST", {
 		{ "FOREST_HUNTER", InteractableType::NPC, {5, 15}, "HUNTER_FOREST_DIALOGUE" },
-
+		{ "FOREST_EXPLORER", InteractableType::NPC, {14, 19}, "EXPLORER_FOREST_DIALOGUE" },
 		// --- Zone Transitions ---
 		{ "FOREST_TO_TOWN",     InteractableType::ZONE_TRANSITION, {0,  10}, "TOWN" },
 		{ "FOREST_TO_FOREST2",  InteractableType::ZONE_TRANSITION, {39, 15}, "FOREST2" },
@@ -3352,6 +3422,8 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 },
 {
 	"SWAMP", {
+		   // --- NPC ---
+        {"WITCH_SWAMP_DIALOGUE", InteractableType::NPC, {12, 10}, "WITCH_DIALOGUE" },
 		// --- Zone Transitions ---
 		{ "SWAMP_TO_FOREST2", InteractableType::ZONE_TRANSITION, {0, 10}, "FOREST2" }
 	}
