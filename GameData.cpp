@@ -652,7 +652,7 @@ void initialize_skill_definitions() {
 	// WIZARD SPELLS (show up under "Spells" tab client-side)
 	// -------------------------------------------------
 
-	// Fireball – classic INT-based nuke
+	// Fireball – classic INT-based nuke + light Burn DoT
 	g_skill_defs["Fireball"] = SkillDefinition{
 		"Fireball",
 		SkillClass::WIZARD,         // requiredClass
@@ -662,20 +662,20 @@ void initialize_skill_definitions() {
 		SkillTarget::ENEMY,         // target
 
 		// STR, DEX, INT, flatDamage
-		0.0f, 0.0f, 1.3f, 0.0f,
+		0.0f, 0.0f, 1.3f, 5.0f,
 
 		// status
-		false,                      // appliesStatus
-		StatusType::NONE,
-		0,
-		0,
+		true,                       // appliesStatus (now true)
+		StatusType::BURN,           // burn over time
+		3,                          // base burn damage per tick
+		2,                          // base duration (turns)
 
 		false,                      // isDefensive
 		true,                       // isMagic
 		true                        // autoGranted (new & existing wizards get it)
 	};
 
-	// Lightning – slightly lower INT scaling but can be thought of as more "bursty"
+	// Lightning – bursty nuke + chance to STUN
 	g_skill_defs["Lightning"] = SkillDefinition{
 		"Lightning",
 		SkillClass::WIZARD,
@@ -684,19 +684,20 @@ void initialize_skill_definitions() {
 		0,                          // cooldownTurns
 		SkillTarget::ENEMY,
 
-		0.0f, 0.0f, 1.1f, 0.0f,
+		// tiny DEX scaling for flavor, main INT scaling
+		0.0f, 0.2f, 1.1f, 0.0f,
 
-		false,
-		StatusType::NONE,
-		0,
-		0,
+		true,                       // appliesStatus
+		StatusType::STUN,           // we’ll treat this as a chance-based stun
+		0,                          // magnitude unused for stun
+		1,                          // 1 turn potential stun
 
 		false,
 		true,
 		true                        // autoGranted to wizards
 	};
 
-	// Freeze – cheaper spell, lower damage (you can later give it a slow debuff if you add such a status)
+	// Freeze – cheaper spell, reliable poke
 	g_skill_defs["Freeze"] = SkillDefinition{
 		"Freeze",
 		SkillClass::WIZARD,
@@ -717,7 +718,7 @@ void initialize_skill_definitions() {
 		true                        // autoGranted to wizards
 	};
 
-	// Ignite – INT-based spell + Burn DoT
+	// Ignite – INT-based spell + heavier Burn DoT
 	g_skill_defs["Ignite"] = SkillDefinition{
 		"Ignite",
 		SkillClass::WIZARD,
@@ -730,8 +731,8 @@ void initialize_skill_definitions() {
 
 		true,                       // appliesStatus
 		StatusType::BURN,
-		5,                          // burn damage per tick
-		2,                          // duration (turns)
+		5,                          // burn damage per tick (heavier than Fireball)
+		3,                          // duration (turns) – slightly longer
 
 		false,
 		true,
@@ -747,7 +748,7 @@ void initialize_skill_definitions() {
 		"BloodStrike",
 		SkillClass::ROGUE,
 		SkillType::ABILITY,
-		10,                         // manaCost (or energy, but you model it as mana)
+		10,                         // manaCost (or energy)
 		2,                          // cooldownTurns
 		SkillTarget::ENEMY,
 
@@ -758,7 +759,7 @@ void initialize_skill_definitions() {
 		4,                          // bleed per turn
 		2,                          // 2 turns
 
-		false,						//isdefnesive
+		false,						// isDefensive
 		false,                      // isMagic = false (physical strike)
 		true                        // autoGranted for rogues
 	};

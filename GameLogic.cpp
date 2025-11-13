@@ -88,7 +88,7 @@ float attack_power_for_player(const PlayerStats& stats, PlayerClass cls) {
 			+ stats.strength * 0.3f
 			+ stats.speed * 0.3f;
 	case PlayerClass::WIZARD:
-		return stats.intellect * 1.3f
+		return stats.intellect * 0.6f
 			+ stats.dexterity * 0.4f
 			+ stats.strength * 0.2f;
 	default:
@@ -2290,7 +2290,7 @@ void AsyncSession::handle_message(const string& message)
 		else {
 			PlayerStats finalStats = getCalculatedStats();
 			int extraDefFromBuffs = 0;
-
+			bool monsterStunnedThisTurn = false;
 			auto apply_statuses_to_player = [&]() {
 				int totalDefBuff = 0;
 				int totalDot = 0;
@@ -2365,6 +2365,11 @@ void AsyncSession::handle_message(const string& message)
 							std::max(1, player.currentOpponent->health - dmg);
 						break;
 					}
+					case StatusType::STUN: {
+						// Monster will skip its attack this turn
+						monsterStunnedThisTurn = true;
+						break;
+					}
 					default:
 						break;
 					}
@@ -2424,11 +2429,20 @@ void AsyncSession::handle_message(const string& message)
 				ws.write(net::buffer(log_msg));
 			}
 			else if (action_type == "SPELL") {
-				int base_damage = 0; mana_cost = 0; float variance = 1.0f;
+				std::string spellName = action_param;
 
+				// Look up the spell definition
+				auto itSkill = g_skill_defs.find(spellName);
+				if (itSkill == g_skill_defs.end() || itSkill->second.type != SkillType::SPELL) {
+					ws.write(net::buffer("SERVER:COMBAT_LOG:Unknown spell: " + spellName));
+					return;
+				}
+				const SkillDefinition& spell = itSkill->second;
+
+				// Make sure the player actually knows this spell
 				bool knows_spell = false;
-				for (const auto& spell : player.temporary_spells_list) {
-					if (spell == action_param) {
+				for (const auto& s : player.temporary_spells_list) {
+					if (s == spellName) {
 						knows_spell = true;
 						break;
 					}
@@ -2438,43 +2452,142 @@ void AsyncSession::handle_message(const string& message)
 					return;
 				}
 
-				if (action_param == "Fireball") {
-					mana_cost = 25;
-					if (player.stats.mana >= mana_cost) {
-						base_damage = static_cast<int>(finalStats.intellect * 1.3) + (finalStats.maxMana / 10);
-						variance = 0.8f + ((float)(rand() % 41) / 100.0f);
-					}
-				}
-				else if (action_param == "Lightning") {
-					mana_cost = 20;
-					if (player.stats.mana >= mana_cost) {
-						base_damage = static_cast<int>(finalStats.intellect * 1.1) + (finalStats.maxMana / 8);
-						variance = 0.7f + ((float)(rand() % 61) / 100.0f);
-					}
-				}
-				else if (action_param == "Freeze") {
-					mana_cost = 10;
-					if (player.stats.mana >= mana_cost) {
-						base_damage = (finalStats.intellect) + (finalStats.maxMana / 10);
-						variance = 0.9f + ((float)(rand() % 21) / 100.0f);
-					}
+				// Class requirement check
+				SkillClass playerSkillClass = SkillClass::ANY;
+				switch (player.currentClass) {
+				case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
+				case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
+				case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
+				default:                   playerSkillClass = SkillClass::ANY;     break;
 				}
 
-				if (mana_cost > 0 && player.stats.mana >= mana_cost) {
-					player.stats.mana -= mana_cost;
-					player_damage = std::max(1, (int)(base_damage * variance)); // FIX: std::max
-					std::string log_msg = "SERVER:COMBAT_LOG:You cast " + action_param + " for " + to_string(player_damage) + " damage!";
-					ws.write(net::buffer(log_msg));
+				if (spell.requiredClass != SkillClass::ANY &&
+					spell.requiredClass != playerSkillClass) {
+					ws.write(net::buffer("SERVER:COMBAT_LOG:You cannot cast that spell with your class."));
+					return;
 				}
-				else if (mana_cost > 0) {
-					std::string log_msg = "SERVER:COMBAT_LOG:Not enough mana to cast " + action_param + "! (Needs " + to_string(mana_cost) + ")";
+
+				// Mana check
+				if (player.stats.mana < spell.manaCost) {
+					ws.write(net::buffer(
+						"SERVER:COMBAT_LOG:Not enough mana to cast " + spellName +
+						"! (Needs " + std::to_string(spell.manaCost) + ")"
+					));
+					return;
+				}
+
+				player.stats.mana -= spell.manaCost;
+
+				bool targetIsSelf = (spell.target == SkillTarget::SELF);
+
+				// Compute spell power using stat scales
+				float scaledAttack =
+					finalStats.strength * spell.strScale +
+					finalStats.dexterity * spell.dexScale +
+					finalStats.intellect * spell.intScale +
+					spell.flatDamage;
+
+				int base_damage = 0;
+				float variance = 1.0f;
+
+				if (!targetIsSelf) {
+					// Magic partially ignores defense instead of fully ignoring it
+					int targetDefense = player.currentOpponent->defense;
+					if (spell.isMagic) {
+						// 40% defense penetration: spells feel good vs tanky enemies
+						targetDefense = static_cast<int>(std::round(targetDefense * 0.4f));
+					}
+
+					base_damage = damage_after_defense(scaledAttack, targetDefense);
+
+					// Tight-ish variance for consistency (0.9–1.1)
+					variance = 0.9f + (static_cast<float>(rand() % 21) / 100.0f);
+
+					int dmg = std::max(1, static_cast<int>(std::round(base_damage * variance)));
+
+					// Spells can crit too (fun!)
+					float critChance = crit_chance_for_player(finalStats, player.currentClass);
+					if (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) < critChance) {
+						ClassCritTuning t = getCritTuning(player.currentClass);
+						dmg = static_cast<int>(std::round(dmg * t.critMultiplier));
+						ws.write(net::buffer("SERVER:COMBAT_LOG:Your " + spellName + " critically hits!"));
+					}
+
+					player_damage = dmg;
+
+					std::string log_msg =
+						"SERVER:COMBAT_LOG:You cast " + spellName +
+						" for " + std::to_string(player_damage) + " damage!";
 					ws.write(net::buffer(log_msg));
 				}
 				else {
-					std::string log_msg = "SERVER:COMBAT_LOG:Cannot cast " + action_param + ".";
-					ws.write(net::buffer(log_msg));
+					// Self-target spells (none for wizard yet, but future-proof)
+					player_damage = 0;
+					ws.write(net::buffer("SERVER:COMBAT_LOG:You cast " + spellName + " on yourself."));
+				}
+
+				// Apply status effects from the spell definition
+				if (spell.appliesStatus) {
+					bool applyStatus = true;
+
+					StatusEffect eff;
+					eff.type = spell.statusType;
+					eff.magnitude = spell.statusMagnitude;
+					eff.remainingTurns = spell.statusDuration;
+					eff.appliedByPlayer = true;
+
+					// Special behavior: Lightning stun is chance-based
+					if (spellName == "Lightning" && spell.statusType == StatusType::STUN) {
+						int baseChance = 20;                   // 20% base
+						int fromLuck = finalStats.luck / 2;  // +0.5% per LUCK
+						int finalChance = baseChance + fromLuck;
+						if (finalChance > 70) finalChance = 70;
+						if (finalChance < 20) finalChance = 20;
+
+						int roll = rand() % 100;
+						if (roll >= finalChance) {
+							applyStatus = false;
+							ws.write(net::buffer("SERVER:COMBAT_LOG:The lightning crackles, but fails to stun."));
+						}
+					}
+
+					// Fireball burn scales a bit with INT
+					if (spellName == "Fireball" && spell.statusType == StatusType::BURN) {
+						eff.magnitude += std::max(1, finalStats.intellect / 10);
+					}
+
+					if (applyStatus) {
+						if (targetIsSelf) {
+							player.activeStatusEffects.push_back(eff);
+						}
+						else {
+							player.currentOpponent->activeStatusEffects.push_back(eff);
+						}
+
+						std::string statusMsg;
+						switch (spell.statusType) {
+						case StatusType::BURN:
+							statusMsg = targetIsSelf
+								? "You are burning!"
+								: "The " + player.currentOpponent->type + " is set ablaze!";
+							break;
+						case StatusType::STUN:
+							statusMsg = targetIsSelf
+								? "You are stunned!"
+								: "The " + player.currentOpponent->type + " is stunned!";
+							break;
+						default:
+							statusMsg = targetIsSelf
+								? "You are affected by a status effect."
+								: "The " + player.currentOpponent->type + " is affected by a status effect.";
+							break;
+						}
+
+						ws.write(net::buffer("SERVER:COMBAT_LOG:" + statusMsg));
+					}
 				}
 			}
+
 			else if (action_type == "SKILL") {
 				std::string skillName = action_param;
 
@@ -2617,7 +2730,10 @@ void AsyncSession::handle_message(const string& message)
 					else {
 						player.currentOpponent->activeStatusEffects.push_back(eff);
 					}
-
+					if (!targetIsSelf &&
+						(skill.statusType == StatusType::BURN || skill.statusType == StatusType::BLEED)) {
+						apply_statuses_to_monster();
+					}
 
 					if (bonusTurns > 0) {
 						ws.write(net::buffer(
@@ -2766,7 +2882,14 @@ void AsyncSession::handle_message(const string& message)
 				send_current_monsters_list();
 				return;
 			}
-
+			if (monsterStunnedThisTurn) {
+				ws.write(net::buffer(
+					"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
+					" is stunned and cannot act!"
+				));
+				ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
+				return;
+			}
 			int monster_damage = 0;
 
 			// include DEF_UP buff if you added extraDefFromBuffs above
