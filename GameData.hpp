@@ -33,7 +33,8 @@ extern const std::vector<std::vector<int>> FOREST_GRID;
 extern const std::vector<std::vector<int>> DESERT_GRID;
 extern const std::vector<std::vector<int>> CAVES_GRID;
 extern const std::vector<std::vector<int>> VOLCANO_GRID;
-
+extern const std::vector<std::vector<int>> LAKE_GRID;
+extern const std::vector<std::vector<int>> CASTLEINSIDE_GRID;
 //this is our global grid registry, we'll keep all grids in hur goin forward :D
 extern const std::map<std::string, std::vector<std::vector<int>>> g_area_grids;
 extern std::unordered_map<std::string, AreaData> g_areas;
@@ -117,7 +118,37 @@ struct SkillDefinition {
 	bool isMagic = false;
 	bool autoGranted = false;
 };
+struct SpawnPoint
+{
+	int x;
+	int y;
+};
 
+struct ResourceDefinition {
+	LifeSkillType skill;     // e.g. WOODCUTTING
+	int requiredLevel;       // Level needed to gather
+	int xpReward;            // XP gained per gather
+	std::string dropItemId;  // The standard drop
+	int dropChance;          // % chance (0-100)
+	std::string rareItemId;  // Rare drop (optional)
+	int rareChance;          // % chance for rare drop
+};
+
+struct CraftingRecipe {
+	std::string resultItemId;
+	int quantityCreated;
+	std::string requiredSkill; // e.g. "Crafting"
+	int requiredLevel;
+	std::map<std::string, int> ingredients; // ItemID -> Quantity needed
+	int xpReward;
+};
+
+// Global Registries
+extern std::map<std::string, ResourceDefinition> g_resource_defs;
+extern std::map<std::string, CraftingRecipe> g_crafting_recipes;
+
+// Declaration only – no initializer here
+const std::unordered_map<std::string, SpawnPoint>& get_area_spawns();
 // Global registry of all skills by name (e.g. "Ignite", "BloodStrike")
 extern std::unordered_map<std::string, SkillDefinition> g_skill_defs;
 
