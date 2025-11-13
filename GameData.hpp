@@ -124,6 +124,29 @@ struct SpawnPoint
 	int y;
 };
 
+struct ResourceDefinition {
+	LifeSkillType skill;     // e.g. WOODCUTTING
+	int requiredLevel;       // Level needed to gather
+	int xpReward;            // XP gained per gather
+	std::string dropItemId;  // The standard drop
+	int dropChance;          // % chance (0-100)
+	std::string rareItemId;  // Rare drop (optional)
+	int rareChance;          // % chance for rare drop
+};
+
+struct CraftingRecipe {
+	std::string resultItemId;
+	int quantityCreated;
+	std::string requiredSkill; // e.g. "Crafting"
+	int requiredLevel;
+	std::map<std::string, int> ingredients; // ItemID -> Quantity needed
+	int xpReward;
+};
+
+// Global Registries
+extern std::map<std::string, ResourceDefinition> g_resource_defs;
+extern std::map<std::string, CraftingRecipe> g_crafting_recipes;
+
 // Declaration only – no initializer here
 const std::unordered_map<std::string, SpawnPoint>& get_area_spawns();
 // Global registry of all skills by name (e.g. "Ignite", "BloodStrike")

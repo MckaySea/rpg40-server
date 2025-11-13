@@ -75,6 +75,7 @@ private:
 	 */
 	void process_movement();
 
+	void process_gathering();
 	/**
 	 * @brief The main router for all incoming client messages.
 	 * @param message The raw message from the client.

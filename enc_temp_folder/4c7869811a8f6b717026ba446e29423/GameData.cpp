@@ -35,9 +35,9 @@ std::unordered_map<std::string, AreaData> g_areas;
 // --- Gathering Resource Definitions ---
 std::map<std::string, ResourceDefinition> g_resource_defs = {
 	// Key must match the 'data' field in your map editor/InteractableObject
-	{"OAK_TREE",     {LifeSkillType::WOODCUTTING, 1, 10, "OAK_LOG",    100, "GOLDEN_LEAF", 1}},
-	{"COPPER_VEIN",  {LifeSkillType::MINING,      1, 15, "COPPER_ORE", 100, "RUBY",        1}},
-	{"FISHING_SPOT", {LifeSkillType::FISHING,     1, 20, "RAW_FISH",   100, "PEARL",       1}}
+	{"OAK_TREE",     {LifeSkillType::WOODCUTTING, 1, 10, "OAK_LOG",    100, "GOLDEN_LEAF", 5}},
+	{"COPPER_VEIN",  {LifeSkillType::MINING,      1, 15, "COPPER_ORE", 100, "RUBY",        2}},
+	{"FISHING_SPOT", {LifeSkillType::FISHING,     1, 20, "RAW_FISH",   100, "PEARL",       3}}
 };
 
 // --- Crafting Recipes ---

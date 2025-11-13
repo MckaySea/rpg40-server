@@ -156,12 +156,84 @@ static std::string sanitize_for_json(const std::string& s)
 	return out;
 }
 
+void AsyncSession::process_gathering() {
+	PlayerState& player = getPlayerState();
 
+	// 1. Basic Checks
+	if (!player.isGathering) return;
+
+	// Safety: Stop gathering if combat starts or if valid node is lost
+	if (player.isInCombat) {
+		player.isGathering = false;
+		return;
+	}
+
+	// 2. Time Check
+	auto now = std::chrono::steady_clock::now();
+	// GATHER_INTERVAL is defined in game_session.hpp (e.g., 2000ms)
+	if (now - player.lastGatherTime < std::chrono::milliseconds(5000)) {
+		return; // Not ready for the next "swing" yet
+	}
+
+	// 3. Reset Timer
+	player.lastGatherTime = now;
+
+	// 4. Get Resource Data
+	// The player.gatheringResourceNode string holds the key, e.g., "OAK_TREE"
+	if (g_resource_defs.count(player.gatheringResourceNode) == 0) {
+		player.isGathering = false;
+		return;
+	}
+	const ResourceDefinition& def = g_resource_defs.at(player.gatheringResourceNode);
+
+	// 5. Execute One "Tick" of Gathering
+	bool gatheredSomething = false;
+	std::string statusMsg = "";
+	auto& ws = getWebSocket();
+
+	// Roll Normal Drop
+	if ((rand() % 100) < def.dropChance) {
+		addItemToInventory(def.dropItemId, 1);
+		gatheredSomething = true;
+		statusMsg = "You gathered " + def.dropItemId + ".";
+	}
+
+	// Roll Rare Drop
+	if (!def.rareItemId.empty() && (rand() % 100) < def.rareChance) {
+		addItemToInventory(def.rareItemId, 1);
+		gatheredSomething = true;
+		statusMsg += " Rare find! " + def.rareItemId + "!";
+	}
+
+	// 6. Rewards
+	if (gatheredSomething) {
+		// Determine skill name for XP
+		std::string skillName;
+		switch (def.skill) {
+		case LifeSkillType::WOODCUTTING: skillName = "Woodcutting"; break;
+		case LifeSkillType::MINING:      skillName = "Mining"; break;
+		case LifeSkillType::FISHING:     skillName = "Fishing"; break;
+		default:                         skillName = "Gathering"; break;
+		}
+
+		player.skills.life_skills[skillName] += def.xpReward;
+		ws.write(net::buffer("SERVER:STATUS:" + statusMsg + " (+" + std::to_string(def.xpReward) + " XP)"));
+
+		// Update client with new items and XP
+		send_inventory_and_equipment();
+		send_player_stats();
+	}
+	else {
+		ws.write(net::buffer("SERVER:STATUS:You attempt to gather, but find nothing."));
+	}
+}
 // -----------------------------------------------------------------------------
 // Processes one tick of player movement (called by move_timer_).
 // -----------------------------------------------------------------------------
 void AsyncSession::process_movement()
 {
+	process_gathering();
+
 	PlayerState& player = getPlayerState();
 
 	// No movement if in combat or no path
@@ -1897,7 +1969,7 @@ void AsyncSession::handle_message(const string& message)
 		PlayerState& player = getPlayerState();
 		PlayerBroadcastData& broadcast_data = getBroadcastData();
 		auto& ws = getWebSocket();
-
+		player.isGathering = false;
 		if (!player.isFullyInitialized)
 		{
 			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
@@ -1966,6 +2038,11 @@ void AsyncSession::handle_message(const string& message)
 		if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
 		else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:Cannot move while in combat!")); }
 		else {
+
+			if (player.isGathering) {
+				player.isGathering = false;
+				ws.write(net::buffer("SERVER:STATUS:Gathering stopped."));
+			}
 			auto it = g_area_grids.find(player.currentArea);
 			if (it == g_area_grids.end()) {
 				ws.write(net::buffer("SERVER:ERROR:Grid movement is not available in this area."));
@@ -2151,6 +2228,43 @@ void AsyncSession::handle_message(const string& message)
 					auto& ws = getWebSocket();
 					ws.write(net::buffer("SERVER:AREA_CHANGED:" + player.currentArea));
 				}
+				else if (targetObject->type == InteractableType::RESOURCE_NODE) {
+					// 1. Find definition
+					auto itDef = g_resource_defs.find(targetObject->data);
+					if (itDef == g_resource_defs.end()) {
+						ws.write(net::buffer("SERVER:ERROR:Unknown resource type."));
+						return;
+					}
+					const ResourceDefinition& def = itDef->second;
+
+					// 2. Check Skills
+					std::string skillName;
+					switch (def.skill) {
+					case LifeSkillType::WOODCUTTING: skillName = "Woodcutting"; break;
+					case LifeSkillType::MINING:      skillName = "Mining"; break;
+					case LifeSkillType::FISHING:     skillName = "Fishing"; break;
+					default:                         skillName = "Gathering"; break;
+					}
+
+					int currentXp = player.skills.life_skills[skillName];
+					// Simple level formula: 1 + sqrt(XP)/5
+					int currentLevel = 1 + static_cast<int>(std::sqrt(currentXp) / 5.0f);
+
+					if (currentLevel < def.requiredLevel) {
+						ws.write(net::buffer("SERVER:ERROR:Requires " + skillName + " level " + std::to_string(def.requiredLevel)));
+						return;
+					}
+
+					// 3. START CONTINUOUS GATHERING
+					player.isGathering = true;
+					player.gatheringResourceNode = targetObject->data; // e.g., "OAK_TREE"
+
+					// Set timer back so the first tick happens immediately
+					player.lastGatherTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(2000);
+
+					ws.write(net::buffer("SERVER:STATUS:You start gathering from the " + def.dropItemId + "..."));
+				}
+
 				else {
 					ws.write(net::buffer("SERVER:ERROR:Unknown interaction type."));
 				}
@@ -2160,6 +2274,74 @@ void AsyncSession::handle_message(const string& message)
 				ws.write(net::buffer("SERVER:ERROR:Invalid coordinate format."));
 			}
 		}
+	}
+	   else if (message.rfind("CRAFT_ITEM:", 0) == 0) {
+		if (!player.isFullyInitialized) {
+			ws.write(net::buffer("SERVER:ERROR:Character not initialized."));
+			return;
+		}
+
+		// Format: CRAFT_ITEM:RECIPE_ID
+		std::string recipeId = message.substr(11);
+
+		if (g_crafting_recipes.count(recipeId) == 0) {
+			ws.write(net::buffer("SERVER:ERROR:Unknown recipe: " + recipeId));
+			return;
+		}
+
+		const CraftingRecipe& recipe = g_crafting_recipes.at(recipeId);
+
+		// 1. Check Skill Level
+		std::string skillKey = recipe.requiredSkill;
+		int currentXp = player.skills.life_skills[skillKey];
+		int currentLevel = 1 + static_cast<int>(std::sqrt(currentXp) / 5.0f);
+
+		if (currentLevel < recipe.requiredLevel) {
+			ws.write(net::buffer("SERVER:ERROR:Requires " + skillKey + " level " + std::to_string(recipe.requiredLevel)));
+			return;
+		}
+
+		// 2. Check Ingredients
+		for (const auto& [ingId, reqQty] : recipe.ingredients) {
+			int playerHas = 0;
+			for (const auto& pair : player.inventory) {
+				if (pair.second.itemId == ingId) {
+					playerHas += pair.second.quantity;
+				}
+			}
+			if (playerHas < reqQty) {
+				ws.write(net::buffer("SERVER:ERROR:Missing material: " + ingId + " (" + std::to_string(playerHas) + "/" + std::to_string(reqQty) + ")"));
+				return;
+			}
+		}
+
+		// 3. Consume Ingredients
+		for (const auto& [ingId, reqQty] : recipe.ingredients) {
+			int remainingToRemove = reqQty;
+			std::vector<uint64_t> toRemove;
+
+			for (auto& pair : player.inventory) {
+				if (remainingToRemove <= 0) break;
+				ItemInstance& item = pair.second;
+				if (item.itemId == ingId) {
+					int take = std::min(item.quantity, remainingToRemove);
+					item.quantity -= take;
+					remainingToRemove -= take;
+					if (item.quantity <= 0) toRemove.push_back(pair.first);
+				}
+			}
+			for (uint64_t uid : toRemove) {
+				player.inventory.erase(uid);
+			}
+		}
+
+		// 4. Grant Result & XP
+		addItemToInventory(recipe.resultItemId, recipe.quantityCreated);
+		player.skills.life_skills[skillKey] += recipe.xpReward;
+
+		ws.write(net::buffer("SERVER:STATUS:Crafted " + recipe.resultItemId + "! (+" + std::to_string(recipe.xpReward) + " XP)"));
+		send_inventory_and_equipment();
+		send_player_stats();
 	}
 	   else if (message.rfind("MONSTER_SELECTED:", 0) == 0) {
 		if (!player.isFullyInitialized) {
