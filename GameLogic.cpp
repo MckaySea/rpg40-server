@@ -88,7 +88,7 @@ float attack_power_for_player(const PlayerStats& stats, PlayerClass cls) {
 			+ stats.strength * 0.3f
 			+ stats.speed * 0.3f;
 	case PlayerClass::WIZARD:
-		return stats.intellect * 1.3f
+		return stats.intellect * 0.6f
 			+ stats.dexterity * 0.4f
 			+ stats.strength * 0.2f;
 	default:
@@ -156,12 +156,84 @@ static std::string sanitize_for_json(const std::string& s)
 	return out;
 }
 
+void AsyncSession::process_gathering() {
+	PlayerState& player = getPlayerState();
 
+	// 1. Basic Checks
+	if (!player.isGathering) return;
+
+	// Safety: Stop gathering if combat starts or if valid node is lost
+	if (player.isInCombat) {
+		player.isGathering = false;
+		return;
+	}
+
+	// 2. Time Check
+	auto now = std::chrono::steady_clock::now();
+	// GATHER_INTERVAL is defined in game_session.hpp (e.g., 2000ms)
+	if (now - player.lastGatherTime < std::chrono::milliseconds(5000)) {
+		return; // Not ready for the next "swing" yet
+	}
+
+	// 3. Reset Timer
+	player.lastGatherTime = now;
+
+	// 4. Get Resource Data
+	// The player.gatheringResourceNode string holds the key, e.g., "OAK_TREE"
+	if (g_resource_defs.count(player.gatheringResourceNode) == 0) {
+		player.isGathering = false;
+		return;
+	}
+	const ResourceDefinition& def = g_resource_defs.at(player.gatheringResourceNode);
+
+	// 5. Execute One "Tick" of Gathering
+	bool gatheredSomething = false;
+	std::string statusMsg = "";
+	auto& ws = getWebSocket();
+
+	// Roll Normal Drop
+	if ((rand() % 100) < def.dropChance) {
+		addItemToInventory(def.dropItemId, 1);
+		gatheredSomething = true;
+		statusMsg = "You gathered " + def.dropItemId + ".";
+	}
+
+	// Roll Rare Drop
+	if (!def.rareItemId.empty() && (rand() % 100) < def.rareChance) {
+		addItemToInventory(def.rareItemId, 1);
+		gatheredSomething = true;
+		statusMsg += " Rare find! " + def.rareItemId + "!";
+	}
+
+	// 6. Rewards
+	if (gatheredSomething) {
+		// Determine skill name for XP
+		std::string skillName;
+		switch (def.skill) {
+		case LifeSkillType::WOODCUTTING: skillName = "Woodcutting"; break;
+		case LifeSkillType::MINING:      skillName = "Mining"; break;
+		case LifeSkillType::FISHING:     skillName = "Fishing"; break;
+		default:                         skillName = "Gathering"; break;
+		}
+
+		player.skills.life_skills[skillName] += def.xpReward;
+		ws.write(net::buffer("SERVER:STATUS:" + statusMsg + " (+" + std::to_string(def.xpReward) + " XP)"));
+
+		// Update client with new items and XP
+		send_inventory_and_equipment();
+		send_player_stats();
+	}
+	else {
+		ws.write(net::buffer("SERVER:STATUS:You attempt to gather, but find nothing."));
+	}
+}
 // -----------------------------------------------------------------------------
 // Processes one tick of player movement (called by move_timer_).
 // -----------------------------------------------------------------------------
 void AsyncSession::process_movement()
 {
+	process_gathering();
+
 	PlayerState& player = getPlayerState();
 
 	// No movement if in combat or no path
@@ -1843,7 +1915,7 @@ void AsyncSession::handle_message(const string& message)
 
 				ws.write(net::buffer("SERVER:STAT_UPGRADED:" + stat_name));
 				send_player_stats();
-				if (player.availableSkillPoints == 0 && player.currentClass != PlayerClass::UNSELECTED) {
+				if (player.availableSkillPoints == 0 && !player.isFullyInitialized) {
 					player.isFullyInitialized = true;
 					player.hasSpentInitialPoints = true;
 					ws.write(net::buffer("SERVER:CHARACTER_COMPLETE:Character creation complete! You can now explore."));
@@ -1897,7 +1969,7 @@ void AsyncSession::handle_message(const string& message)
 		PlayerState& player = getPlayerState();
 		PlayerBroadcastData& broadcast_data = getBroadcastData();
 		auto& ws = getWebSocket();
-
+		player.isGathering = false;
 		if (!player.isFullyInitialized)
 		{
 			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
@@ -1924,6 +1996,15 @@ void AsyncSession::handle_message(const string& message)
 		// --- Update player + broadcast data ---
 		player.currentArea = target_area;
 		broadcast_data.currentArea = target_area;
+		const auto& spawns = get_area_spawns();
+
+		auto spawnIt = spawns.find(target_area);
+		if (spawnIt != spawns.end())
+		{
+			player.posX = spawnIt->second.x;
+			player.posY = spawnIt->second.y;
+		}
+
 
 		{
 			std::lock_guard<std::mutex> lock(g_player_registry_mutex);
@@ -1933,10 +2014,12 @@ void AsyncSession::handle_message(const string& message)
 		// --- Handle special zones (Town heals & clears combat) ---
 		if (target_area == "TOWN")
 		{
+			PlayerStats finalStats = getCalculatedStats(); // Calculate maxes WITH equipment
 			player.isInCombat = false;
 			player.currentMonsters.clear();
-			player.stats.health = player.stats.maxHealth;
-			player.stats.mana = player.stats.maxMana;
+			// Now, heal to the newly calculated maxes
+			player.stats.health = finalStats.maxHealth;
+			player.stats.mana = finalStats.maxMana;
 		}
 
 		// --- Notify client of area change ---
@@ -1955,6 +2038,11 @@ void AsyncSession::handle_message(const string& message)
 		if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
 		else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:Cannot move while in combat!")); }
 		else {
+
+			if (player.isGathering) {
+				player.isGathering = false;
+				ws.write(net::buffer("SERVER:STATUS:Gathering stopped."));
+			}
 			auto it = g_area_grids.find(player.currentArea);
 			if (it == g_area_grids.end()) {
 				ws.write(net::buffer("SERVER:ERROR:Grid movement is not available in this area."));
@@ -2140,6 +2228,43 @@ void AsyncSession::handle_message(const string& message)
 					auto& ws = getWebSocket();
 					ws.write(net::buffer("SERVER:AREA_CHANGED:" + player.currentArea));
 				}
+				else if (targetObject->type == InteractableType::RESOURCE_NODE) {
+					// 1. Find definition
+					auto itDef = g_resource_defs.find(targetObject->data);
+					if (itDef == g_resource_defs.end()) {
+						ws.write(net::buffer("SERVER:ERROR:Unknown resource type."));
+						return;
+					}
+					const ResourceDefinition& def = itDef->second;
+
+					// 2. Check Skills
+					std::string skillName;
+					switch (def.skill) {
+					case LifeSkillType::WOODCUTTING: skillName = "Woodcutting"; break;
+					case LifeSkillType::MINING:      skillName = "Mining"; break;
+					case LifeSkillType::FISHING:     skillName = "Fishing"; break;
+					default:                         skillName = "Gathering"; break;
+					}
+
+					int currentXp = player.skills.life_skills[skillName];
+					// Simple level formula: 1 + sqrt(XP)/5
+					int currentLevel = 1 + static_cast<int>(std::sqrt(currentXp) / 5.0f);
+
+					if (currentLevel < def.requiredLevel) {
+						ws.write(net::buffer("SERVER:ERROR:Requires " + skillName + " level " + std::to_string(def.requiredLevel)));
+						return;
+					}
+
+					// 3. START CONTINUOUS GATHERING
+					player.isGathering = true;
+					player.gatheringResourceNode = targetObject->data; // e.g., "OAK_TREE"
+
+					// Set timer back so the first tick happens immediately
+					player.lastGatherTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(2000);
+
+					ws.write(net::buffer("SERVER:STATUS:You start gathering from the " + def.dropItemId + "..."));
+				}
+
 				else {
 					ws.write(net::buffer("SERVER:ERROR:Unknown interaction type."));
 				}
@@ -2149,6 +2274,74 @@ void AsyncSession::handle_message(const string& message)
 				ws.write(net::buffer("SERVER:ERROR:Invalid coordinate format."));
 			}
 		}
+	}
+	   else if (message.rfind("CRAFT_ITEM:", 0) == 0) {
+		if (!player.isFullyInitialized) {
+			ws.write(net::buffer("SERVER:ERROR:Character not initialized."));
+			return;
+		}
+
+		// Format: CRAFT_ITEM:RECIPE_ID
+		std::string recipeId = message.substr(11);
+
+		if (g_crafting_recipes.count(recipeId) == 0) {
+			ws.write(net::buffer("SERVER:ERROR:Unknown recipe: " + recipeId));
+			return;
+		}
+
+		const CraftingRecipe& recipe = g_crafting_recipes.at(recipeId);
+
+		// 1. Check Skill Level
+		std::string skillKey = recipe.requiredSkill;
+		int currentXp = player.skills.life_skills[skillKey];
+		int currentLevel = 1 + static_cast<int>(std::sqrt(currentXp) / 5.0f);
+
+		if (currentLevel < recipe.requiredLevel) {
+			ws.write(net::buffer("SERVER:ERROR:Requires " + skillKey + " level " + std::to_string(recipe.requiredLevel)));
+			return;
+		}
+
+		// 2. Check Ingredients
+		for (const auto& [ingId, reqQty] : recipe.ingredients) {
+			int playerHas = 0;
+			for (const auto& pair : player.inventory) {
+				if (pair.second.itemId == ingId) {
+					playerHas += pair.second.quantity;
+				}
+			}
+			if (playerHas < reqQty) {
+				ws.write(net::buffer("SERVER:ERROR:Missing material: " + ingId + " (" + std::to_string(playerHas) + "/" + std::to_string(reqQty) + ")"));
+				return;
+			}
+		}
+
+		// 3. Consume Ingredients
+		for (const auto& [ingId, reqQty] : recipe.ingredients) {
+			int remainingToRemove = reqQty;
+			std::vector<uint64_t> toRemove;
+
+			for (auto& pair : player.inventory) {
+				if (remainingToRemove <= 0) break;
+				ItemInstance& item = pair.second;
+				if (item.itemId == ingId) {
+					int take = std::min(item.quantity, remainingToRemove);
+					item.quantity -= take;
+					remainingToRemove -= take;
+					if (item.quantity <= 0) toRemove.push_back(pair.first);
+				}
+			}
+			for (uint64_t uid : toRemove) {
+				player.inventory.erase(uid);
+			}
+		}
+
+		// 4. Grant Result & XP
+		addItemToInventory(recipe.resultItemId, recipe.quantityCreated);
+		player.skills.life_skills[skillKey] += recipe.xpReward;
+
+		ws.write(net::buffer("SERVER:STATUS:Crafted " + recipe.resultItemId + "! (+" + std::to_string(recipe.xpReward) + " XP)"));
+		send_inventory_and_equipment();
+		send_player_stats();
 	}
 	   else if (message.rfind("MONSTER_SELECTED:", 0) == 0) {
 		if (!player.isFullyInitialized) {
@@ -2242,13 +2435,11 @@ void AsyncSession::handle_message(const string& message)
 							player.currentMonsters.clear();
 							player.stats.health = player.stats.maxHealth / 2;
 							player.stats.mana = player.stats.maxMana;
-							player.posX = 5;
-							player.posY = 5;
+							player.posX = 26;
+							player.posY = 12;
 							player.currentPath.clear();
 
 							broadcast_data.currentArea = "TOWN";
-							broadcast_data.posX = player.posX;
-							broadcast_data.posY = player.posY;
 							{
 								std::lock_guard<std::mutex> lock(g_player_registry_mutex);
 								g_player_registry[player.userId] = broadcast_data;
@@ -2258,6 +2449,8 @@ void AsyncSession::handle_message(const string& message)
 							send_area_map_data(player.currentArea);
 							send_available_areas();
 							send_player_stats();
+							broadcast_data.posX = player.posX;
+							broadcast_data.posY = player.posY;
 						}
 						else {
 							ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
@@ -2279,7 +2472,7 @@ void AsyncSession::handle_message(const string& message)
 		else {
 			PlayerStats finalStats = getCalculatedStats();
 			int extraDefFromBuffs = 0;
-
+			bool monsterStunnedThisTurn = false;
 			auto apply_statuses_to_player = [&]() {
 				int totalDefBuff = 0;
 				int totalDot = 0;
@@ -2354,6 +2547,11 @@ void AsyncSession::handle_message(const string& message)
 							std::max(1, player.currentOpponent->health - dmg);
 						break;
 					}
+					case StatusType::STUN: {
+						// Monster will skip its attack this turn
+						monsterStunnedThisTurn = true;
+						break;
+					}
 					default:
 						break;
 					}
@@ -2413,11 +2611,20 @@ void AsyncSession::handle_message(const string& message)
 				ws.write(net::buffer(log_msg));
 			}
 			else if (action_type == "SPELL") {
-				int base_damage = 0; mana_cost = 0; float variance = 1.0f;
+				std::string spellName = action_param;
 
+				// Look up the spell definition
+				auto itSkill = g_skill_defs.find(spellName);
+				if (itSkill == g_skill_defs.end() || itSkill->second.type != SkillType::SPELL) {
+					ws.write(net::buffer("SERVER:COMBAT_LOG:Unknown spell: " + spellName));
+					return;
+				}
+				const SkillDefinition& spell = itSkill->second;
+
+				// Make sure the player actually knows this spell
 				bool knows_spell = false;
-				for (const auto& spell : player.temporary_spells_list) {
-					if (spell == action_param) {
+				for (const auto& s : player.temporary_spells_list) {
+					if (s == spellName) {
 						knows_spell = true;
 						break;
 					}
@@ -2427,43 +2634,142 @@ void AsyncSession::handle_message(const string& message)
 					return;
 				}
 
-				if (action_param == "Fireball") {
-					mana_cost = 25;
-					if (player.stats.mana >= mana_cost) {
-						base_damage = static_cast<int>(finalStats.intellect * 1.3) + (finalStats.maxMana / 10);
-						variance = 0.8f + ((float)(rand() % 41) / 100.0f);
-					}
-				}
-				else if (action_param == "Lightning") {
-					mana_cost = 20;
-					if (player.stats.mana >= mana_cost) {
-						base_damage = static_cast<int>(finalStats.intellect * 1.1) + (finalStats.maxMana / 8);
-						variance = 0.7f + ((float)(rand() % 61) / 100.0f);
-					}
-				}
-				else if (action_param == "Freeze") {
-					mana_cost = 10;
-					if (player.stats.mana >= mana_cost) {
-						base_damage = (finalStats.intellect) + (finalStats.maxMana / 10);
-						variance = 0.9f + ((float)(rand() % 21) / 100.0f);
-					}
+				// Class requirement check
+				SkillClass playerSkillClass = SkillClass::ANY;
+				switch (player.currentClass) {
+				case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
+				case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
+				case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
+				default:                   playerSkillClass = SkillClass::ANY;     break;
 				}
 
-				if (mana_cost > 0 && player.stats.mana >= mana_cost) {
-					player.stats.mana -= mana_cost;
-					player_damage = std::max(1, (int)(base_damage * variance)); // FIX: std::max
-					std::string log_msg = "SERVER:COMBAT_LOG:You cast " + action_param + " for " + to_string(player_damage) + " damage!";
-					ws.write(net::buffer(log_msg));
+				if (spell.requiredClass != SkillClass::ANY &&
+					spell.requiredClass != playerSkillClass) {
+					ws.write(net::buffer("SERVER:COMBAT_LOG:You cannot cast that spell with your class."));
+					return;
 				}
-				else if (mana_cost > 0) {
-					std::string log_msg = "SERVER:COMBAT_LOG:Not enough mana to cast " + action_param + "! (Needs " + to_string(mana_cost) + ")";
+
+				// Mana check
+				if (player.stats.mana < spell.manaCost) {
+					ws.write(net::buffer(
+						"SERVER:COMBAT_LOG:Not enough mana to cast " + spellName +
+						"! (Needs " + std::to_string(spell.manaCost) + ")"
+					));
+					return;
+				}
+
+				player.stats.mana -= spell.manaCost;
+
+				bool targetIsSelf = (spell.target == SkillTarget::SELF);
+
+				// Compute spell power using stat scales
+				float scaledAttack =
+					finalStats.strength * spell.strScale +
+					finalStats.dexterity * spell.dexScale +
+					finalStats.intellect * spell.intScale +
+					spell.flatDamage;
+
+				int base_damage = 0;
+				float variance = 1.0f;
+
+				if (!targetIsSelf) {
+					// Magic partially ignores defense instead of fully ignoring it
+					int targetDefense = player.currentOpponent->defense;
+					if (spell.isMagic) {
+						// 40% defense penetration: spells feel good vs tanky enemies
+						targetDefense = static_cast<int>(std::round(targetDefense * 0.4f));
+					}
+
+					base_damage = damage_after_defense(scaledAttack, targetDefense);
+
+					// Tight-ish variance for consistency (0.9–1.1)
+					variance = 0.9f + (static_cast<float>(rand() % 21) / 100.0f);
+
+					int dmg = std::max(1, static_cast<int>(std::round(base_damage * variance)));
+
+					// Spells can crit too (fun!)
+					float critChance = crit_chance_for_player(finalStats, player.currentClass);
+					if (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) < critChance) {
+						ClassCritTuning t = getCritTuning(player.currentClass);
+						dmg = static_cast<int>(std::round(dmg * t.critMultiplier));
+						ws.write(net::buffer("SERVER:COMBAT_LOG:Your " + spellName + " critically hits!"));
+					}
+
+					player_damage = dmg;
+
+					std::string log_msg =
+						"SERVER:COMBAT_LOG:You cast " + spellName +
+						" for " + std::to_string(player_damage) + " damage!";
 					ws.write(net::buffer(log_msg));
 				}
 				else {
-					std::string log_msg = "SERVER:COMBAT_LOG:Cannot cast " + action_param + ".";
-					ws.write(net::buffer(log_msg));
+					// Self-target spells (none for wizard yet, but future-proof)
+					player_damage = 0;
+					ws.write(net::buffer("SERVER:COMBAT_LOG:You cast " + spellName + " on yourself."));
+				}
+
+				// Apply status effects from the spell definition
+				if (spell.appliesStatus) {
+					bool applyStatus = true;
+
+					StatusEffect eff;
+					eff.type = spell.statusType;
+					eff.magnitude = spell.statusMagnitude;
+					eff.remainingTurns = spell.statusDuration;
+					eff.appliedByPlayer = true;
+
+					// Special behavior: Lightning stun is chance-based
+					if (spellName == "Lightning" && spell.statusType == StatusType::STUN) {
+						int baseChance = 20;                   // 20% base
+						int fromLuck = finalStats.luck / 2;  // +0.5% per LUCK
+						int finalChance = baseChance + fromLuck;
+						if (finalChance > 70) finalChance = 70;
+						if (finalChance < 20) finalChance = 20;
+
+						int roll = rand() % 100;
+						if (roll >= finalChance) {
+							applyStatus = false;
+							ws.write(net::buffer("SERVER:COMBAT_LOG:The lightning crackles, but fails to stun."));
+						}
+					}
+
+					// Fireball burn scales a bit with INT
+					if (spellName == "Fireball" && spell.statusType == StatusType::BURN) {
+						eff.magnitude += std::max(1, finalStats.intellect / 10);
+					}
+
+					if (applyStatus) {
+						if (targetIsSelf) {
+							player.activeStatusEffects.push_back(eff);
+						}
+						else {
+							player.currentOpponent->activeStatusEffects.push_back(eff);
+						}
+
+						std::string statusMsg;
+						switch (spell.statusType) {
+						case StatusType::BURN:
+							statusMsg = targetIsSelf
+								? "You are burning!"
+								: "The " + player.currentOpponent->type + " is set ablaze!";
+							break;
+						case StatusType::STUN:
+							statusMsg = targetIsSelf
+								? "You are stunned!"
+								: "The " + player.currentOpponent->type + " is stunned!";
+							break;
+						default:
+							statusMsg = targetIsSelf
+								? "You are affected by a status effect."
+								: "The " + player.currentOpponent->type + " is affected by a status effect.";
+							break;
+						}
+
+						ws.write(net::buffer("SERVER:COMBAT_LOG:" + statusMsg));
+					}
 				}
 			}
+
 			else if (action_type == "SKILL") {
 				std::string skillName = action_param;
 
@@ -2606,7 +2912,10 @@ void AsyncSession::handle_message(const string& message)
 					else {
 						player.currentOpponent->activeStatusEffects.push_back(eff);
 					}
-
+					if (!targetIsSelf &&
+						(skill.statusType == StatusType::BURN || skill.statusType == StatusType::BLEED)) {
+						apply_statuses_to_monster();
+					}
 
 					if (bonusTurns > 0) {
 						ws.write(net::buffer(
@@ -2755,7 +3064,14 @@ void AsyncSession::handle_message(const string& message)
 				send_current_monsters_list();
 				return;
 			}
-
+			if (monsterStunnedThisTurn) {
+				ws.write(net::buffer(
+					"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
+					" is stunned and cannot act!"
+				));
+				ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
+				return;
+			}
 			int monster_damage = 0;
 
 			// include DEF_UP buff if you added extraDefFromBuffs above
@@ -2794,7 +3110,7 @@ void AsyncSession::handle_message(const string& message)
 				player.isInCombat = false; player.currentOpponent.reset();
 				player.currentArea = "TOWN"; player.currentMonsters.clear();
 				player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
-				player.posX = 5; player.posY = 5; player.currentPath.clear();
+				player.posX = 26; player.posY = 12; player.currentPath.clear();
 				broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
 				{ lock_guard<mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
 
