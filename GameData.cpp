@@ -34,18 +34,176 @@ std::mutex g_session_registry_mutex;
 std::unordered_map<std::string, AreaData> g_areas;
 // --- Gathering Resource Definitions ---
 std::map<std::string, ResourceDefinition> g_resource_defs = {
-	// Key must match the 'data' field in your map editor/InteractableObject
-	{"OAK_TREE",     {LifeSkillType::WOODCUTTING, 1, 10, "OAK_LOG",    100, "GOLDEN_LEAF", 1}},
-	{"COPPER_VEIN",  {LifeSkillType::MINING,      1, 15, "COPPER_ORE", 100, "RUBY",        1}},
-	{"FISHING_SPOT", {LifeSkillType::FISHING,     1, 20, "RAW_FISH",   100, "PEARL",       1}}
+	// Key, Skill, MinLvl, XP, MainDrop, Success%, RareDrop, RareDrop%
+	// --- TIER 1 (Lvl 1) ---
+	{"OAK_TREE",     {LifeSkillType::WOODCUTTING, 1, 8,   "OAK_LOG",    95, "GOLDEN_LEAF", 1}},
+	{"COPPER_VEIN",  {LifeSkillType::MINING,      1, 10,  "COPPER_ORE", 95, "RUBY",        1}},
+	{"FISHING_SPOT", {LifeSkillType::FISHING,     1, 12,  "RAW_FISH",   95, "PEARL",       1}},
+
+	// --- TIER 2 (Lvl 10) ---
+	{"YEW_TREE",     {LifeSkillType::WOODCUTTING, 10, 25,  "YEW_LOG",   90, "ENCHANTED_TWIG", 1}},
+	{"IRON_VEIN",    {LifeSkillType::MINING,      10, 30,  "IRON_ORE",  90, "SAPPHIRE", 1}},
+	{"TROUT_SPOT",   {LifeSkillType::FISHING,     10, 35,  "RAW_TROUT", 90, "GLISTENING_SCALE", 1}},
+
+	// --- TIER 3 (Lvl 20) ---
+	{"MAGIC_TREE",   {LifeSkillType::WOODCUTTING, 20, 60,  "MAGIC_LOG",   85, "LIVING_ROOT", 2}},
+	{"MITHRIL_VEIN", {LifeSkillType::MINING,      20, 70,  "MITHRIL_ORE", 85, "EMERALD", 2}},
+	{"SHARK_SPOT",   {LifeSkillType::FISHING,     20, 80,  "RAW_SHARK",   85, "SHARK_TOOTH", 2}},
+
+	// --- TIER 4 (Lvl 30) ---
+	{"REDWOOD_TREE", {LifeSkillType::WOODCUTTING, 30, 150, "REDWOOD_LOG", 80, "BLOODWOOD_SAP", 2}},
+	{"ADAMANT_VEIN", {LifeSkillType::MINING,      30, 170, "ADAMANT_ORE", 80, "DIAMOND", 2}},
+	{"ANGLER_SPOT",  {LifeSkillType::FISHING,     30, 190, "RAW_ANGLER",  80, "DEEP_CRYSTAL", 2}},
+
+	// --- TIER 5 (Lvl 40) ---
+	{"ELDER_TREE",   {LifeSkillType::WOODCUTTING, 40, 300, "ELDER_LOG",   75, "WORLD_TREE_HEART", 3}},
+	{"ORICHALCUM_VEIN",{LifeSkillType::MINING,    40, 325, "ORICHALCUM_ORE",75, "VOID_GEM", 3}},
+	{"LEVIATHAN_SPOT", {LifeSkillType::FISHING,   40, 350, "RAW_LEVIATHAN", 75, "KRAKENS_EYE", 3}},
+
+	// --- TIER 6 (Lvl 50) ---
+	{"ANCIENT_TREE", {LifeSkillType::WOODCUTTING, 50, 450, "ANCIENT_LOG", 70, "ETERNAL_EMBER", 3}},
+	{"RUNITE_VEIN",  {LifeSkillType::MINING,      50, 500, "RUNITE_ORE",  70, "STAR_METAL_FRAGMENT", 3}},
+	{"SQUID_SPOT",   {LifeSkillType::FISHING,     50, 550, "SQUID_INK",   70, "AZURE_GEM", 3}},
+
+	// --- TIER 7 (Lvl 60) ---
+	{"CRYSTAL_TREE", {LifeSkillType::WOODCUTTING, 60, 700, "CRYSTAL_SHARD", 65, "CRYSTALLINE_CORE", 4}},
+	{"NEBULITE_VEIN",{LifeSkillType::MINING,      60, 750, "NEBULITE_ORE",  65, "NEBULA_MOTE", 4}},
+	{"DEEP_SEA_SPOT",{LifeSkillType::FISHING,     60, 800, "ABYSSAL_FIN",   65, "VOID_TENDRIL", 4}}
 };
 
 // --- Crafting Recipes ---
+// --- Crafting Recipes ---
 std::map<std::string, CraftingRecipe> g_crafting_recipes = {
 	// ID             Result, Qty, Skill, Lvl, Ingredients, XP
-	{"COPPER_INGOT",  {"COPPER_INGOT",  1, "Crafting", 1, {{"COPPER_ORE", 2}}, 20}},
-	{"IRON_INGOT",    {"IRON_INGOT",    1, "Crafting", 5, {{"IRON_ORE", 2}},   30}},
-	{"WOODEN_BOOTS", {"WOODEN_BOOTS", 1, "Crafting", 3, {{"OAK_LOG", 5}},    50}}
+
+	// --- TIER 1 INTERMEDIATE (Lvl 1) ---
+	{"COPPER_INGOT",  {"COPPER_INGOT",  1, "Crafting", 1, {{"COPPER_ORE", 2}}, 12}},
+	{"OAK_PLANK",     {"OAK_PLANK",     1, "Crafting", 1, {{"OAK_LOG", 1}},    8}},
+
+	// --- TIER 1 EQUIPMENT (Lvl 1-7) ---
+	{"WOODEN_BOOTS",    {"WOODEN_BOOTS",    1, "Crafting", 1, {{"OAK_PLANK", 3}}, 15}},
+	{"COPPER_DAGGER",   {"COPPER_DAGGER",   1, "Crafting", 2, {{"COPPER_INGOT", 1}, {"OAK_PLANK", 1}}, 20}},
+	{"COPPER_BOOTS",    {"COPPER_BOOTS",    1, "Crafting", 2, {{"COPPER_INGOT", 1}}, 20}},
+	{"COPPER_SWORD",    {"COPPER_SWORD",    1, "Crafting", 3, {{"COPPER_INGOT", 2}, {"OAK_PLANK", 1}}, 30}},
+	{"OAK_SHORTBOW",    {"OAK_SHORTBOW",    1, "Crafting", 3, {{"OAK_PLANK", 3}},    25}},
+	{"COPPER_HELMET",   {"COPPER_HELMET",   1, "Crafting", 4, {{"COPPER_INGOT", 2}}, 30}},
+	{"COPPER_LEGS",     {"COPPER_LEGS",     1, "Crafting", 4, {{"COPPER_INGOT", 3}}, 40}},
+	{"COPPER_CHAINBODY",{"COPPER_CHAINBODY",1, "Crafting", 5, {{"COPPER_INGOT", 4}}, 50}},
+	{"OAK_STAFF",       {"OAK_STAFF",       1, "Crafting", 6, {{"OAK_PLANK", 2}, {"RUBY", 1}}, 70}},
+	{"OAK_SHIELD",      {"OAK_SHIELD",      1, "Crafting", 7, {{"OAK_PLANK", 4}},    40}},
+	{"REINFORCED_OAK_SHIELD", {"REINFORCED_OAK_SHIELD", 1, "Crafting", 9, {{"OAK_SHIELD", 1}, {"COPPER_INGOT", 1}, {"MONSTER_BONE", 2}}, 100}},
+
+	// --- TIER 2 INTERMEDIATE (Lvl 10) ---
+	{"IRON_INGOT",    {"IRON_INGOT",    1, "Crafting", 10, {{"IRON_ORE", 2}},   25}},
+	{"YEW_PLANK",     {"YEW_PLANK",     1, "Crafting", 10, {{"YEW_LOG", 1}},    18}},
+
+	// --- TIER 2 EQUIPMENT (Lvl 10-19) ---
+	{"IRON_DAGGER",     {"IRON_DAGGER",     1, "Crafting", 11,  {{"IRON_INGOT", 1}, {"YEW_PLANK", 1}}, 40}},
+	{"IRON_BOOTS",      {"IRON_BOOTS",      1, "Crafting", 11,  {{"IRON_INGOT", 1}}, 40}},
+	{"IRON_SWORD",      {"IRON_SWORD",      1, "Crafting", 12, {{"IRON_INGOT", 2}, {"YEW_PLANK", 1}}, 55}},
+	{"IRON_FULL_HELM",  {"IRON_FULL_HELM",  1, "Crafting", 12, {{"IRON_INGOT", 2}}, 55}},
+	{"SPIKED_IRON_HELM",{"SPIKED_IRON_HELM",1, "Crafting", 13, {{"IRON_FULL_HELM", 1}, {"MONSTER_FANG", 5}}, 120}},
+	{"IRON_PLATELEGS",  {"IRON_PLATELEGS",  1, "Crafting", 13, {{"IRON_INGOT", 3}}, 80}},
+	{"YEW_SHORTBOW",    {"YEW_SHORTBOW",    1, "Crafting", 14, {{"YEW_PLANK", 3}}, 70}},
+	{"RANGER_TUNIC",    {"RANGER_TUNIC",    1, "Crafting", 14, {{"YEW_PLANK", 6}, {"MONSTER_HIDE", 10}}, 150}},
+	{"IRON_PLATEBODY",  {"IRON_PLATEBODY",  1, "Crafting", 15, {{"IRON_INGOT", 5}}, 120}},
+	{"IRON_GREATSWORD", {"IRON_GREATSWORD", 1, "Crafting", 16, {{"IRON_INGOT", 4}, {"YEW_PLANK", 2}}, 130}},
+	{"YEW_STAFF",       {"YEW_STAFF",       1, "Crafting", 17, {{"YEW_PLANK", 2}, {"SAPPHIRE", 1}}, 180}},
+	{"YEW_SHIELD",      {"YEW_SHIELD",      1, "Crafting", 17, {{"YEW_PLANK", 4}}, 90}},
+	{"SCALE_MAIL_VEST", {"SCALE_MAIL_VEST", 1, "Crafting", 18, {{"GLISTENING_SCALE", 5}, {"IRON_INGOT", 2}}, 250}},
+	{"SAPPHIRE_RING",   {"SAPPHIRE_RING",   1, "Crafting", 19, {{"IRON_INGOT", 1}, {"SAPPHIRE", 1}}, 220}},
+
+	// --- TIER 3 INTERMEDIATE (Lvl 20) ---
+	{"MITHRIL_INGOT", {"MITHRIL_INGOT", 1, "Crafting", 20, {{"MITHRIL_ORE", 2}}, 50}},
+	{"MAGIC_PLANK",   {"MAGIC_PLANK",   1, "Crafting", 20, {{"MAGIC_LOG", 1}},   40}},
+
+	// --- TIER 3 EQUIPMENT (Lvl 20-29) ---
+	{"MITHRIL_DAGGER",    {"MITHRIL_DAGGER",    1, "Crafting", 21, {{"MITHRIL_INGOT", 1}, {"MAGIC_PLANK", 1}}, 90}},
+	{"MITHRIL_BOOTS",     {"MITHRIL_BOOTS",     1, "Crafting", 21, {{"MITHRIL_INGOT", 1}}, 90}},
+	{"MITHRIL_SWORD",     {"MITHRIL_SWORD",     1, "Crafting", 22, {{"MITHRIL_INGOT", 2}, {"MAGIC_PLANK", 1}}, 110}},
+	{"MITHRIL_FULL_HELM", {"MITHRIL_FULL_HELM", 1, "Crafting", 22, {{"MITHRIL_INGOT", 2}}, 110}},
+	{"MITHRIL_PLATELEGS", {"MITHRIL_PLATELEGS", 1, "Crafting", 23, {{"MITHRIL_INGOT", 3}}, 160}},
+	{"MAGIC_SHIELD",      {"MAGIC_SHIELD",      1, "Crafting", 24, {{"MAGIC_PLANK", 4}}, 150}},
+	{"MITHRIL_PLATEBODY", {"MITHRIL_PLATEBODY", 1, "Crafting", 25, {{"MITHRIL_INGOT", 5}}, 250}},
+	{"MAGIC_SHORTBOW",    {"MAGIC_SHORTBOW",    1, "Crafting", 25, {{"MAGIC_PLANK", 3}}, 220}},
+	{"ESSENCE_STAFF",     {"ESSENCE_STAFF",     1, "Crafting", 26, {{"MAGIC_PLANK", 3}, {"MONSTER_ESSENCE", 5}, {"SAPPHIRE", 1}}, 350}},
+	{"MITHRIL_BATTLEAXE", {"MITHRIL_BATTLEAXE", 1, "Crafting", 27, {{"MITHRIL_INGOT", 3}, {"YEW_PLANK", 2}, {"MONSTER_CLAW", 5}}, 320}},
+	{"MITHRIL_GREATSWORD",{"MITHRIL_GREATSWORD",1, "Crafting", 28, {{"MITHRIL_INGOT", 4}, {"MAGIC_PLANK", 2}}, 280}},
+	{"EMERALD_AMULET",    {"EMERALD_AMULET",    1, "Crafting", 29, {{"MITHRIL_INGOT", 1}, {"EMERALD", 1}}, 450}},
+
+	// --- TIER 4 INTERMEDIATE (Lvl 30) ---
+	{"ADAMANT_INGOT", {"ADAMANT_INGOT", 1, "Crafting", 30, {{"ADAMANT_ORE", 2}}, 100}},
+	{"REDWOOD_PLANK", {"REDWOOD_PLANK", 1, "Crafting", 30, {{"REDWOOD_LOG", 1}}, 80}},
+
+	// --- TIER 4 EQUIPMENT (Lvl 30-39) ---
+	{"ADAMANT_DAGGER",    {"ADAMANT_DAGGER",    1, "Crafting", 31, {{"ADAMANT_INGOT", 1}, {"REDWOOD_PLANK", 1}}, 180}},
+	{"ADAMANT_BOOTS",     {"ADAMANT_BOOTS",     1, "Crafting", 31, {{"ADAMANT_INGOT", 1}}, 180}},
+	{"ADAMANT_SWORD",     {"ADAMANT_SWORD",     1, "Crafting", 32, {{"ADAMANT_INGOT", 2}, {"REDWOOD_PLANK", 1}}, 220}},
+	{"ADAMANT_FULL_HELM", {"ADAMANT_FULL_HELM", 1, "Crafting", 32, {{"ADAMANT_INGOT", 2}}, 220}},
+	{"ADAMANT_PLATELEGS", {"ADAMANT_PLATELEGS", 1, "Crafting", 33, {{"ADAMANT_INGOT", 3}}, 320}},
+	{"ADAMANT_PLATEBODY", {"ADAMANT_PLATEBODY", 1, "Crafting", 35, {{"ADAMANT_INGOT", 5}}, 500}},
+	{"REDWOOD_SHORTBOW",  {"REDWOOD_SHORTBOW",  1, "Crafting", 35, {{"REDWOOD_PLANK", 3}}, 450}},
+	{"ADAMANT_GREATSWORD",{"ADAMANT_GREATSWORD",1, "Crafting", 36, {{"ADAMANT_INGOT", 4}, {"REDWOOD_PLANK", 2}}, 550}},
+	{"REDWOOD_WARBOW",    {"REDWOOD_WARBOW",    1, "Crafting", 37, {{"REDWOOD_PLANK", 5}, {"ADAMANT_INGOT", 1}, {"MONSTER_ESSENCE", 10}}, 700}},
+	{"ADAMANT_SPEAR",     {"ADAMANT_SPEAR",     1, "Crafting", 38, {{"ADAMANT_INGOT", 2}, {"REDWOOD_PLANK", 1}, {"SHARK_TOOTH", 3}}, 650}},
+	{"DIAMOND_RING",      {"DIAMOND_RING",      1, "Crafting", 39, {{"ADAMANT_INGOT", 1}, {"DIAMOND", 1}}, 800}},
+	{"BLOODWOOD_WAND",    {"BLOODWOOD_WAND",    1, "Crafting", 39, {{"BLOODWOOD_SAP", 1}, {"REDWOOD_PLANK", 1}}, 800}},
+	{"CRYSTAL_SHIELD",    {"CRYSTAL_SHIELD",    1, "Crafting", 39, {{"DEEP_CRYSTAL", 5}, {"MAGIC_PLANK", 2}}, 900}},
+
+	// --- TIER 5 INTERMEDIATE (Lvl 40) ---
+	{"ORICHALCUM_INGOT", {"ORICHALCUM_INGOT", 1, "Crafting", 40, {{"ORICHALCUM_ORE", 2}}, 200}},
+	{"ELDER_PLANK",      {"ELDER_PLANK",      1, "Crafting", 40, {{"ELDER_LOG", 1}}, 150}},
+
+	// --- TIER 5 EQUIPMENT (Lvl 40-49) ---
+	{"ORICHALCUM_DAGGER",    {"ORICHALCUM_DAGGER",    1, "Crafting", 41, {{"ORICHALCUM_INGOT", 1}, {"ELDER_PLANK", 1}}, 350}},
+	{"ORICHALCUM_BOOTS",     {"ORICHALCUM_BOOTS",     1, "Crafting", 41, {{"ORICHALCUM_INGOT", 1}}, 350}},
+	{"ORICHALCUM_SWORD",     {"ORICHALCUM_SWORD",     1, "Crafting", 42, {{"ORICHALCUM_INGOT", 2}, {"ELDER_PLANK", 1}}, 400}},
+	{"ORICHALCUM_HELM",      {"ORICHALCUM_HELM",      1, "Crafting", 42, {{"ORICHALCUM_INGOT", 2}}, 400}},
+	{"ORICHALCUM_PLATELEGS", {"ORICHALCUM_PLATELEGS", 1, "Crafting", 43, {{"ORICHALCUM_INGOT", 3}}, 600}},
+	{"ORICHALCUM_PLATEBODY", {"ORICHALCUM_PLATEBODY", 1, "Crafting", 45, {{"ORICHALCUM_INGOT", 5}}, 1000}},
+	{"ELDER_BOW",            {"ELDER_BOW",            1, "Crafting", 45, {{"ELDER_PLANK", 3}}, 800}},
+	{"ORICHALCUM_GREATSWORD",{"ORICHALCUM_GREATSWORD",1, "Crafting", 46, {{"ORICHALCUM_INGOT", 4}, {"ELDER_PLANK", 2}}, 1100}},
+	{"VOID_GEM_AMULET",      {"VOID_GEM_AMULET",      1, "Crafting", 48, {{"ORICHALCUM_INGOT", 1}, {"VOID_GEM", 1}}, 1500}},
+	{"LEVIATHAN_TRIDENT",    {"LEVIATHAN_TRIDENT",    1, "Crafting", 49, {{"KRAKENS_EYE", 1}, {"SHARK_TOOTH", 3}, {"ADAMANT_INGOT", 2}}, 1600}},
+	{"WORLD_TREE_STAFF",     {"WORLD_TREE_STAFF",     1, "Crafting", 49, {{"WORLD_TREE_HEART", 1}, {"ELDER_PLANK", 2}}, 1800}},
+
+	// --- TIER 6 INTERMEDIATE (Lvl 50) ---
+	{"RUNITE_INGOT", {"RUNITE_INGOT", 1, "Crafting", 50, {{"RUNITE_ORE", 2}}, 350}},
+	{"ANCIENT_PLANK",{"ANCIENT_PLANK",1, "Crafting", 50, {{"ANCIENT_LOG", 1}}, 280}},
+
+	// --- TIER 6 EQUIPMENT (Lvl 50-59) ---
+	{"RUNITE_HELM",       {"RUNITE_HELM",       1, "Crafting", 51, {{"RUNITE_INGOT", 2}}, 700}},
+	{"RUNITE_BOOTS",      {"RUNITE_BOOTS",      1, "Crafting", 51, {{"RUNITE_INGOT", 1}}, 700}},
+	{"ANCIENT_MASK",      {"ANCIENT_MASK",      1, "Crafting", 52, {{"ANCIENT_PLANK", 3}}, 650}},
+	{"ANCIENT_BOOTS",     {"ANCIENT_BOOTS",     1, "Crafting", 52, {{"ANCIENT_PLANK", 2}}, 650}},
+	{"RUNITE_PLATELEGS",  {"RUNITE_PLATELEGS",  1, "Crafting", 53, {{"RUNITE_INGOT", 3}}, 1000}},
+	{"ANCIENT_LEGGINGS",  {"ANCIENT_LEGGINGS",  1, "Crafting", 53, {{"ANCIENT_PLANK", 4}}, 900}},
+	{"RUNITE_GREATSWORD", {"RUNITE_GREATSWORD", 1, "Crafting", 55, {{"RUNITE_INGOT", 4}, {"ELDER_PLANK", 2}}, 1500}},
+	{"ANCIENT_BOW",       {"ANCIENT_BOW",       1, "Crafting", 55, {{"ANCIENT_PLANK", 5}}, 1300}},
+	{"RUNITE_PLATEBODY",  {"RUNITE_PLATEBODY",  1, "Crafting", 56, {{"RUNITE_INGOT", 5}}, 1800}},
+	{"ANCIENT_ROBE",      {"ANCIENT_ROBE",      1, "Crafting", 56, {{"ANCIENT_PLANK", 6}}, 1600}},
+	{"RUNIC_PLATEBODY",   {"RUNIC_PLATEBODY",   1, "Crafting", 57, {{"RUNITE_PLATEBODY", 1}, {"MONSTER_ESSENCE", 20}, {"CURSED_RELIC", 1}}, 2500}},
+	{"SQUID_INK_STAFF",   {"SQUID_INK_STAFF",   1, "Crafting", 58, {{"SQUID_INK", 1}, {"ANCIENT_PLANK", 1}, {"ETERNAL_EMBER", 1}}, 2800}},
+	{"STARFALL_SPEAR",    {"STARFALL_SPEAR",    1, "Crafting", 59, {{"RUNITE_INGOT", 3}, {"ANCIENT_PLANK", 2}, {"STAR_METAL_FRAGMENT", 1}}, 3000}},
+
+	// --- TIER 7 INTERMEDIATE (Lvl 60) ---
+	{"NEBULITE_INGOT", {"NEBULITE_INGOT", 1, "Crafting", 60, {{"NEBULITE_ORE", 2}}, 600}},
+	{"CRYSTAL_PLANK",  {"CRYSTAL_PLANK",  1, "Crafting", 60, {{"CRYSTAL_SHARD", 1}}, 500}},
+
+	// --- TIER 7 EQUIPMENT (Lvl 60+) ---
+	{"NEBULITE_HELM",      {"NEBULITE_HELM",      1, "Crafting", 61, {{"NEBULITE_INGOT", 2}}, 1200}},
+	{"NEBULITE_BOOTS",     {"NEBULITE_BOOTS",     1, "Crafting", 61, {{"NEBULITE_INGOT", 1}}, 1200}},
+	{"CRYSTAL_CROWN",      {"CRYSTAL_CROWN",      1, "Crafting", 62, {{"CRYSTAL_PLANK", 3}}, 1100}},
+	{"CRYSTAL_BOOTS",      {"CRYSTAL_BOOTS",      1, "Crafting", 62, {{"CRYSTAL_PLANK", 2}}, 1100}},
+	{"VOID_EDGE",          {"VOID_EDGE",          1, "Crafting", 63, {{"NEBULITE_INGOT", 3}, {"VOID_GEM", 2}, {"CURSED_RELIC", 5}}, 3500}},
+	{"NEBULITE_LEGS",      {"NEBULITE_LEGS",      1, "Crafting", 63, {{"NEBULITE_INGOT", 3}}, 1800}},
+	{"CRYSTAL_LEGGINGS",   {"CRYSTAL_LEGGINGS",   1, "Crafting", 63, {{"CRYSTAL_PLANK", 4}}, 1600}},
+	{"NEBULITE_PLATEBODY", {"NEBULITE_PLATEBODY", 1, "Crafting", 65, {{"NEBULITE_INGOT", 5}}, 3000}},
+	{"CRYSTAL_ROBE",       {"CRYSTAL_ROBE",       1, "Crafting", 65, {{"CRYSTAL_PLANK", 6}}, 2800}},
+	{"NEBULITE_WARHAMMER", {"NEBULITE_WARHAMMER", 1, "Crafting", 66, {{"NEBULITE_INGOT", 4}, {"ANCIENT_PLANK", 2}}, 2500}},
+	{"CRYSTAL_WAND",       {"CRYSTAL_WAND",       1, "Crafting", 66, {{"CRYSTAL_PLANK", 3}, {"CRYSTALLINE_CORE", 1}}, 3200}},
+	{"CORE_STAFF",         {"CORE_STAFF",         1, "Crafting", 68, {{"CRYSTAL_PLANK", 3}, {"ELEMENTAL_CORE", 3}, {"NEBULA_MOTE", 1}}, 4000}},
+	{"ABYSSAL_SPEAR",      {"ABYSSAL_SPEAR",      1, "Crafting", 70, {{"ABYSSAL_FIN", 5}, {"VOID_TENDRIL", 1}, {"ANCIENT_PLANK", 1}}, 5000}}
 };
 
 // --- Grid Definitions ---
@@ -1584,6 +1742,1396 @@ std::map<std::string, ItemDefinition> itemDatabase;
 void initialize_item_database() {
 	ItemDefinition def;
 
+
+
+	// --- NEW GENERIC MONSTER DROPS (ALL TIERS) ---
+	def = {};
+	def.id = "MONSTER_BONE";
+	def.name = "Monster Bone";
+	def.description = "A large, sturdy bone from a monster.";
+	def.imagePath = "MONSTER_BONE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 2;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MONSTER_HIDE";
+	def.name = "Monster Hide";
+	def.description = "A tough, leathery hide.";
+	def.imagePath = "MONSTER_HIDE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 2;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MONSTER_FANG";
+	def.name = "Monster Fang";
+	def.description = "A sharp, menacing fang.";
+	def.imagePath = "MONSTER_FANG";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 3;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MONSTER_CLAW";
+	def.name = "Monster Claw";
+	def.description = "A hard, sharp talon.";
+	def.imagePath = "MONSTER_CLAW";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 3;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MONSTER_ESSENCE";
+	def.name = "Monster Essence";
+	def.description = "A swirling vial of captured spirit energy.";
+	def.imagePath = "MONSTER_ESSENCE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 4;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "CURSED_RELIC";
+	def.name = "Cursed Relic";
+	def.description = "A dark artifact, pulsing with malice.";
+	def.imagePath = "CURSED_RELIC";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 5;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ELEMENTAL_CORE";
+	def.name = "Elemental Core";
+	def.description = "A sphere of pure, unstable elemental energy.";
+	def.imagePath = "ELEMENTAL_CORE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 6;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ANCIENT_RELIC";
+	def.name = "Ancient Relic";
+	def.description = "A fragment of a forgotten, powerful object.";
+	def.imagePath = "ANCIENT_RELIC";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 7;
+	itemDatabase[def.id] = def;
+
+	// --- NEW TIER 1 MATERIALS & EQUIPMENT ---
+	def = {};
+	def.id = "OAK_PLANK";
+	def.name = "Oak Plank";
+	def.description = "A sturdy, cut plank of oak wood.";
+	def.imagePath = "OAK_PLANK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 1;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "COPPER_DAGGER";
+	def.name = "Copper Dagger";
+	def.description = "A simple copper dagger.";
+	def.imagePath = "COPPER_DAGGER";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 1;
+	def.stats = { {"dexterity", 4}, {"speed", 1} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "COPPER_SWORD";
+	def.name = "Copper Sword";
+	def.description = "A basic copper sword.";
+	def.imagePath = "COPPER_SWORD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 1;
+	def.stats = { {"strength", 4} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "COPPER_HELMET";
+	def.name = "Copper Helmet";
+	def.description = "A simple copper helm.";
+	def.imagePath = "COPPER_HELMET";
+	def.equipSlot = EquipSlot::Hat;
+	def.stackable = false;
+	def.item_tier = 1;
+	def.stats = { {"defense", 4} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "COPPER_CHAINBODY";
+	def.name = "Copper Chainbody";
+	def.description = "A vest of copper rings.";
+	def.imagePath = "COPPER_CHAINBODY";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 1;
+	def.stats = { {"defense", 10}, {"speed", -1} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "COPPER_LEGS";
+	def.name = "Copper Legs";
+	def.description = "Copper chain leggings.";
+	def.imagePath = "COPPER_LEGS";
+	def.equipSlot = EquipSlot::Bottom;
+	def.stackable = false;
+	def.item_tier = 1;
+	def.stats = { {"defense", 7} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "COPPER_BOOTS";
+	def.name = "Copper Boots";
+	def.description = "Heavy copper-plated boots.";
+	def.imagePath = "COPPER_BOOTS";
+	def.equipSlot = EquipSlot::Boots;
+	def.stackable = false;
+	def.item_tier = 1;
+	def.stats = { {"defense", 3}, {"speed", -1} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "OAK_SHORTBOW";
+	def.name = "Oak Shortbow";
+	def.description = "A reliable bow made from oak.";
+	def.imagePath = "OAK_SHORTBOW";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 1;
+	def.stats = { {"dexterity", 5} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "OAK_STAFF";
+	def.name = "Oak Staff";
+	def.description = "A simple staff, topped with a ruby.";
+	def.imagePath = "OAK_STAFF";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 1;
+	def.stats = { {"intellect", 5}, {"maxMana", 10} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "OAK_SHIELD";
+	def.name = "Oak Shield";
+	def.description = "A round wooden shield.";
+	def.imagePath = "OAK_SHIELD";
+	def.equipSlot = EquipSlot::Weapon; // Using Weapon slot as off-hand
+	def.stackable = false;
+	def.item_tier = 1;
+	def.stats = { {"defense", 6} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "REINFORCED_OAK_SHIELD";
+	def.name = "Reinforced Oak Shield";
+	def.description = "An oak shield reinforced with copper and bone.";
+	def.imagePath = "REINFORCED_OAK_SHIELD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 2;
+	def.stats = { {"defense", 10}, {"maxHealth", 10} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW TIER 2 MATERIALS & EQUIPMENT ---
+	def = {};
+	def.id = "YEW_PLANK";
+	def.name = "Yew Plank";
+	def.description = "A flexible, cut plank of yew wood.";
+	def.imagePath = "YEW_PLANK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 3;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "IRON_ORE";
+	def.name = "Iron Ore";
+	def.description = "Unrefined iron ore.";
+	def.imagePath = "IRON_ORE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 3;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RAW_TROUT";
+	def.name = "Raw Trout";
+	def.description = "A freshwater fish.";
+	def.imagePath = "RAW_TROUT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 3;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "SAPPHIRE";
+	def.name = "Sapphire";
+	def.description = "A brilliant blue gem.";
+	def.imagePath = "SAPPHIRE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 4;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ENCHANTED_TWIG";
+	def.name = "Enchanted Twig";
+	def.description = "It hums with a faint energy.";
+	def.imagePath = "ENCHANTED_TWIG";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 4;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "GLISTENING_SCALE";
+	def.name = "Glistening Scale";
+	def.description = "A shimmering fish scale.";
+	def.imagePath = "GLISTENING_SCALE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 4;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "IRON_DAGGER";
+	def.name = "Iron Dagger";
+	def.description = "A standard iron dagger.";
+	def.imagePath = "IRON_DAGGER";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"dexterity", 8}, {"speed", 2} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "IRON_SWORD";
+	def.name = "Iron Sword";
+	def.description = "A standard iron sword.";
+	def.imagePath = "IRON_SWORD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"strength", 8} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "IRON_GREATSWORD";
+	def.name = "Iron Greatsword";
+	def.description = "A heavy two-handed iron sword.";
+	def.imagePath = "IRON_GREATSWORD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"strength", 14}, {"speed", -3} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "IRON_BOOTS";
+	def.name = "Iron Boots";
+	def.description = "Tough iron-plated boots.";
+	def.imagePath = "IRON_BOOTS";
+	def.equipSlot = EquipSlot::Boots;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"defense", 6}, {"speed", -2} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "YEW_STAFF";
+	def.name = "Yew Staff";
+	def.description = "A yew staff, topped with a sapphire.";
+	def.imagePath = "YEW_STAFF";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"intellect", 10}, {"maxMana", 25} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "YEW_SHIELD";
+	def.name = "Yew Shield";
+	def.description = "A sturdy shield made of yew planks.";
+	def.imagePath = "YEW_SHIELD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"defense", 10} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RANGER_TUNIC";
+	def.name = "Ranger Tunic";
+	def.description = "A practical tunic made of cured monster hides and yew planks.";
+	def.imagePath = "RANGER_TUNIC";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"defense", 8}, {"dexterity", 5}, {"speed", 2} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "SPIKED_IRON_HELM";
+	def.name = "Spiked Iron Helm";
+	def.description = "An iron helm, upgraded with sharp monster fangs.";
+	def.imagePath = "SPIKED_IRON_HELM";
+	def.equipSlot = EquipSlot::Hat;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"defense", 10}, {"strength", 2} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "SAPPHIRE_RING";
+	def.name = "Sapphire Ring";
+	def.description = "A ring set with a glowing sapphire.";
+	def.imagePath = "SAPPHIRE_RING";
+	def.equipSlot = EquipSlot::Hat; // Using Hat as "Ring" slot
+	def.stackable = false;
+	def.item_tier = 4;
+	def.stats = { {"intellect", 5}, {"maxMana", 20} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "SCALE_MAIL_VEST";
+	def.name = "Scale-Mail Vest";
+	def.description = "Flexible armor made from tough fish scales.";
+	def.imagePath = "SCALE_MAIL_VEST";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 4;
+	def.stats = { {"defense", 10}, {"dexterity", 5}, {"speed", 2} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW TIER 3 MATERIALS & EQUIPMENT ---
+	def = {};
+	def.id = "MAGIC_PLANK";
+	def.name = "Magic Plank";
+	def.description = "A plank of magic wood, humming with power.";
+	def.imagePath = "MAGIC_PLANK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 5;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MITHRIL_ORE";
+	def.name = "Mithril Ore";
+	def.description = "Lightweight, silvery ore.";
+	def.imagePath = "MITHRIL_ORE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 5;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RAW_SHARK";
+	def.name = "Raw Shark";
+	def.description = "A large, meaty fish.";
+	def.imagePath = "RAW_SHARK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 5;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "EMERALD";
+	def.name = "Emerald";
+	def.description = "A flawless green gemstone.";
+	def.imagePath = "EMERALD";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 6;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "LIVING_ROOT";
+	def.name = "Living Root";
+	def.description = "It squirms slightly in your hand.";
+	def.imagePath = "LIVING_ROOT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 6;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "SHARK_TOOTH";
+	def.name = "Shark Tooth";
+	def.description = "A massive, serrated tooth.";
+	def.imagePath = "SHARK_TOOTH";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 6;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MITHRIL_DAGGER";
+	def.name = "Mithril Dagger";
+	def.description = "A fast, light, and sharp dagger.";
+	def.imagePath = "MITHRIL_DAGGER";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"dexterity", 14}, {"speed", 3} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MITHRIL_SWORD";
+	def.name = "Mithril Sword";
+	def.description = "A shining mithril sword.";
+	def.imagePath = "MITHRIL_SWORD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"strength", 14} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MITHRIL_GREATSWORD";
+	def.name = "Mithril Greatsword";
+	def.description = "A large, lightweight mithril blade.";
+	def.imagePath = "MITHRIL_GREATSWORD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"strength", 20}, {"speed", -2} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MITHRIL_BOOTS";
+	def.name = "Mithril Boots";
+	def.description = "Light and durable boots.";
+	def.imagePath = "MITHRIL_BOOTS";
+	def.equipSlot = EquipSlot::Boots;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"defense", 10}, {"speed", -1} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MAGIC_STAFF";
+	def.name = "Magic Staff";
+	def.description = "A staff of magic wood, pulsing with power.";
+	def.imagePath = "MAGIC_STAFF";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"intellect", 18}, {"maxMana", 50} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MAGIC_SHIELD";
+	def.name = "Magic Shield";
+	def.description = "A shield that thrums with protective energy.";
+	def.imagePath = "MAGIC_SHIELD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"defense", 14}, {"maxMana", 20} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "EMERALD_AMULET";
+	def.name = "Emerald Amulet";
+	def.description = "An amulet pulsing with natural energy.";
+	def.imagePath = "EMERALD_AMULET";
+	def.equipSlot = EquipSlot::Hat; // Using Hat as "Amulet" slot
+	def.stackable = false;
+	def.item_tier = 6;
+	def.stats = { {"dexterity", 8}, {"maxHealth", 30}, {"speed", 3} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "SHARKTOOTH_SPEAR";
+	def.name = "Sharktooth Spear";
+	def.description = "A vicious spear tipped with a giant shark tooth.";
+	def.imagePath = "SHARKTOOTH_SPEAR";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 6;
+	def.stats = { {"strength", 15}, {"dexterity", 10}, {"luck", 5} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "STAFF_OF_ROOTS";
+	def.name = "Staff of Roots";
+	def.description = "A living staff that channels the power of the earth.";
+	def.imagePath = "STAFF_OF_ROOTS";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 6;
+	def.stats = { {"intellect", 20}, {"maxHealth", 25}, {"maxMana", 40} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ESSENCE_STAFF";
+	def.name = "Essence Staff";
+	def.description = "A magic staff infused with raw monster essence.";
+	def.imagePath = "ESSENCE_STAFF";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"intellect", 15}, {"maxMana", 60} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MITHRIL_BATTLEAXE";
+	def.name = "Mithril Battleaxe";
+	def.description = "A mithril axe head on a yew haft, weighted with monster claws.";
+	def.imagePath = "MITHRIL_BATTLEAXE";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"strength", 18}, {"dexterity", 5}, {"speed", -2} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW TIER 4 MATERIALS & EQUIPMENT ---
+	def = {};
+	def.id = "REDWOOD_PLANK";
+	def.name = "Redwood Plank";
+	def.description = "A plank of incredibly durable redwood.";
+	def.imagePath = "REDWOOD_PLANK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 7;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ADAMANT_ORE";
+	def.name = "Adamant Ore";
+	def.description = "An extremely hard, dense ore.";
+	def.imagePath = "ADAMANT_ORE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 7;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ADAMANT_INGOT";
+	def.name = "Adamant Ingot";
+	def.description = "A bar of refined adamantite.";
+	def.imagePath = "ADAMANT_INGOT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 7;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RAW_ANGLER";
+	def.name = "Raw Anglerfish";
+	def.description = "A terrifying fish from the deep.";
+	def.imagePath = "RAW_ANGLER";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 7;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "DIAMOND";
+	def.name = "Diamond";
+	def.description = "An uncut diamond, radiating light.";
+	def.imagePath = "DIAMOND";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 8;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BLOODWOOD_SAP";
+	def.name = "Bloodwood Sap";
+	def.description = "A thick, crimson sap.";
+	def.imagePath = "BLOODWOOD_SAP";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 8;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "DEEP_CRYSTAL";
+	def.name = "Deep Crystal";
+	def.description = "A crystal that glows with its own light.";
+	def.imagePath = "DEEP_CRYSTAL";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 8;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ADAMANT_DAGGER";
+	def.name = "Adamant Dagger";
+	def.description = "A perfectly balanced adamant dagger.";
+	def.imagePath = "ADAMANT_DAGGER";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 7;
+	def.stats = { {"dexterity", 20}, {"speed", 4} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ADAMANT_SWORD";
+	def.name = "Adamant Sword";
+	def.description = "A razor-sharp adamant sword.";
+	def.imagePath = "ADAMANT_SWORD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 7;
+	def.stats = { {"strength", 22} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ADAMANT_GREATSWORD";
+	def.name = "Adamant Greatsword";
+	def.description = "A colossal two-handed adamant sword.";
+	def.imagePath = "ADAMANT_GREATSWORD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 7;
+	def.stats = { {"strength", 30}, {"speed", -4} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ADAMANT_FULL_HELM";
+	def.name = "Adamant Full Helm";
+	def.description = "A helm of shining adamantite.";
+	def.imagePath = "ADAMANT_FULL_HELM";
+	def.equipSlot = EquipSlot::Hat;
+	def.stackable = false;
+	def.item_tier = 7;
+	def.stats = { {"defense", 18}, {"strength", 3} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ADAMANT_PLATEBODY";
+	def.name = "Adamant Platebody";
+	def.description = "Masterwork adamantite plate armor.";
+	def.imagePath = "ADAMANT_PLATEBODY";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 7;
+	def.stats = { {"defense", 32}, {"strength", 5}, {"maxHealth", 20} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ADAMANT_PLATELEGS";
+	def.name = "Adamant Platelegs";
+	def.description = "Masterwork adamantite platelegs.";
+	def.imagePath = "ADAMANT_PLATELEGS";
+	def.equipSlot = EquipSlot::Bottom;
+	def.stackable = false;
+	def.item_tier = 7;
+	def.stats = { {"defense", 26}, {"strength", 3} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ADAMANT_BOOTS";
+	def.name = "Adamant Boots";
+	def.description = "Adamantite-plated sabatons.";
+	def.imagePath = "ADAMANT_BOOTS";
+	def.equipSlot = EquipSlot::Boots;
+	def.stackable = false;
+	def.item_tier = 7;
+	def.stats = { {"defense", 15}, {"speed", -2} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "REDWOOD_SHORTBOW";
+	def.name = "Redwood Shortbow";
+	def.description = "A massive bow with a powerful draw.";
+	def.imagePath = "REDWOOD_SHORTBOW";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 7;
+	def.stats = { {"dexterity", 25}, {"strength", 5}, {"speed", 3} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "DIAMOND_RING";
+	def.name = "Diamond Ring";
+	def.description = "A ring set with a flawless diamond.";
+	def.imagePath = "DIAMOND_RING";
+	def.equipSlot = EquipSlot::Hat; // Ring slot
+	def.stackable = false;
+	def.item_tier = 8;
+	def.stats = { {"luck", 10}, {"maxHealth", 25}, {"maxMana", 25} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BLOODWOOD_WAND";
+	def.name = "Bloodwood Wand";
+	def.description = "A wand of dark, blood-red wood.";
+	def.imagePath = "BLOODWOOD_WAND";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 8;
+	def.stats = { {"intellect", 25}, {"maxHealth", -20} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "CRYSTAL_SHIELD";
+	def.name = "Crystal Shield";
+	def.description = "A shield formed from a single deep-sea crystal.";
+	def.imagePath = "CRYSTAL_SHIELD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 8;
+	def.stats = { {"defense", 20}, {"intellect", 10} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "REDWOOD_WARBOW";
+	def.name = "Redwood Warbow";
+	def.description = "A redwood bow infused with monster essence.";
+	def.imagePath = "REDWOOD_WARBOW";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 8;
+	def.stats = { {"dexterity", 30}, {"intellect", 10}, {"speed", 4} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ADAMANT_SPEAR";
+	def.name = "Adamant Spear";
+	def.description = "An adamant spear tipped with a shark tooth.";
+	def.imagePath = "ADAMANT_SPEAR";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 8;
+	def.stats = { {"strength", 20}, {"dexterity", 15}, {"luck", 5} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW TIER 5 MATERIALS & EQUIPMENT ---
+	def = {};
+	def.id = "ELDER_PLANK";
+	def.name = "Elder Plank";
+	def.description = "A plank from an ancient, wise tree.";
+	def.imagePath = "ELDER_PLANK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 9;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ORICHALCUM_ORE";
+	def.name = "Orichalcum Ore";
+	def.description = "A pulsing, star-like metal ore.";
+	def.imagePath = "ORICHALCUM_ORE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 9;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ORICHALCUM_INGOT";
+	def.name = "Orichalcum Ingot";
+	def.description = "A bar of refined, glowing orichalcum.";
+	def.imagePath = "ORICHALCUM_INGOT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 9;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RAW_LEVIATHAN";
+	def.name = "Raw Leviathan";
+	def.description = "The meat of a true sea monster.";
+	def.imagePath = "RAW_LEVIATHAN";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 9;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "VOID_GEM";
+	def.name = "Void-Touched Gem";
+	def.description = "It seems to absorb the light around it.";
+	def.imagePath = "VOID_GEM";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 10;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "WORLD_TREE_HEART";
+	def.name = "Heart of the World-Tree";
+	def.description = "A perfectly preserved, glowing seed.";
+	def.imagePath = "WORLD_TREE_HEART";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 10;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "KRAKENS_EYE";
+	def.name = "Kraken's Eye";
+	def.description = "A massive, unblinking eye.";
+	def.imagePath = "KRAKENS_EYE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 10;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ORICHALCUM_DAGGER";
+	def.name = "Orichalcum Dagger";
+	def.description = "A dagger of star-metal.";
+	def.imagePath = "ORICHALCUM_DAGGER";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 9;
+	def.stats = { {"dexterity", 28}, {"speed", 5}, {"luck", 5} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ORICHALCUM_SWORD";
+	def.name = "Orichalcum Sword";
+	def.description = "A sword of star-metal.";
+	def.imagePath = "ORICHALCUM_SWORD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 9;
+	def.stats = { {"strength", 30} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ORICHALCUM_GREATSWORD";
+	def.name = "Orichalcum Greatsword";
+	def.description = "An ultimate two-handed orichalcum sword.";
+	def.imagePath = "ORICHALCUM_GREATSWORD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 9;
+	def.stats = { {"strength", 40}, {"speed", -5} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ORICHALCUM_HELM";
+	def.name = "Orichalcum Helm";
+	def.description = "A helm of shining star-metal.";
+	def.imagePath = "ORICHALCUM_HELM";
+	def.equipSlot = EquipSlot::Hat;
+	def.stackable = false;
+	def.item_tier = 9;
+	def.stats = { {"defense", 25}, {"strength", 5} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ORICHALCUM_PLATEBODY";
+	def.name = "Orichalcum Platebody";
+	def.description = "Legendary orichalcum plate armor.";
+	def.imagePath = "ORICHALCUM_PLATEBODY";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 9;
+	def.stats = { {"defense", 40}, {"strength", 7}, {"maxHealth", 50} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ORICHALCUM_PLATELEGS";
+	def.name = "Orichalcum Platelegs";
+	def.description = "Legendary orichalcum platelegs.";
+	def.imagePath = "ORICHALCUM_PLATELEGS";
+	def.equipSlot = EquipSlot::Bottom;
+	def.stackable = false;
+	def.item_tier = 9;
+	def.stats = { {"defense", 32}, {"strength", 5} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ORICHALCUM_BOOTS";
+	def.name = "Orichalcum Boots";
+	def.description = "Boots of star-metal.";
+	def.imagePath = "ORICHALCUM_BOOTS";
+	def.equipSlot = EquipSlot::Boots;
+	def.stackable = false;
+	def.item_tier = 9;
+	def.stats = { {"defense", 20}, {"speed", -1} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ELDER_BOW";
+	def.name = "Elder Bow";
+	def.description = "A bow from the World-Tree itself.";
+	def.imagePath = "ELDER_BOW";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 9;
+	def.stats = { {"dexterity", 32}, {"speed", 7} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "VOID_GEM_AMULET";
+	def.name = "Void-Gem Amulet";
+	def.description = "An amulet that pulls at your very being.";
+	def.imagePath = "VOID_GEM_AMULET";
+	def.equipSlot = EquipSlot::Hat; // Amulet slot
+	def.stackable = false;
+	def.item_tier = 10;
+	def.stats = { {"strength", 10}, {"dexterity", 10}, {"intellect", 10}, {"maxHealth", -50} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "WORLD_TREE_STAFF";
+	def.name = "World-Tree Staff";
+	def.description = "A staff pulsing with the life of the world.";
+	def.imagePath = "WORLD_TREE_STAFF";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 10;
+	def.stats = { {"intellect", 35}, {"maxHealth", 100}, {"maxMana", 100} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "LEVIATHAN_TRIDENT";
+	def.name = "Leviathan's Trident";
+	def.description = "A massive trident imbued with the ocean's fury.";
+	def.imagePath = "LEVIATHAN_TRIDENT";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 10;
+	def.stats = { {"strength", 25}, {"speed", 5}, {"maxHealth", 75} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW TIER 6 MATERIALS & EQUIPMENT ---
+	def = {};
+	def.id = "ANCIENT_PLANK";
+	def.name = "Ancient Plank";
+	def.description = "A plank of petrified, ancient wood.";
+	def.imagePath = "ANCIENT_PLANK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 11;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RUNITE_ORE";
+	def.name = "Runite Ore";
+	def.description = "A glowing, blue-ish ore.";
+	def.imagePath = "RUNITE_ORE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 11;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RUNITE_INGOT";
+	def.name = "Runite Ingot";
+	def.description = "A bar of refined, runic metal.";
+	def.imagePath = "RUNITE_INGOT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 11;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "SQUID_INK";
+	def.name = "Squid Ink";
+	def.description = "A vial of iridescent, magical ink.";
+	def.imagePath = "SQUID_INK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 11;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ETERNAL_EMBER";
+	def.name = "Eternal Ember";
+	def.description = "A wooden ember that never stops burning.";
+	def.imagePath = "ETERNAL_EMBER";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 12;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "STAR_METAL_FRAGMENT";
+	def.name = "Star Metal Fragment";
+	def.description = "A piece of a fallen star, humming with energy.";
+	def.imagePath = "STAR_METAL_FRAGMENT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 12;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "AZURE_GEM";
+	def.name = "Azure Gem";
+	def.description = "A gem the color of the deepest ocean.";
+	def.imagePath = "AZURE_GEM";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 12;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RUNITE_HELM";
+	def.name = "Runite Helm";
+	def.description = "A helm inscribed with powerful runes.";
+	def.imagePath = "RUNITE_HELM";
+	def.equipSlot = EquipSlot::Hat;
+	def.stackable = false;
+	def.item_tier = 11;
+	def.stats = { {"defense", 30}, {"strength", 8} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RUNITE_PLATEBODY";
+	def.name = "Runite Platebody";
+	def.description = "A platebody of shining runite.";
+	def.imagePath = "RUNITE_PLATEBODY";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 11;
+	def.stats = { {"defense", 50}, {"strength", 10}, {"maxHealth", 70} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RUNITE_PLATELEGS";
+	def.name = "Runite Platelegs";
+	def.description = "A set of runite platelegs.";
+	def.imagePath = "RUNITE_PLATELEGS";
+	def.equipSlot = EquipSlot::Bottom;
+	def.stackable = false;
+	def.item_tier = 11;
+	def.stats = { {"defense", 38}, {"strength", 7} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RUNITE_BOOTS";
+	def.name = "Runite Boots";
+	def.description = "Boots of solid runite.";
+	def.imagePath = "RUNITE_BOOTS";
+	def.equipSlot = EquipSlot::Boots;
+	def.stackable = false;
+	def.item_tier = 11;
+	def.stats = { {"defense", 24}, {"speed", -2} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RUNITE_GREATSWORD";
+	def.name = "Runite Greatsword";
+	def.description = "A massive sword of pure runite.";
+	def.imagePath = "RUNITE_GREATSWORD";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 11;
+	def.stats = { {"strength", 50}, {"speed", -6} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ANCIENT_MASK";
+	def.name = "Ancient Mask";
+	def.description = "A mask carved from Ancient Wood.";
+	def.imagePath = "ANCIENT_MASK";
+	def.equipSlot = EquipSlot::Hat;
+	def.stackable = false;
+	def.item_tier = 11;
+	def.stats = { {"defense", 18}, {"dexterity", 10}, {"intellect", 10} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ANCIENT_ROBE";
+	def.name = "Ancient Robe";
+	def.description = "A robe woven from petrified fibers.";
+	def.imagePath = "ANCIENT_ROBE";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 11;
+	def.stats = { {"defense", 25}, {"dexterity", 12}, {"intellect", 12}, {"speed", 5} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ANCIENT_LEGGINGS";
+	def.name = "Ancient Leggings";
+	def.description = "Leggings of petrified wood.";
+	def.imagePath = "ANCIENT_LEGGINGS";
+	def.equipSlot = EquipSlot::Bottom;
+	def.stackable = false;
+	def.item_tier = 11;
+	def.stats = { {"defense", 20}, {"dexterity", 8}, {"intellect", 8} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ANCIENT_BOOTS";
+	def.name = "Ancient Boots";
+	def.description = "Boots that feel light as air.";
+	def.imagePath = "ANCIENT_BOOTS";
+	def.equipSlot = EquipSlot::Boots;
+	def.stackable = false;
+	def.item_tier = 11;
+	def.stats = { {"defense", 14}, {"speed", 10} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ANCIENT_BOW";
+	def.name = "Ancient Bow";
+	def.description = "A bow that whispers of forgotten times.";
+	def.imagePath = "ANCIENT_BOW";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 11;
+	def.stats = { {"dexterity", 40}, {"speed", 8} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "RUNIC_PLATEBODY";
+	def.name = "Runic Platebody";
+	def.description = "A Runite Platebody, infused with powerful monster essence and a Cursed Relic.";
+	def.imagePath = "RUNIC_PLATEBODY";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 12;
+	def.stats = { {"defense", 55}, {"strength", 12}, {"maxHealth", 80}, {"intellect", 10} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "SQUID_INK_STAFF";
+	def.name = "Staff of the Deep";
+	def.description = "An ancient plank, stained black with magic ink and capped with an Eternal Ember.";
+	def.imagePath = "SQUID_INK_STAFF";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 12;
+	def.stats = { {"intellect", 45}, {"maxMana", 120} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "STARFALL_SPEAR";
+	def.name = "Starfall Spear";
+	def.description = "A runite spear tipped with a fragment of a star.";
+	def.imagePath = "STARFALL_SPEAR";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 12;
+	def.stats = { {"strength", 30}, {"dexterity", 20}, {"intellect", 20} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW TIER 7 MATERIALS & EQUIPMENT ---
+	def = {};
+	def.id = "CRYSTAL_PLANK";
+	def.name = "Crystal Plank";
+	def.description = "A plank-like shard of a massive crystal.";
+	def.imagePath = "CRYSTAL_PLANK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 13;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "NEBULITE_ORE";
+	def.name = "Nebulite Ore";
+	def.description = "An ore that swirls with a galactic nebula.";
+	def.imagePath = "NEBULITE_ORE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 13;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "NEBULITE_INGOT";
+	def.name = "Nebulite Ingot";
+	def.description = "A bar of refined, cosmic metal.";
+	def.imagePath = "NEBULITE_INGOT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 13;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ABYSSAL_FIN";
+	def.name = "Abyssal Fin";
+	def.description = "The fin of a fish from the lightless depths.";
+	def.imagePath = "ABYSSAL_FIN";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 13;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "CRYSTALLINE_CORE";
+	def.name = "Crystalline Core";
+	def.description = "The heart of a crystal golem.";
+	def.imagePath = "CRYSTALLINE_CORE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 14;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "NEBULA_MOTE";
+	def.name = "Nebula Mote";
+	def.description = "A speck of condensed starlight.";
+	def.imagePath = "NEBULA_MOTE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 14;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "VOID_TENDRIL";
+	def.name = "Void Tendril";
+	def.description = "A writhing piece of pure darkness.";
+	def.imagePath = "VOID_TENDRIL";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 14;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "NEBULITE_HELM";
+	def.name = "Nebulite Helm";
+	def.description = "A helm forged from a nebula.";
+	def.imagePath = "NEBULITE_HELM";
+	def.equipSlot = EquipSlot::Hat;
+	def.stackable = false;
+	def.item_tier = 13;
+	def.stats = { {"defense", 38}, {"strength", 10} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "NEBULITE_PLATEBODY";
+	def.name = "Nebulite Platebody";
+	def.description = "Armor that shows a swirling galaxy within.";
+	def.imagePath = "NEBULITE_PLATEBODY";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 13;
+	def.stats = { {"defense", 60}, {"strength", 15}, {"maxHealth", 100} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "NEBULITE_LEGS";
+	def.name = "Nebulite Legs";
+	def.description = "Legs forged from a nebula.";
+	def.imagePath = "NEBULITE_LEGS";
+	def.equipSlot = EquipSlot::Bottom;
+	def.stackable = false;
+	def.item_tier = 13;
+	def.stats = { {"defense", 45}, {"strength", 10} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "NEBULITE_BOOTS";
+	def.name = "Nebulite Boots";
+	def.description = "Boots of swirling cosmic dust.";
+	def.imagePath = "NEBULITE_BOOTS";
+	def.equipSlot = EquipSlot::Boots;
+	def.stackable = false;
+	def.item_tier = 13;
+	def.stats = { {"defense", 28} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "NEBULITE_WARHAMMER";
+	def.name = "Nebulite Warhammer";
+	def.description = "A hammer with a galactic core.";
+	def.imagePath = "NEBULITE_WARHAMMER";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 13;
+	def.stats = { {"strength", 65}, {"speed", -8} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "CRYSTAL_CROWN";
+	def.name = "Crystal Crown";
+	def.description = "A crown of pure, resonating crystal.";
+	def.imagePath = "CRYSTAL_CROWN";
+	def.equipSlot = EquipSlot::Hat;
+	def.stackable = false;
+	def.item_tier = 13;
+	def.stats = { {"defense", 22}, {"intellect", 15}, {"maxMana", 50} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "CRYSTAL_ROBE";
+	def.name = "Crystal Robe";
+	def.description = "A robe of woven light crystals.";
+	def.imagePath = "CRYSTAL_ROBE";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 13;
+	def.stats = { {"defense", 30}, {"intellect", 20}, {"maxMana", 80}, {"speed", 5} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "CRYSTAL_LEGGINGS";
+	def.name = "Crystal Leggings";
+	def.description = "Leggings of pure, resonating crystal.";
+	def.imagePath = "CRYSTAL_LEGGINGS";
+	def.equipSlot = EquipSlot::Bottom;
+	def.stackable = false;
+	def.item_tier = 13;
+	def.stats = { {"defense", 25}, {"intellect", 12}, {"maxMana", 40} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "CRYSTAL_BOOTS";
+	def.name = "Crystal Boots";
+	def.description = "Boots that chime with every step.";
+	def.imagePath = "CRYSTAL_BOOTS";
+	def.equipSlot = EquipSlot::Boots;
+	def.stackable = false;
+	def.item_tier = 13;
+	def.stats = { {"defense", 18}, {"speed", 8} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "CRYSTAL_WAND";
+	def.name = "Crystal Wand";
+	def.description = "A wand with a Crystalline Core.";
+	def.imagePath = "CRYSTAL_WAND";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 14;
+	def.stats = { {"intellect", 50}, {"maxMana", 100} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "VOID_EDGE";
+	def.name = "Void's Edge";
+	def.description = "A Nebulite greatsword infused with void gems and cursed relics.";
+	def.imagePath = "VOID_EDGE";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 14;
+	def.stats = { {"strength", 55}, {"dexterity", 20}, {"luck", -10} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "CORE_STAFF";
+	def.name = "Elemental Core Staff";
+	def.description = "A crystal staff pulsing with elemental and nebular energy.";
+	def.imagePath = "CORE_STAFF";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 14;
+	def.stats = { {"intellect", 60}, {"maxMana", 150}, {"maxHealth", 50} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "ABYSSAL_SPEAR";
+	def.name = "Abyssal Spear";
+	def.description = "A spear made of a Void Tendril, tipped with a fin from the deep.";
+	def.imagePath = "ABYSSAL_SPEAR";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 14;
+	def.stats = { {"strength", 30}, {"dexterity", 30}, {"speed", 10} };
+	itemDatabase[def.id] = def;
 
 	// --- GATHERING MATERIALS ---
 	def = {};
@@ -3408,17 +4956,66 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 //{ "TOWN3", {} }
 //};
 // Map of shop inventories
+// Map of shop inventories
 const std::map<std::string, std::vector<std::string>> g_shops = {
 	{
-		"MERCHANT_SHOP_1", {
-			"SMALL_HEALTH_POTION",
-			"SMALL_MANA_POTION",
-			"RUSTY_SWORD",
-			"TORN_SHIRT",
-			"PATCHED_PANTS",
-			"FLIMSY_SANDALS"
-		}
+		"SHOP_TOWN_POTIONS", {
+		// Tier 1 & 4 Consumables
+		"SMALL_HEALTH_POTION",
+		"SMALL_MANA_POTION",
+		"LARGE_HEALTH_POTION",
+		"LARGE_MANA_POTION",
+		"ELIXIR_OF_SPEED",
+		"ELIXIR_OF_GIANTS_STRENGTH"
 	}
+},
+{
+	"SHOP_TOWN_ARMOR", {
+		// Tier 1-2 Crafting Intermediates & Basic Mats
+		"OAK_LOG",
+		"YEW_LOG",
+		"COPPER_ORE",
+		"IRON_ORE",
+		"COPPER_INGOT",
+		"OAK_PLANK"
+	}
+},
+{
+	"SHOP_TOWN_WEAPONS", {
+		// Rare Drops & Gems (Convenience Tax Items)
+		"RUBY",
+		"SAPPHIRE",
+		"EMERALD",
+		"DIAMOND",
+		"MONSTER_BONE",
+		"MONSTER_HIDE",
+		"MONSTER_FANG",
+		"MONSTER_CLAW"
+	}
+},
+{
+	"SHOP_SHADY_DEALER", {
+		// Higher Tier/Specialty Items (Mostly Rare Drops)
+		"MONSTER_ESSENCE",
+		"VOID_GEM",
+		"SHARK_TOOTH",
+		"GLISTENING_SCALE",
+		"BLOODWOOD_SAP",
+		"DEEP_CRYSTAL"
+	}
+},
+{
+	"GENERAL_STORE_2", {
+		// General Travel Goods, Fish & Simple Starting Gear
+		"RAW_FISH",
+		"RAW_TROUT",
+		"HIKING_BOOTS",
+		"STURDY_BREECHES",
+		"SMALL_HEALTH_POTION",
+		"CLOTH_CAP"
+	}
+}
+// Note: Other shop IDs (LAKE, MARKET, etc.) will remain empty unless you define them.
 };
 
 
@@ -3603,38 +5200,86 @@ std::optional<MonsterInstance> create_monster(int id, const std::string& type) {
 }
 
 void initialize_item_prices() {
-	// This function now automatically prices items based on their tier from itemDatabase
-	std::map<int, int> tierBuyPrices = {
-		{0, 15},    // Tier 0 (Junk)
-		{1, 50},    // Tier 1 (Common)
-		{2, 150},   // Tier 2 (Mid-Grade)
-		{3, 750},   // Tier 3 (Unique)
-		{4, 3000},  // Tier 4 (Legendary)
-	};
+	// Clear the map to ensure only manually set prices exist
+	g_item_buy_prices.clear();
 
-	//    for (const auto& pair : itemDatabase) {
-	//        const ItemDefinition& def = pair.second;
-	//        if (def.stackable) continue; // Skip stackables, they are priced manually
-	//
-	//        try {
-	//            int price = tierBuyPrices.at(def.item_tier);
-	//            g_item_buy_prices[def.id] = price;
-	//        }
-	//        catch (const std::out_of_range& e) {
-	//            g_item_buy_prices[def.id] = 1; // Default price for un-tiered items
-	//        }
-	//    }
-	//
-	//    // Manually price consumables/stackables
-	//    g_item_buy_prices["SMALL_HEALTH_POTION"] = 10;
-	//    g_item_buy_prices["LARGE_HEALTH_POTION"] = 80;
-	//    g_item_buy_prices["SMALL_MANA_POTION"] = 15;
-	//    g_item_buy_prices["LARGE_MANA_POTION"] = 160;
-	//    g_item_buy_prices["ELIXIR_OF_SPEED"] = 80;
-	//    g_item_buy_prices["ELIXIR_OF_GIANTS_STRENGTH"] = 80;
-	//
-	//    std::cout << "Item prices initialized. " << g_item_buy_prices.size() << " items priced." << std::endl;
-	//}
+	// --- Consumables & Potions ---
+	// Price these for utility, not high value.
+	g_item_buy_prices["SMALL_HEALTH_POTION"] = 10;
+	g_item_buy_prices["SMALL_MANA_POTION"] = 15;
+	g_item_buy_prices["LARGE_HEALTH_POTION"] = 80;
+	g_item_buy_prices["LARGE_MANA_POTION"] = 100;
+	g_item_buy_prices["ELIXIR_OF_SPEED"] = 80;
+	g_item_buy_prices["ELIXIR_OF_GIANTS_STRENGTH"] = 80;
+
+	// --- Standard Gathered Materials (Reasonable Cost) ---
+	// These should be cheap enough that chopping wood/mining is still worthwhile.
+	g_item_buy_prices["OAK_LOG"] = 5;
+	g_item_buy_prices["COPPER_ORE"] = 7;
+	g_item_buy_prices["RAW_FISH"] = 6;
+	g_item_buy_prices["IRON_ORE"] = 20;
+	g_item_buy_prices["YEW_LOG"] = 15;
+	g_item_buy_prices["RAW_TROUT"] = 25;
+
+	// --- Crafted Intermediates (Slight Markup) ---
+	g_item_buy_prices["COPPER_INGOT"] = 20; // 7*2 + markup
+	g_item_buy_prices["OAK_PLANK"] = 15; // 5 + markup
+
+	// --- RARE MONSTER DROPS (HIGH CONVENIENCE TAX) ---
+	// These are priced prohibitively high to purchase.
+	g_item_buy_prices["RUBY"] = 1500;
+	g_item_buy_prices["SAPPHIRE"] = 3000;
+	g_item_buy_prices["DIAMOND"] = 15000;
+	g_item_buy_prices["MONSTER_BONE"] = 250;
+	g_item_buy_prices["MONSTER_HIDE"] = 300;
+	g_item_buy_prices["MONSTER_FANG"] = 750;
+	g_item_buy_prices["MONSTER_CLAW"] = 800;
+	g_item_buy_prices["MONSTER_ESSENCE"] = 1500;
+	g_item_buy_prices["GLISTENING_SCALE"] = 400;
+	g_item_buy_prices["SHARK_TOOTH"] = 900;
+
+	// --- Shop Equipment (Retained from previous manual pricing) ---
+	// T0 (Junk/Starter)
+	g_item_buy_prices["RUSTY_SWORD"] = 100;
+	g_item_buy_prices["TORN_SHIRT"] = 60;
+	g_item_buy_prices["PATCHED_PANTS"] = 60;
+	g_item_buy_prices["FLIMSY_SANDALS"] = 50;
+	g_item_buy_prices["BENT_DAGGER"] = 90;
+	g_item_buy_prices["WORN_LEATHER_CAP"] = 70;
+
+	// T1 (Copper/Basic)
+	g_item_buy_prices["COPPER_DAGGER"] = 200;
+	g_item_buy_prices["COPPER_SWORD"] = 250;
+	g_item_buy_prices["OAK_SHORTBOW"] = 220;
+	g_item_buy_prices["OAK_STAFF"] = 300;
+	g_item_buy_prices["COPPER_HELMET"] = 280;
+	g_item_buy_prices["COPPER_CHAINBODY"] = 650;
+	g_item_buy_prices["COPPER_LEGS"] = 450;
+	g_item_buy_prices["COPPER_BOOTS"] = 250;
+
+	// T2 (Iron/Leather/Caster)
+	g_item_buy_prices["IRON_SWORD"] = 550;
+	g_item_buy_prices["IRON_DAGGER"] = 450;
+	g_item_buy_prices["IRON_HELMET"] = 600;
+	g_item_buy_prices["CHAINMAIL_SHIRT"] = 1200;
+	g_item_buy_prices["IRON_GREAVES"] = 800;
+	g_item_buy_prices["STEEL_BOOTS"] = 400;
+	g_item_buy_prices["LEATHER_TUNIC"] = 500;
+	g_item_buy_prices["LEATHER_PANTS"] = 350;
+	g_item_buy_prices["HIKING_BOOTS"] = 300;
+
+	// T3-T4 (Mithril/Special)
+	g_item_buy_prices["RAPIER_OF_THE_DUELIST"] = 900;
+	g_item_buy_prices["OBSIDIAN_MACE"] = 1100;
+	g_item_buy_prices["SPIKED_IRON_HELM"] = 1300;
+	g_item_buy_prices["POISONED_STILETTO"] = 1000;
+
+	// T5-T6 (Rare/Shady)
+	g_item_buy_prices["VOID_GEM"] = 10000;
+	g_item_buy_prices["SAPPHIRE_RING"] = 8000;
+	g_item_buy_prices["SHARKTOOTH_SPEAR"] = 1500;
+
+	std::cout << "Item prices initialized. " << g_item_buy_prices.size() << " items priced." << std::endl;
 }
 
 

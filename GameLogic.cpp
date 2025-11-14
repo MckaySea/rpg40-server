@@ -263,7 +263,7 @@ void AsyncSession::process_movement()
 			for (const auto& obj : it->second) {
 				if (obj.position.x == player.posX && obj.position.y == player.posY) {
 
-					// --- Zone transitions ---
+					// --- ZONE TRANSITIONS ---
 					if (obj.type == InteractableType::ZONE_TRANSITION) {
 						player.currentPath.clear(); // stop further movement
 
@@ -275,61 +275,78 @@ void AsyncSession::process_movement()
 						return;
 					}
 
-					// --- NPC: trigger dialogue when you arrive on their tile ---
-					if (obj.type == InteractableType::NPC) {
-						std::cout << "[DEBUG] NPC stepped on: id=" << obj.id
-							<< " data=" << obj.data
-							<< " area=" << player.currentArea << std::endl;
+					// --- NPC / SHOP INTERACTION ---
+					if (obj.type == InteractableType::NPC || obj.type == InteractableType::SHOP) {
 
-						auto dlgIt = g_dialogues.find(obj.data); // e.g. "MAYOR_WELCOME_DIALOGUE"
-						if (dlgIt == g_dialogues.end()) {
-							std::cerr << "[Dialogue] No dialogue found for key: "
-								<< obj.data << std::endl;
-							send("SERVER:PROMPT:They have nothing to say right now.");
+						std::cout << "[DEBUG] Stepped on interactable: id=" << obj.id
+							<< " data=" << obj.data << std::endl;
+
+						player.currentPath.clear(); // Stop movement
+
+						// 1. SHOP LOGIC
+						if (obj.data.rfind("SHOP_", 0) == 0) {
+							string shop_id = obj.data;
+							auto shop_it = g_shops.find(shop_id);
+
+							if (shop_it == g_shops.end()) {
+								send("SERVER:ERROR:Shop inventory not found for ID: " + shop_id);
+								return;
+							}
+
+							// Serialize shop data (using existing logic from previous request)
+							ostringstream oss;
+							oss << "SERVER:SHOP_DATA:{\"shopId\":" << nlohmann::json(shop_id).dump() << ",\"items\":[";
+							bool firstItem = true;
+
+							for (const string& itemId : shop_it->second) {
+								if (itemDatabase.count(itemId) == 0) continue;
+								const ItemDefinition& def = itemDatabase.at(itemId);
+								int price = g_item_buy_prices.count(itemId) ? g_item_buy_prices.at(itemId) : 1;
+
+								if (!firstItem) oss << ",";
+								oss << "{\"itemId\":" << nlohmann::json(def.id).dump()
+									<< ",\"name\":" << nlohmann::json(def.name).dump()
+									<< ",\"desc\":" << nlohmann::json(def.description).dump()
+									<< ",\"imagePath\":" << nlohmann::json(def.imagePath).dump()
+									<< ",\"price\":" << price
+									<< ",\"slot\":" << static_cast<int>(def.equipSlot)
+									<< ",\"baseStats\":" << nlohmann::json(def.stats).dump()
+									<< "}";
+								firstItem = false;
+							}
+							oss << "]}";
+							send(oss.str());
 							return;
 						}
 
-						const auto& dialogueLines = dlgIt->second;
-						if (dialogueLines.empty()) {
-							std::cerr << "[Dialogue] Dialogue is empty for key: "
-								<< obj.data << std::endl;
-							send("SERVER:PROMPT:They have nothing to say right now.");
+						// 2. DIALOGUE LOGIC
+						auto dlgIt = g_dialogues.find(obj.data);
+						if (dlgIt != g_dialogues.end() && !dlgIt->second.empty()) {
+							nlohmann::json j;
+							j["npcId"] = sanitize_for_json(obj.id);
+							j["dialogueId"] = sanitize_for_json(obj.data);
+							j["lines"] = nlohmann::json::array();
+
+							for (const auto& line : dlgIt->second) {
+								nlohmann::json jline;
+								jline["speaker"] = sanitize_for_json(line.speaker);
+								jline["text"] = sanitize_for_json(line.text);
+								jline["portrait"] = sanitize_for_json(line.portraitKey);
+								j["lines"].push_back(jline);
+							}
+
+							std::ostringstream oss;
+							oss << "SERVER:DIALOGUE:" << j.dump();
+							send(oss.str());
 							return;
 						}
 
-						nlohmann::json j;
-						j["npcId"] = sanitize_for_json(obj.id);
-						j["dialogueId"] = sanitize_for_json(obj.data);
-						j["lines"] = nlohmann::json::array();
-
-						for (const auto& line : dlgIt->second) {
-							nlohmann::json jline;
-							jline["speaker"] = sanitize_for_json(line.speaker);
-							jline["text"] = sanitize_for_json(line.text);
-							jline["portrait"] = sanitize_for_json(line.portraitKey);
-							j["lines"].push_back(jline);
-						}
-
-						std::ostringstream oss;
-						oss << "SERVER:DIALOGUE:" << j.dump();
-						send(oss.str());
-						std::cout << "[Dialogue] Sent dialogue '" << obj.data
-							<< "' with " << dlgIt->second.size() << " lines.\n";
+						// 3. FALLBACK
+						send("SERVER:PROMPT:The object hums silently.");
 						return;
 					}
 
-					// --- SHOP: auto-open when you step onto the merchant tile ---
-					if (obj.type == InteractableType::SHOP) {
-						std::cout << "[DEBUG] Shop stepped on: id=" << obj.id
-							<< " data=" << obj.data
-							<< " area=" << player.currentArea << std::endl;
-
-						std::string msg = "SERVER:SHOW_SHOP:" + obj.data; // your shop key
-						send(msg);
-						return;
-					}
-
-					// future: QUEST_GIVER, SHRINE, etc…
+					// future: RESOURCE_NODE, CRAFTING_STATION, etc.
 				}
 			}
 		}
@@ -989,14 +1006,51 @@ void AsyncSession::sellItem(uint64_t itemInstanceId, int quantity) {
 	ItemInstance& instance = player.inventory.at(itemInstanceId);
 	const ItemDefinition& def = instance.getDefinition();
 
-	int buyPrice = 1;
-	try {
-		buyPrice = g_item_buy_prices.at(def.id);
+
+	int sellPricePerItem = 0;
+
+	// Base Price based on Tier (Lower Prices for tight economy)
+	if (def.item_tier <= 1) { // Tier 0 or 1: Junk/Basic
+		sellPricePerItem = 6;
 	}
-	catch (const out_of_range&) {
-		cerr << "WARNING: Item " << def.id << " has no defined price. Defaulting to 1." << endl;
+	else if (def.item_tier <= 3) { // Tier 2-3: Common/Intermediate
+		sellPricePerItem = 12;
 	}
-	int sellPricePerItem = max(1, buyPrice / 4);
+	else if (def.item_tier <= 6) { // Tier 4-6: Mid-Grade
+		sellPricePerItem = 25;
+	}
+	else if (def.item_tier <= 9) { // Tier 7-9: High-Grade
+		sellPricePerItem = 50;
+	}
+	else { // Tier 10+: Legendary/Mythic
+		sellPricePerItem = 100 + (def.item_tier - 10) * 15;
+	}
+
+
+	if (!def.stackable) { // Only apply bonus to non-stackable items (equipment/uniques)
+		// Check if item instance has special customization
+		bool hasSpecialEffects = !instance.customEffects.empty() || !instance.customStats.empty();
+
+		// Check the definition's stats as well, for base non-junk gear
+		// This makes non-junk Tier 1 items (like Copper Sword) sell for slightly more than junk.
+		if (!hasSpecialEffects) {
+			for (const auto& statPair : def.stats) {
+				if (statPair.second != 0) {
+					hasSpecialEffects = true;
+					break;
+				}
+			}
+		}
+
+		if (hasSpecialEffects) {
+			sellPricePerItem += 15; // Add bonus for special effects/stats
+		}
+	}
+
+	// Ensure minimum price is 1
+	sellPricePerItem = std::max(1, sellPricePerItem);
+
+	// --- 3. Process Sale ---
 	int totalSellPrice = 0;
 
 	if (!def.stackable) {
