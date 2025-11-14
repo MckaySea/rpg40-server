@@ -159,7 +159,8 @@ enum class InteractableType {
 	ZONE_TRANSITION,
 	QUEST_ITEM,
 	SHOP,
-	RESOURCE_NODE
+	RESOURCE_NODE,
+	CRAFTING_STATION
 };
 
 //definin what we can interact with come back and look at this or ask me (McKay for help with creeating new ones)
