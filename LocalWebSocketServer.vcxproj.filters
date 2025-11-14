@@ -47,5 +47,11 @@
     <ClInclude Include="DatabaseManager.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AreaData.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadPool.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

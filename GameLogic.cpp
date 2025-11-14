@@ -135,7 +135,7 @@ void AsyncSession::send_current_monsters_list() {
 
 	std::ostringstream oss;
 	oss << "SERVER:MONSTERS:" << payload.dump();
-	ws_.write(net::buffer(oss.str()));
+	send(oss.str());
 
 	std::cerr << "[Sent] " << player_.currentMonsters.size()
 		<< " monsters for area " << player_.currentArea << "\n";
@@ -217,14 +217,14 @@ void AsyncSession::process_gathering() {
 		}
 
 		player.skills.life_skills[skillName] += def.xpReward;
-		ws.write(net::buffer("SERVER:STATUS:" + statusMsg + " (+" + std::to_string(def.xpReward) + " XP)"));
+		send("SERVER:STATUS:" + statusMsg + " (+" + std::to_string(def.xpReward) + " XP)");
 
 		// Update client with new items and XP
 		send_inventory_and_equipment();
 		send_player_stats();
 	}
 	else {
-		ws.write(net::buffer("SERVER:STATUS:You attempt to gather, but find nothing."));
+		send("SERVER:STATUS:You attempt to gather, but find nothing.");
 	}
 }
 // -----------------------------------------------------------------------------
@@ -285,7 +285,7 @@ void AsyncSession::process_movement()
 						if (dlgIt == g_dialogues.end()) {
 							std::cerr << "[Dialogue] No dialogue found for key: "
 								<< obj.data << std::endl;
-							ws.write(net::buffer("SERVER:PROMPT:They have nothing to say right now."));
+							send("SERVER:PROMPT:They have nothing to say right now.");
 							return;
 						}
 
@@ -293,7 +293,7 @@ void AsyncSession::process_movement()
 						if (dialogueLines.empty()) {
 							std::cerr << "[Dialogue] Dialogue is empty for key: "
 								<< obj.data << std::endl;
-							ws.write(net::buffer("SERVER:PROMPT:They have nothing to say right now."));
+							send("SERVER:PROMPT:They have nothing to say right now.");
 							return;
 						}
 
@@ -312,7 +312,7 @@ void AsyncSession::process_movement()
 
 						std::ostringstream oss;
 						oss << "SERVER:DIALOGUE:" << j.dump();
-						ws.write(net::buffer(oss.str()));
+						send(oss.str());
 						std::cout << "[Dialogue] Sent dialogue '" << obj.data
 							<< "' with " << dlgIt->second.size() << " lines.\n";
 						return;
@@ -325,7 +325,7 @@ void AsyncSession::process_movement()
 							<< " area=" << player.currentArea << std::endl;
 
 						std::string msg = "SERVER:SHOW_SHOP:" + obj.data; // your shop key
-						ws.write(net::buffer(msg));
+						send(msg);
 						return;
 					}
 
@@ -339,13 +339,13 @@ void AsyncSession::process_movement()
 		std::cerr << "[process_movement] Exception during interactable handling: "
 			<< e.what() << std::endl;
 		auto& ws = getWebSocket();
-		ws.write(net::buffer("SERVER:ERROR:An error occurred while processing interaction."));
+		send("SERVER:ERROR:An error occurred while processing interaction.");
 		// fall through and still update position/broadcast below
 	}
 	catch (...) {
 		std::cerr << "[process_movement] Unknown exception during interactable handling.\n";
 		auto& ws = getWebSocket();
-		ws.write(net::buffer("SERVER:ERROR:Unknown interaction error."));
+		send("SERVER:ERROR:Unknown interaction error.");
 	}
 
 	// --- Update broadcast data (position) ---
@@ -608,7 +608,7 @@ void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quan
 		}
 		catch (const std::exception& e) {
 			std::cerr << "CRITICAL: Could not fetch new item instance ID: " << e.what() << std::endl;
-			ws_.write(net::buffer("SERVER:ERROR:Could not create item. Please try again."));
+			send("SERVER:ERROR:Could not create item. Please try again.");
 			return; // Stop here, we failed to get an ID
 		}
 
@@ -726,7 +726,7 @@ void AsyncSession::addItemToInventory(const std::string& itemId, int quantity) {
 		}
 		catch (const std::exception& e) {
 			std::cerr << "CRITICAL: Could not fetch new item instance ID: " << e.what() << std::endl;
-			ws_.write(net::buffer("SERVER:ERROR:Could not create item. Please try again."));
+			send("SERVER:ERROR:Could not create item. Please try again.");
 			return; // Stop here, we failed to get an ID
 		}
 
@@ -860,7 +860,7 @@ void AsyncSession::useItem(uint64_t itemInstanceId) {
 	auto& ws = getWebSocket();
 
 	if (player.inventory.count(itemInstanceId) == 0) {
-		ws.write(net::buffer("SERVER:ERROR:You do not have that item."));
+		send("SERVER:ERROR:You do not have that item.");
 		return;
 	}
 
@@ -868,7 +868,7 @@ void AsyncSession::useItem(uint64_t itemInstanceId) {
 	const ItemDefinition& def = instance.getDefinition();
 
 	if (def.equipSlot != EquipSlot::None) {
-		ws.write(net::buffer("SERVER:ERROR:This item cannot be 'used'. Try equipping it."));
+		send("SERVER:ERROR:This item cannot be 'used'. Try equipping it.");
 		return;
 	}
 
@@ -915,7 +915,7 @@ void AsyncSession::useItem(uint64_t itemInstanceId) {
 		effectMsg = "That item has no use.";
 	}
 
-	ws.write(net::buffer("SERVER:STATUS:" + effectMsg));
+	send("SERVER:STATUS:" + effectMsg);
 
 	if (itemUsed) {
 		instance.quantity--;
@@ -932,17 +932,17 @@ void AsyncSession::dropItem(uint64_t itemInstanceId, int quantity) {
 	auto& ws = getWebSocket();
 
 	if (quantity <= 0) {
-		ws.write(net::buffer("SERVER:ERROR:Invalid quantity."));
+		send("SERVER:ERROR:Invalid quantity.");
 		return;
 	}
 	if (player.inventory.count(itemInstanceId) == 0) {
-		ws.write(net::buffer("SERVER:ERROR:You do not have that item."));
+		send("SERVER:ERROR:You do not have that item.");
 		return;
 	}
 
 	for (const auto& slotPair : player.equipment.slots) {
 		if (slotPair.second.has_value() && slotPair.second.value() == itemInstanceId) {
-			ws.write(net::buffer("SERVER:ERROR:Cannot drop an equipped item. Unequip it first."));
+			send("SERVER:ERROR:Cannot drop an equipped item. Unequip it first.");
 			return;
 		}
 	}
@@ -951,17 +951,17 @@ void AsyncSession::dropItem(uint64_t itemInstanceId, int quantity) {
 	const ItemDefinition& def = instance.getDefinition();
 
 	if (!def.stackable) {
-		ws.write(net::buffer("SERVER:STATUS:Dropped " + def.name + "."));
+		send("SERVER:STATUS:Dropped " + def.name + ".");
 		player.inventory.erase(itemInstanceId);
 	}
 	else {
 		if (quantity >= instance.quantity) {
-			ws.write(net::buffer("SERVER:STATUS:Dropped " + to_string(instance.quantity) + "x " + def.name + "."));
+			send("SERVER:STATUS:Dropped " + to_string(instance.quantity) + "x " + def.name + ".");
 			player.inventory.erase(itemInstanceId);
 		}
 		else {
 			instance.quantity -= quantity;
-			ws.write(net::buffer("SERVER:STATUS:Dropped " + to_string(quantity) + "x " + def.name + "."));
+			send("SERVER:STATUS:Dropped " + to_string(quantity) + "x " + def.name + ".");
 		}
 	}
 	send_inventory_and_equipment();
@@ -972,16 +972,16 @@ void AsyncSession::sellItem(uint64_t itemInstanceId, int quantity) {
 	auto& ws = getWebSocket();
 
 	if (quantity <= 0) {
-		ws.write(net::buffer("SERVER:ERROR:Invalid quantity."));
+		send("SERVER:ERROR:Invalid quantity.");
 		return;
 	}
 	if (player.inventory.count(itemInstanceId) == 0) {
-		ws.write(net::buffer("SERVER:ERROR:You do not have that item."));
+		send("SERVER:ERROR:You do not have that item.");
 		return;
 	}
 	for (const auto& slotPair : player.equipment.slots) {
 		if (slotPair.second.has_value() && slotPair.second.value() == itemInstanceId) {
-			ws.write(net::buffer("SERVER:ERROR:Cannot sell an equipped item. Unequip it first."));
+			send("SERVER:ERROR:Cannot sell an equipped item. Unequip it first.");
 			return;
 		}
 	}
@@ -1001,19 +1001,19 @@ void AsyncSession::sellItem(uint64_t itemInstanceId, int quantity) {
 
 	if (!def.stackable) {
 		totalSellPrice = sellPricePerItem;
-		ws.write(net::buffer("SERVER:STATUS:Sold " + def.name + " for " + to_string(totalSellPrice) + " gold."));
+		send("SERVER:STATUS:Sold " + def.name + " for " + to_string(totalSellPrice) + " gold.");
 		player.inventory.erase(itemInstanceId);
 	}
 	else {
 		if (quantity >= instance.quantity) {
 			totalSellPrice = sellPricePerItem * instance.quantity;
-			ws.write(net::buffer("SERVER:STATUS:Sold " + to_string(instance.quantity) + "x " + def.name + " for " + to_string(totalSellPrice) + " gold."));
+			send("SERVER:STATUS:Sold " + to_string(instance.quantity) + "x " + def.name + " for " + to_string(totalSellPrice) + " gold.");
 			player.inventory.erase(itemInstanceId);
 		}
 		else {
 			totalSellPrice = sellPricePerItem * quantity;
 			instance.quantity -= quantity;
-			ws.write(net::buffer("SERVER:STATUS:Sold " + to_string(quantity) + "x " + def.name + " for " + to_string(totalSellPrice) + " gold."));
+			send("SERVER:STATUS:Sold " + to_string(quantity) + "x " + def.name + " for " + to_string(totalSellPrice) + " gold.");
 		}
 	}
 
@@ -1079,7 +1079,7 @@ void AsyncSession::send_player_stats() {
 
 	oss << "}";
 	string stats_message = oss.str();
-	ws.write(net::buffer(stats_message));
+	send(stats_message);
 }
 void AsyncSession::send_inventory_and_equipment() {
 	PlayerState& player = getPlayerState();
@@ -1198,7 +1198,7 @@ void AsyncSession::send_inventory_and_equipment() {
 
 	// --- Send to client ---
 	std::string msg = "SERVER:INVENTORY_UPDATE:" + payload.dump();
-	ws.write(net::buffer(msg));
+	send(msg);
 
 	std::cout << "[DEBUG] Sent inventory + equipment update: "
 		<< "Inventory=" << player.inventory.size()
@@ -1221,7 +1221,7 @@ void AsyncSession::send_available_areas() {
 		area_list += areas[i];
 	}
 	string response = "SERVER:AREAS:" + area_list;
-	ws.write(net::buffer(response));
+	send(response);
 }
 
 void AsyncSession::send_interactables(const string& areaName) {
@@ -1244,7 +1244,7 @@ void AsyncSession::send_interactables(const string& areaName) {
 	}
 	oss << "]";
 	string message = oss.str();
-	ws.write(net::buffer(message));
+	send(message);
 }
 
 
@@ -1304,9 +1304,9 @@ void AsyncSession::check_for_level_up() {
 		cout << "[Level Up] Player " << player.playerName << " reached level " << player.stats.level << endl;
 
 		string level_msg = "SERVER:LEVEL_UP:You have reached level " + to_string(player.stats.level) + "! You feel stronger!";
-		ws.write(net::buffer(level_msg));
+		send(level_msg);
 		string prompt_msg = "SERVER:PROMPT:You have " + to_string(player.availableSkillPoints) + " new skill points to spend.";
-		ws.write(net::buffer(prompt_msg));
+		send(prompt_msg);
 	}
 }
 
@@ -1354,7 +1354,7 @@ void AsyncSession::send_area_map_data(const std::string& areaName) {
 	if (areaIt == g_areas.end()) {
 		payload["error"] = "Unknown area";
 		oss << payload.dump();
-		ws.write(net::buffer(oss.str()));
+		send(oss.str());
 		return;
 	}
 
@@ -1425,7 +1425,7 @@ void AsyncSession::send_area_map_data(const std::string& areaName) {
 
 	// --- Send JSON payload
 	oss << payload.dump();
-	ws.write(net::buffer(oss.str()));
+	send(oss.str());
 }
 
 
@@ -1437,15 +1437,15 @@ void AsyncSession::handle_register(const string& credentials) {
 	string username, password;
 	stringstream ss(credentials);
 	if (!getline(ss, username, ':') || !getline(ss, password)) {
-		ws.write(net::buffer("SERVER:ERROR:Invalid registration format."));
+		send("SERVER:ERROR:Invalid registration format.");
 		return;
 	}
 	if (username.length() < 3 || username.length() > 20) {
-		ws.write(net::buffer("SERVER:ERROR:Username must be 3-20 characters."));
+		send("SERVER:ERROR:Username must be 3-20 characters.");
 		return;
 	}
 	if (password.length() < 6) {
-		ws.write(net::buffer("SERVER:ERROR:Password must be at least 6 characters."));
+		send("SERVER:ERROR:Password must be at least 6 characters.");
 		return;
 	}
 
@@ -1470,75 +1470,118 @@ void AsyncSession::handle_register(const string& credentials) {
 		W.exec(pqxx::zview(sql), pqxx::params(username, password_hash_str, username));
 		W.commit();
 
-		ws.write(net::buffer("SERVER:REGISTRATION_SUCCESS:Account created. Please log in."));
+		send("SERVER:REGISTRATION_SUCCESS:Account created. Please log in.");
 
 	}
 	catch (const pqxx::unique_violation& e) {
 		cerr << "Registration failed (unique_violation): " << e.what() << endl;
-		ws.write(net::buffer("SERVER:ERROR:Username is already taken."));
+		send("SERVER:ERROR:Username is already taken.");
 	}
 	catch (const exception&) {
 		cerr << "Registration error: " << endl;
-		ws.write(net::buffer("SERVER:ERROR:An internal error occurred."));
+		send("SERVER:ERROR:An internal error occurred.");
 	}
 }
 
-void AsyncSession::handle_login(const string& credentials) {
-	auto& ws = ws_;
 
+
+void AsyncSession::handle_login(const string& credentials) {
 	string username, password;
 	stringstream ss(credentials);
 	if (!getline(ss, username, ':') || !getline(ss, password)) {
-		ws.write(net::buffer("SERVER:ERROR:Invalid login format."));
+		send("SERVER:ERROR:Invalid login format.");
 		return;
 	}
 
-	try {
-		pqxx::connection C = db_manager_->get_connection();
-		pqxx::nontransaction N(C);
-		string sql = "SELECT id, password_hash, player_class FROM accounts WHERE username = $1";
-		pqxx::result R = N.exec(pqxx::zview(sql), pqxx::params(username));
+	// Capture 'self' (shared_ptr) to keep the session alive.
+	auto self = shared_from_this();
 
-		if (R.empty()) {
-			ws.write(net::buffer("SERVER:ERROR:Invalid username or password."));
-			return;
+	// --- Step 1: Enqueue the blocking work ---
+	// This function now returns INSTANTLY. The work happens on the db_pool_.
+	db_pool_->enqueue([self, username, password] {
+
+		// --- This code runs on a DB THREAD ---
+		LoginResult result;
+		try {
+			pqxx::connection C = self->db_manager_->get_connection();
+			pqxx::nontransaction N(C);
+			string sql = "SELECT id, password_hash, player_class FROM accounts WHERE username = $1";
+			pqxx::result R = N.exec(pqxx::zview(sql), pqxx::params(username));
+
+			if (R.empty()) {
+				result.error_message = "Invalid username or password.";
+			}
+			else {
+				std::string stored_hash = R[0]["password_hash"].as<string>();
+
+				// This slow hash now safely blocks the DB thread
+				if (crypto_pwhash_str_verify(stored_hash.c_str(), password.c_str(), password.length()) != 0) {
+					result.error_message = "Invalid username or password.";
+				}
+				else {
+					// SUCCESS!
+					result.success = true;
+					result.account_id = R[0]["id"].as<int>();
+					result.player_class_str = R[0]["player_class"].as<string>();
+				}
+			}
+		}
+		catch (const exception& e) {
+			std::cerr << "Login DB error: " << e.what() << std::endl;
+			result.error_message = "An internal server error occurred.";
 		}
 
-		string stored_hash = R[0]["password_hash"].as<string>();
+		// --- Step 2: Post the result back to the Asio thread ---
+		// We use net::post to run on_login_finished() on the session's strand.
+		net::post(self->ws_.get_executor(), [self, result] {
+			// --- This code runs back on the Asio THREAD ---
+			self->on_login_finished(result);
+			});
+		});
+}
 
-		if (crypto_pwhash_str_verify(stored_hash.c_str(), password.c_str(), password.length()) != 0) {
-			ws.write(net::buffer("SERVER:ERROR:Invalid username or password."));
-			return;
-		}
-
-		is_authenticated_ = true;
-		account_id_ = R[0]["id"].as<int>();
-		string player_class_str = R[0]["player_class"].as<string>();
-		string was_good = "SERVER:LOGIN_SUCCESS";
-		ws.write(net::buffer(was_good));
-
-		load_character(account_id_.load());
-		ensureAutoGrantedSkillsForClass();
-
-		if (player_class_str == "UNSELECTED") {
-			send_player_stats();
-			ws.write(net::buffer("SERVER:PROMPT:Welcome! Please pick a class!"));
-		}
-		else {
-			send_player_stats();
-			send_inventory_and_equipment();
-			send_crafting_recipes();
-			string did_load = "SERVER:CHARACTER_LOADED";
-			ws.write(net::buffer(did_load));
-			handle_message("GO_TO:" + getPlayerState().currentArea);
-
-		}
-
+// You need to add this new handler function to AsyncSession
+// Add its declaration to AsyncSession.hpp
+void AsyncSession::on_login_finished(const LoginResult& result) {
+	// This code is now 100% async and runs safely on the Asio thread.
+	if (!result.success) {
+		send("SERVER:ERROR:" + result.error_message);
+		return;
 	}
-	catch (const exception&) {
-		cerr << "Login error: " << endl;
-		ws.write(net::buffer("SERVER:ERROR:An internal server error occurred."));
-	}
+
+	is_authenticated_ = true;
+	account_id_ = result.account_id;
+
+	send("SERVER:LOGIN_SUCCESS");
+
+	// load_character is ALSO blocking, so we must refactor it.
+	// We'll use the same pattern: enqueue, run sync, post back.
+	auto self = shared_from_this();
+	db_pool_->enqueue([self, account_id = result.account_id, class_str = result.player_class_str] {
+
+		// --- This code runs on a DB THREAD ---
+		// We call the *original* load_character, which is fine
+		// because it's blocking on this separate thread.
+		self->load_character(account_id);
+
+		// Post the final step back to the Asio thread
+		net::post(self->ws_.get_executor(), [self, class_str] {
+			// --- This code runs back on the Asio THREAD ---
+			self->ensureAutoGrantedSkillsForClass();
+
+			if (class_str == "UNSELECTED") {
+				self->send_player_stats();
+				self->send("SERVER:PROMPT:Welcome! Please pick a class!");
+			}
+			else {
+				self->send_player_stats();
+				self->send_inventory_and_equipment();
+				self->send_crafting_recipes();
+				self->send("SERVER:CHARACTER_LOADED");
+				self->handle_message("GO_TO:" + self->getPlayerState().currentArea);
+			}
+			});
+		});
 }
 void AsyncSession::ensureAutoGrantedSkillsForClass()
 {
@@ -1856,28 +1899,38 @@ void AsyncSession::save_character() {
 	if (!is_authenticated_ || account_id_ == 0)
 		return;
 
-	using json = nlohmann::json;
-	PlayerState& player = getPlayerState();
-	int current_account_id = account_id_.load();
+	// --- Step 1: Copy all data ---
+	// This copy happens on whatever thread called save_character()
+	// (either an Asio thread or the auto-save timer thread).
+	PlayerState player_copy = getPlayerState();
+	int account_id_copy = account_id_.load();
+	std::string user_id_copy = player_copy.userId;
 
-	std::cout << "[SAVE] Saving character for account " << current_account_id << "..." << std::endl;
+	// --- Step 2: Capture 'self' (shared_ptr) to fix crash ---
+	auto self = shared_from_this();
 
-	try {
-		pqxx::connection C = db_manager_->get_connection();
+	// --- Step 3: Enqueue on the 1-thread 'save_pool_' queue ---
+	save_pool_->enqueue([self, player_copy, account_id_copy, user_id_copy] {
 
-		// reduce lock contention – commit each section separately
-		{
+		// --- ALL OF THIS RUNS ON THE SAVE THREAD ---
+
+		std::cout << "[SAVE QUEUE] Saving character for account " << account_id_copy
+			<< " (User: " << user_id_copy << ")" << std::endl;
+
+		try {
+			pqxx::connection C = self->db_manager_->get_connection();
 			pqxx::work W(C);
 
-			json skills_json;
-			skills_json["spells"] = player.skills.spells;
-			skills_json["life_skills"] = player.skills.life_skills;
+			// --- 1. Save Player Account Data ---
+			nlohmann::json skills_json;
+			skills_json["spells"] = player_copy.skills.spells;
+			skills_json["life_skills"] = player_copy.skills.life_skills;
 			std::string skills_json_string = skills_json.dump();
 
 			std::string class_str = "UNSELECTED";
-			if (player.currentClass == PlayerClass::FIGHTER) class_str = "FIGHTER";
-			else if (player.currentClass == PlayerClass::WIZARD) class_str = "WIZARD";
-			else if (player.currentClass == PlayerClass::ROGUE)  class_str = "ROGUE";
+			if (player_copy.currentClass == PlayerClass::FIGHTER) class_str = "FIGHTER";
+			else if (player_copy.currentClass == PlayerClass::WIZARD) class_str = "WIZARD";
+			else if (player_copy.currentClass == PlayerClass::ROGUE)  class_str = "ROGUE";
 
 			std::string sql_accounts = R"(
                 UPDATE accounts SET
@@ -1892,24 +1945,21 @@ void AsyncSession::save_character() {
             )";
 
 			W.exec(pqxx::zview(sql_accounts), pqxx::params(
-				player.playerName, class_str, player.currentArea,
-				player.posX, player.posY,
-				player.stats.maxHealth, player.stats.maxMana, player.stats.defense,
-				player.stats.speed, player.stats.strength, player.stats.dexterity,
-				player.stats.intellect, player.stats.luck,
-				player.stats.level, player.stats.experience, player.stats.experienceToNextLevel,
-				player.stats.gold, player.availableSkillPoints, skills_json_string,
-				current_account_id
+				player_copy.playerName, class_str, player_copy.currentArea,
+				player_copy.posX, player_copy.posY,
+				player_copy.stats.maxHealth, player_copy.stats.maxMana, player_copy.stats.defense,
+				player_copy.stats.speed, player_copy.stats.strength, player_copy.stats.dexterity,
+				player_copy.stats.intellect, player_copy.stats.luck,
+				player_copy.stats.level, player_copy.stats.experience, player_copy.stats.experienceToNextLevel,
+				player_copy.stats.gold, player_copy.availableSkillPoints, skills_json_string,
+				account_id_copy
 			));
-			W.commit();
-		}
 
-		// --- Replace player_items in its own transaction ---
-		{
-			pqxx::work W(C);
+			// --- 2. Clear Old Inventory ---
 			W.exec(pqxx::zview("DELETE FROM player_items WHERE account_id = $1"),
-				pqxx::params(current_account_id));
+				pqxx::params(account_id_copy));
 
+			// --- 3. Insert Current Inventory ---
 			std::string sql_insert_item = R"(
                 INSERT INTO player_items (
                     instance_id, account_id, item_id, quantity,
@@ -1917,13 +1967,13 @@ void AsyncSession::save_character() {
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7)
             )";
 
-			for (const auto& [instanceId, instance] : player.inventory) {
-				json custom_stats_json = instance.customStats;
+			for (const auto& [instanceId, instance] : player_copy.inventory) {
+				nlohmann::json custom_stats_json = instance.customStats;
 				std::string custom_stats_str = custom_stats_json.dump();
 
-				json custom_effects_json = json::array();
+				nlohmann::json custom_effects_json = nlohmann::json::array();
 				for (const auto& effect : instance.customEffects) {
-					json j_effect;
+					nlohmann::json j_effect;
 					j_effect["type"] = effect.type;
 					j_effect["params"] = effect.params;
 					custom_effects_json.push_back(j_effect);
@@ -1932,7 +1982,7 @@ void AsyncSession::save_character() {
 
 				std::string equipped_slot_str;
 				bool has_slot = false;
-				for (const auto& [slot, optInstance] : player.equipment.slots) {
+				for (const auto& [slot, optInstance] : player_copy.equipment.slots) {
 					if (optInstance.has_value() && optInstance.value() == instanceId) {
 						switch (slot) {
 						case EquipSlot::Weapon: equipped_slot_str = "Weapon"; break;
@@ -1950,7 +2000,7 @@ void AsyncSession::save_character() {
 				if (has_slot) {
 					W.exec(pqxx::zview(sql_insert_item),
 						pqxx::params(static_cast<long long>(instanceId),
-							current_account_id,
+							account_id_copy,
 							instance.itemId,
 							instance.quantity,
 							custom_stats_str,
@@ -1958,25 +2008,28 @@ void AsyncSession::save_character() {
 							equipped_slot_str));
 				}
 				else {
-					// pass a real SQL NULL via string literal "null" casted as zview
 					W.exec(pqxx::zview(sql_insert_item),
 						pqxx::params(static_cast<long long>(instanceId),
-							current_account_id,
+							account_id_copy,
 							instance.itemId,
 							instance.quantity,
 							custom_stats_str,
 							custom_effects_str,
 							pqxx::zview("null")));
 				}
-			}
-			W.commit();
-		}
+			} // end for loop
 
-		std::cout << "[SAVE] Successfully saved character for account " << current_account_id << std::endl;
-	}
-	catch (const std::exception& e) {
-		std::cerr << "[SAVE SQL ERROR] " << e.what() << std::endl;
-	}
+			// --- 4. Commit Transaction ---
+			W.commit();
+
+			std::cout << "[SAVE SUCCESS] Saved account " << account_id_copy << std::endl;
+
+		}
+		catch (const std::exception& e) {
+			std::cerr << "[SAVE FAILED] (Transaction Rolled Back) for account "
+				<< account_id_copy << ": " << e.what() << std::endl;
+		}
+		}); // end save_pool_->enqueue
 }
 
 
@@ -1988,7 +2041,7 @@ void AsyncSession::send_crafting_recipes() {
 		std::string name = "Unknown Item";
 		std::string desc = "Craftable item.";
 
-		if (itemDatabase.count(recipe.resultItemId)) {
+		if (itemDatabase.count(recipe.resultItemId) != 0) {
 			const auto& def = itemDatabase.at(recipe.resultItemId);
 			name = def.name;
 			desc = def.description;
@@ -2009,7 +2062,7 @@ void AsyncSession::send_crafting_recipes() {
 
 	std::ostringstream oss;
 	oss << "SERVER:RECIPES:" << j.dump();
-	ws_.write(net::buffer(oss.str()));
+	send(oss.str());
 }
 
 
@@ -2032,7 +2085,7 @@ void AsyncSession::handle_message(const string& message)
 
 	// --- 2. AUTHENTICATION GATE ---
 	if (!is_authenticated_) {
-		ws.write(net::buffer("SERVER:ERROR:You must be logged in to do that."));
+		send("SERVER:ERROR:You must be logged in to do that.");
 		return;
 	}
 
@@ -2087,7 +2140,7 @@ void AsyncSession::handle_message(const string& message)
 			class_to_db = "ROGUE";
 			broadcast_data.playerClass = player.currentClass;
 		}
-		else { ws.write(net::buffer("SERVER:ERROR:Invalid class.")); return; }
+		else { send("SERVER:ERROR:Invalid class."); return; }
 
 		player.stats = getStartingStats(player.currentClass);
 		player.availableSkillPoints = 3;
@@ -2127,7 +2180,7 @@ void AsyncSession::handle_message(const string& message)
 			W.commit();
 		}
 		catch (const std::exception&) {
-			ws.write(net::buffer("SERVER:ERROR:An error occurred saving your class."));
+			send("SERVER:ERROR:An error occurred saving your class.");
 			std::cerr << "SELECT_CLASS error: " << std::endl;
 			player.currentClass = PlayerClass::UNSELECTED;
 			player.skills.spells.clear();
@@ -2138,16 +2191,16 @@ void AsyncSession::handle_message(const string& message)
 		ensureAutoGrantedSkillsForClass();
 
 		std::cout << "[" << client_address << "] --- CLASS SET: " << class_str << " ---" << endl;
-		ws.write(net::buffer("SERVER:CLASS_SET:" + class_str));
+		send("SERVER:CLASS_SET:" + class_str);
 		send_player_stats();
-		ws.write(net::buffer("SERVER:PROMPT:You have 3 skill points to distribute. Use UPGRADE_STAT:stat_name to spend points."));
+		send("SERVER:PROMPT:You have 3 skill points to distribute. Use UPGRADE_STAT:stat_name to spend points.");
 		{ lock_guard<mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
 	}
 	else if (message.rfind("UPGRADE_STAT:", 0) == 0) {
 		if (player.currentClass == PlayerClass::UNSELECTED) {
-			ws.write(net::buffer("SERVER:ERROR:You must select a class first."));
+			send("SERVER:ERROR:You must select a class first.");
 		}
-		else if (player.availableSkillPoints <= 0) { ws.write(net::buffer("SERVER:ERROR:You have no skill points available.")); }
+		else if (player.availableSkillPoints <= 0) { send("SERVER:ERROR:You have no skill points available."); }
 		else {
 			string stat_name = message.substr(13);
 			bool valid_stat = false;
@@ -2180,24 +2233,24 @@ void AsyncSession::handle_message(const string& message)
 					W.commit();
 				}
 				catch (const exception&) {
-					ws.write(net::buffer("SERVER:ERROR:An error occurred saving your stats."));
+					send("SERVER:ERROR:An error occurred saving your stats.");
 					cerr << "UPGRADE_STAT error: " << endl;
 					player.availableSkillPoints++;
 					return;
 				}
 
-				ws.write(net::buffer("SERVER:STAT_UPGRADED:" + stat_name));
+				send("SERVER:STAT_UPGRADED:" + stat_name);
 				send_player_stats();
 				if (player.availableSkillPoints == 0 && !player.isFullyInitialized) {
 					player.isFullyInitialized = true;
 					player.hasSpentInitialPoints = true;
-					ws.write(net::buffer("SERVER:CHARACTER_COMPLETE:Character creation complete! You can now explore."));
+					send("SERVER:CHARACTER_COMPLETE:Character creation complete! You can now explore.");
 					send_available_areas();
 				}
-				else if (player.availableSkillPoints > 0) { ws.write(net::buffer("SERVER:PROMPT:You have " + to_string(player.availableSkillPoints) + " skill points remaining.")); }
-				else { ws.write(net::buffer("SERVER:STATUS:All skill points spent.")); }
+				else if (player.availableSkillPoints > 0) { send("SERVER:PROMPT:You have " + to_string(player.availableSkillPoints) + " skill points remaining."); }
+				else { send("SERVER:STATUS:All skill points spent."); }
 			}
-			else { ws.write(net::buffer("SERVER:ERROR:Invalid stat name.")); }
+			else { send("SERVER:ERROR:Invalid stat name."); }
 		}
 	}
 	/*   else if (message.rfind("GO_TO:", 0) == 0) {
@@ -2245,13 +2298,13 @@ void AsyncSession::handle_message(const string& message)
 		player.isGathering = false;
 		if (!player.isFullyInitialized)
 		{
-			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+			send("SERVER:ERROR:Complete character creation first.");
 			return;
 		}
 
 		if (player.isInCombat)
 		{
-			ws.write(net::buffer("SERVER:ERROR:Cannot travel while in combat!"));
+			send("SERVER:ERROR:Cannot travel while in combat!");
 			return;
 		}
 
@@ -2262,7 +2315,7 @@ void AsyncSession::handle_message(const string& message)
 		auto areaIt = g_areas.find(target_area);
 		if (areaIt == g_areas.end())
 		{
-			ws.write(net::buffer("SERVER:ERROR:Invalid or unknown travel destination."));
+			send("SERVER:ERROR:Invalid or unknown travel destination.");
 			return;
 		}
 
@@ -2296,7 +2349,7 @@ void AsyncSession::handle_message(const string& message)
 		}
 
 		// --- Notify client of area change ---
-		ws.write(net::buffer("SERVER:AREA_CHANGED:" + target_area));
+		send("SERVER:AREA_CHANGED:" + target_area);
 		std::cout << "[" << client_address_ << "] --- AREA CHANGED TO: "
 			<< player.currentArea << " ---" << std::endl;
 
@@ -2308,8 +2361,8 @@ void AsyncSession::handle_message(const string& message)
 	}
 
 	   else if (message.rfind("MOVE_TO:", 0) == 0) {
-		if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
-		else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:Cannot move while in combat!")); }
+		if (!player.isFullyInitialized) { send("SERVER:ERROR:Complete character creation first."); }
+		else if (player.isInCombat) { send("SERVER:ERROR:Cannot move while in combat!"); }
 		else {
 			PlayerBroadcastData& broadcast = getBroadcastData();
 			if (!broadcast.currentAction.empty()) {
@@ -2323,11 +2376,11 @@ void AsyncSession::handle_message(const string& message)
 			// 2. Reset the gathering flag
 			if (player.isGathering) {
 				player.isGathering = false;
-				ws.write(net::buffer("SERVER:STATUS:Gathering stopped."));
+				send("SERVER:STATUS:Gathering stopped.");
 			}
 			auto it = g_area_grids.find(player.currentArea);
 			if (it == g_area_grids.end()) {
-				ws.write(net::buffer("SERVER:ERROR:Grid movement is not available in this area."));
+				send("SERVER:ERROR:Grid movement is not available in this area.");
 				return;
 			}
 			const auto& current_grid = it->second;
@@ -2341,10 +2394,10 @@ void AsyncSession::handle_message(const string& message)
 				int target_y = stoi(coords_str.substr(comma_pos + 1));
 
 				if (target_x < 0 || target_x >= GRID_COLS || target_y < 0 || target_y >= GRID_ROWS) {
-					ws.write(net::buffer("SERVER:ERROR:Target coordinates are out of bounds."));
+					send("SERVER:ERROR:Target coordinates are out of bounds.");
 				}
 				else if (current_grid[target_y][target_x] != 0) {
-					ws.write(net::buffer("SERVER:ERROR:Cannot move to that location."));
+					send("SERVER:ERROR:Cannot move to that location.");
 				}
 				else {
 					Point start_pos = { player.posX, player.posY };
@@ -2355,13 +2408,13 @@ void AsyncSession::handle_message(const string& message)
 			}
 			catch (const exception&) {
 				cerr << "Error parsing MOVE_TO: " << "\n";
-				ws.write(net::buffer("SERVER:ERROR:Invalid coordinate format."));
+				send("SERVER:ERROR:Invalid coordinate format.");
 			}
 		}
 	}
 	   else if (message.rfind("SELL_ITEM:", 0) == 0) {
 		if (!player.isFullyInitialized) {
-			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+			send("SERVER:ERROR:Complete character creation first.");
 		}
 		else {
 			try {
@@ -2380,18 +2433,18 @@ void AsyncSession::handle_message(const string& message)
 			}
 			catch (const std::exception& e) {
 				std::cerr << "Sell item error: " << e.what() << std::endl;
-				ws.write(net::buffer("SERVER:ERROR:Invalid sell command format."));
+				send("SERVER:ERROR:Invalid sell command format.");
 			}
 		}
 	}
 	   else if (message.rfind("SEND_CHAT:", 0) == 0) {
 		if (!player.isFullyInitialized) {
-			ws.write(net::buffer("SERVER:ERROR:Must complete character creation to chat."));
+			send("SERVER:ERROR:Must complete character creation to chat.");
 			return;
 		}
 		string chat_text = message.substr(10);
 		if (chat_text.empty() || chat_text.length() > 100) {
-			ws.write(net::buffer("SERVER:ERROR:Chat message must be 1-100 characters."));
+			send("SERVER:ERROR:Chat message must be 1-100 characters.");
 			return;
 		}
 
@@ -2411,7 +2464,7 @@ void AsyncSession::handle_message(const string& message)
 		for (auto& session : all_sessions) {
 			net::dispatch(session->ws_.get_executor(), [session, shared_chat_msg]() {
 				try {
-					session->ws_.write(net::buffer(*shared_chat_msg));
+					session->send(*shared_chat_msg);
 				}
 				catch (exception const&) {
 					cerr << "Chat broadcast write error: " << "\n";
@@ -2421,7 +2474,7 @@ void AsyncSession::handle_message(const string& message)
 	}
 	   else if (message.rfind("INTERACT_AT:", 0) == 0) {
 		if (player.isInCombat) {
-			ws.write(net::buffer("SERVER:ERROR:Cannot interact while in combat!")); {
+			send("SERVER:ERROR:Cannot interact while in combat!"); {
 			}
 		}
 		else {
@@ -2445,34 +2498,33 @@ void AsyncSession::handle_message(const string& message)
 				}
 
 				if (!targetObject) {
-					ws.write(net::buffer("SERVER:ERROR:No object to interact with at that location."));
+					send("SERVER:ERROR:No object to interact with at that location.");
 					return;
 				}
 
 				int dist = abs(player.posX - target_x) + abs(player.posY - target_y);
 				if (dist > 1) {
-					ws.write(net::buffer("SERVER:ERROR:You are too far away to interact with that."));
+					send("SERVER:ERROR:You are too far away to interact with that.");
 					return;
 				}
 
 				player.currentPath.clear();
 
 				if (targetObject->type == InteractableType::NPC) {
-					ws.write(net::buffer("SERVER:NPC_INTERACT:" + targetObject->data));
+					send("SERVER:NPC_INTERACT:" + targetObject->data);
 					if (targetObject->data == "GUARD_DIALOGUE_1") {
-						ws.write(net::buffer("SERVER:PROMPT:Guard: \"This place gets scary at night\""));
+						send("SERVER:PROMPT:Guard: \"This place gets scary at night\"");
 					}
 					else if (targetObject->data == "MERCHANT_SHOP_1") {
-						ws.write(net::buffer("SERVER:PROMPT:Merchant: \"You there, got some gold, I've got stuff that might appeal to you\""));
+						send("SERVER:PROMPT:Merchant: \"You there, got some gold, I've got stuff that might appeal to you\"");
 						auto shop_it = g_shops.find("MERCHANT_SHOP_1");
 						if (shop_it == g_shops.end()) {
-							ws.write(net::buffer("SERVER:ERROR:Shop inventory not found."));
+							send("SERVER:ERROR:Shop inventory not found.");
 							return;
 						}
 
 						ostringstream oss;
 						oss << "SERVER:SHOW_SHOP:{\"shopId\":\"" << shop_it->first << "\",\"items\":[";
-
 						bool firstItem = true;
 						for (const string& itemId : shop_it->second) {
 							if (itemDatabase.count(itemId) == 0) continue;
@@ -2498,7 +2550,7 @@ void AsyncSession::handle_message(const string& message)
 							firstItem = false;
 						}
 						oss << "]}";
-						ws.write(net::buffer(oss.str()));
+						send(oss.str());
 					}
 				}
 				else if (targetObject->type == InteractableType::ZONE_TRANSITION) {
@@ -2508,13 +2560,13 @@ void AsyncSession::handle_message(const string& message)
 					send_current_monsters_list();
 					// --- Optional: confirm area change
 					auto& ws = getWebSocket();
-					ws.write(net::buffer("SERVER:AREA_CHANGED:" + player.currentArea));
+					send("SERVER:AREA_CHANGED:" + player.currentArea);
 				}
 				else if (targetObject->type == InteractableType::RESOURCE_NODE) {
 					// 1. Find definition
 					auto itDef = g_resource_defs.find(targetObject->data);
 					if (itDef == g_resource_defs.end()) {
-						ws.write(net::buffer("SERVER:ERROR:Unknown resource type."));
+						send("SERVER:ERROR:Unknown resource type.");
 						return;
 					}
 					const ResourceDefinition& def = itDef->second;
@@ -2547,7 +2599,7 @@ void AsyncSession::handle_message(const string& message)
 					int currentLevel = 1 + static_cast<int>(std::sqrt(currentXp) / 5.0f);
 
 					if (currentLevel < def.requiredLevel) {
-						ws.write(net::buffer("SERVER:ERROR:Requires " + skillName + " level " + std::to_string(def.requiredLevel)));
+						send("SERVER:ERROR:Requires " + skillName + " level " + std::to_string(def.requiredLevel));
 						return;
 					}
 					// 4. START CONTINUOUS GATHERING
@@ -2566,28 +2618,28 @@ void AsyncSession::handle_message(const string& message)
 					}
 
 
-					ws.write(net::buffer("SERVER:STATUS:You start gathering from the " + def.dropItemId + "..."));
+					send("SERVER:STATUS:You start gathering from the " + def.dropItemId + "...");
 					send_player_stats();
 				}
 				else if (targetObject->type == InteractableType::CRAFTING_STATION) {
 					// Send a specific signal to open the UI
 					string msg = "SERVER:OPEN_CRAFTING";
-					ws.write(net::buffer(msg));
+					send(msg);
 				}
 
 				else {
-					ws.write(net::buffer("SERVER:ERROR:Unknown interaction type."));
+					send("SERVER:ERROR:Unknown interaction type.");
 				}
 			}
 			catch (const exception&) {
 				cerr << "Error parsing INTERACT_AT: " << "\n";
-				ws.write(net::buffer("SERVER:ERROR:Invalid coordinate format."));
+				send("SERVER:ERROR:Invalid coordinate format.");
 			}
 		}
 	}
 	   else if (message.rfind("CRAFT_ITEM:", 0) == 0) {
 		if (!player.isFullyInitialized) {
-			ws.write(net::buffer("SERVER:ERROR:Character not initialized."));
+			send("SERVER:ERROR:Character not initialized.");
 			return;
 		}
 
@@ -2604,7 +2656,7 @@ void AsyncSession::handle_message(const string& message)
 		}
 
 		if (g_crafting_recipes.count(recipeId) == 0) {
-			ws.write(net::buffer("SERVER:ERROR:Unknown recipe: " + recipeId));
+			send("SERVER:ERROR:Unknown recipe: " + recipeId);
 			return;
 		}
 
@@ -2616,7 +2668,7 @@ void AsyncSession::handle_message(const string& message)
 		int currentLevel = 1 + static_cast<int>(std::sqrt(currentXp) / 5.0f);
 
 		if (currentLevel < recipe.requiredLevel) {
-			ws.write(net::buffer("SERVER:ERROR:Requires " + skillKey + " level " + std::to_string(recipe.requiredLevel)));
+			send("SERVER:ERROR:Requires " + skillKey + " level " + std::to_string(recipe.requiredLevel));
 			return;
 		}
 
@@ -2636,7 +2688,7 @@ void AsyncSession::handle_message(const string& message)
 			}
 
 			if (!hasBooster) {
-				ws.write(net::buffer("SERVER:ERROR:You are missing the boosting material: " + boostItemId));
+				send("SERVER:ERROR:You are missing the boosting material: " + boostItemId);
 				return;
 			}
 
@@ -2645,7 +2697,7 @@ void AsyncSession::handle_message(const string& message)
 			else if (boostItemId == "GOLDEN_LEAF") bonusChance = 5; // +5% chance
 			else if (boostItemId == "PEARL") bonusChance = 5;   // +5% chance
 			else {
-				ws.write(net::buffer("SERVER:ERROR:That item cannot be used as a booster."));
+				send("SERVER:ERROR:That item cannot be used as a booster.");
 				return;
 			}
 
@@ -2666,7 +2718,7 @@ void AsyncSession::handle_message(const string& message)
 				}
 			}
 			if (playerHas < reqQty) {
-				ws.write(net::buffer("SERVER:ERROR:Missing material: " + ingId + " (" + std::to_string(playerHas) + "/" + std::to_string(reqQty) + ")"));
+				send("SERVER:ERROR:Missing material: " + ingId + " (" + std::to_string(playerHas) + "/" + std::to_string(reqQty) + ")");
 				return;
 			}
 		}
@@ -2698,19 +2750,19 @@ void AsyncSession::handle_message(const string& message)
 		std::string msg = "SERVER:STATUS:Crafted " + recipe.resultItemId + "! (+" + std::to_string(recipe.xpReward) + " XP)";
 		if (bonusChance > 0) msg += " [Boosted!]";
 
-		ws.write(net::buffer(msg));
+		send(msg);
 		send_inventory_and_equipment();
 		send_player_stats();
 	}
 	   else if (message.rfind("MONSTER_SELECTED:", 0) == 0) {
 		if (!player.isFullyInitialized) {
-			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+			send("SERVER:ERROR:Complete character creation first.");
 		}
 		else if (player.isInCombat) {
-			ws.write(net::buffer("SERVER:ERROR:You are already in combat!"));
+			send("SERVER:ERROR:You are already in combat!");
 		}
 		else if (player.currentArea == "TOWN") {
-			ws.write(net::buffer("SERVER:STATUS:No monsters to fight in TOWN."));
+			send("SERVER:STATUS:No monsters to fight in TOWN.");
 		}
 		else {
 			try {
@@ -2733,7 +2785,7 @@ void AsyncSession::handle_message(const string& message)
 					if (!player.currentOpponent) {
 						player.isInCombat = false;
 						std::cerr << "CRITICAL: Failed to create monster instance for combat." << std::endl;
-						ws.write(net::buffer("SERVER:ERROR:Internal error starting combat."));
+						send("SERVER:ERROR:Internal error starting combat.");
 						return;
 					}
 
@@ -2748,18 +2800,18 @@ void AsyncSession::handle_message(const string& message)
 						<< ",\"health\":" << player.currentOpponent->health
 						<< ",\"maxHealth\":" << player.currentOpponent->maxHealth << "}";
 					std::string combat_start_message = oss.str();
-					ws.write(net::buffer(combat_start_message));
-					ws.write(net::buffer("SERVER:COMBAT_LOG:You engaged the " + player.currentOpponent->type + "!"));
+					send(combat_start_message);
+					send("SERVER:COMBAT_LOG:You engaged the " + player.currentOpponent->type + "!");
 
 					PlayerStats finalStats = getCalculatedStats();
 
 					// Speed check: who acts first?
 					if (finalStats.speed >= player.currentOpponent->speed) {
-						ws.write(net::buffer("SERVER:COMBAT_LOG:You are faster! You attack first."));
-						ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
+						send("SERVER:COMBAT_LOG:You are faster! You attack first.");
+						send("SERVER:COMBAT_TURN:Your turn.");
 					}
 					else {
-						ws.write(net::buffer("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " is faster! It attacks first."));
+						send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " is faster! It attacks first.");
 
 						// --- Monster attacks first using new combat math ---
 
@@ -2773,21 +2825,21 @@ void AsyncSession::handle_message(const string& message)
 						float monster_crit_chance = crit_chance_for_monster(*player.currentOpponent);
 						if (((float)rand() / RAND_MAX) < monster_crit_chance) {
 							monster_damage = (int)std::round(monster_damage * 1.6f);
-							ws.write(net::buffer(
+							send(
 								"SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " lands a critical hit!"
-							));
+							);
 						}
 
 						player.stats.health -= monster_damage;
-						ws.write(net::buffer(
+						send(
 							"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
 							" attacks you for " + std::to_string(monster_damage) + " damage!"
-						));
+						);
 						send_player_stats();
 
 						if (player.stats.health <= 0) {
 							player.stats.health = 0;
-							ws.write(net::buffer("SERVER:COMBAT_DEFEAT:You have been defeated!"));
+							send("SERVER:COMBAT_DEFEAT:You have been defeated!");
 							player.isInCombat = false;
 							player.currentOpponent.reset();
 							player.currentArea = "TOWN";
@@ -2804,7 +2856,7 @@ void AsyncSession::handle_message(const string& message)
 								g_player_registry[player.userId] = broadcast_data;
 							}
 
-							ws.write(net::buffer("SERVER:AREA_CHANGED:TOWN"));
+							send("SERVER:AREA_CHANGED:TOWN");
 							send_area_map_data(player.currentArea);
 							send_available_areas();
 							send_player_stats();
@@ -2812,22 +2864,22 @@ void AsyncSession::handle_message(const string& message)
 							broadcast_data.posY = player.posY;
 						}
 						else {
-							ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
+							send("SERVER:COMBAT_TURN:Your turn.");
 						}
 					}
 				}
 				else {
-					ws.write(net::buffer("SERVER:ERROR:Selected monster ID not found."));
+					send("SERVER:ERROR:Selected monster ID not found.");
 				}
 			}
 			catch (const std::exception&) {
-				ws.write(net::buffer("SERVER:ERROR:Invalid monster ID format."));
+				send("SERVER:ERROR:Invalid monster ID format.");
 			}
 		}
 	}
 
 	   else if (message.rfind("COMBAT_ACTION:", 0) == 0) {
-		if (!player.isInCombat || !player.currentOpponent) { ws.write(net::buffer("SERVER:ERROR:You are not in combat.")); }
+		if (!player.isInCombat || !player.currentOpponent) { send("SERVER:ERROR:You are not in combat."); }
 		else {
 			PlayerStats finalStats = getCalculatedStats();
 			int extraDefFromBuffs = 0;
@@ -2876,10 +2928,10 @@ void AsyncSession::handle_message(const string& message)
 				}
 
 				if (totalDot > 0) {
-					ws.write(net::buffer(
+					send(
 						"SERVER:COMBAT_LOG:You suffer " + std::to_string(totalDot) +
 						" damage from ongoing effects!"
-					));
+					);
 					send_player_stats();
 				}
 
@@ -2925,14 +2977,14 @@ void AsyncSession::handle_message(const string& message)
 				}
 
 				if (totalDot > 0) {
-					ws.write(net::buffer(
+					send(
 						"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
 						" suffers " + std::to_string(totalDot) +
 						" damage from ongoing effects!"
-					));
+					);
 					std::string update =
 						"SERVER:COMBAT_UPDATE:" + std::to_string(player.currentOpponent->health);
-					ws.write(net::buffer(update));
+					send(update);
 				}
 				};
 
@@ -2960,14 +3012,14 @@ void AsyncSession::handle_message(const string& message)
 				if (((float)rand() / RAND_MAX) < crit_chance) {
 					ClassCritTuning t = getCritTuning(player.currentClass);
 					dmg = (int)std::round(dmg * t.critMultiplier);
-					ws.write(net::buffer("SERVER:COMBAT_LOG:A critical hit!"));
+					send("SERVER:COMBAT_LOG:A critical hit!");
 				}
 
 				player_damage = dmg; // then use your existing code that subtracts HP and logs
 				std::string log_msg =
 					"SERVER:COMBAT_LOG:You attack the " + player.currentOpponent->type +
 					" for " + std::to_string(player_damage) + " damage!";
-				ws.write(net::buffer(log_msg));
+				send(log_msg);
 			}
 			else if (action_type == "SPELL") {
 				std::string spellName = action_param;
@@ -2975,7 +3027,7 @@ void AsyncSession::handle_message(const string& message)
 				// Look up the spell definition
 				auto itSkill = g_skill_defs.find(spellName);
 				if (itSkill == g_skill_defs.end() || itSkill->second.type != SkillType::SPELL) {
-					ws.write(net::buffer("SERVER:COMBAT_LOG:Unknown spell: " + spellName));
+					send("SERVER:COMBAT_LOG:Unknown spell: " + spellName);
 					return;
 				}
 				const SkillDefinition& spell = itSkill->second;
@@ -2989,7 +3041,7 @@ void AsyncSession::handle_message(const string& message)
 					}
 				}
 				if (!knows_spell) {
-					ws.write(net::buffer("SERVER:COMBAT_LOG:You don't know that spell!"));
+					send("SERVER:COMBAT_LOG:You don't know that spell!");
 					return;
 				}
 
@@ -3004,16 +3056,16 @@ void AsyncSession::handle_message(const string& message)
 
 				if (spell.requiredClass != SkillClass::ANY &&
 					spell.requiredClass != playerSkillClass) {
-					ws.write(net::buffer("SERVER:COMBAT_LOG:You cannot cast that spell with your class."));
+					send("SERVER:COMBAT_LOG:You cannot cast that spell with your class.");
 					return;
 				}
 
 				// Mana check
 				if (player.stats.mana < spell.manaCost) {
-					ws.write(net::buffer(
+					send(
 						"SERVER:COMBAT_LOG:Not enough mana to cast " + spellName +
 						"! (Needs " + std::to_string(spell.manaCost) + ")"
-					));
+					);
 					return;
 				}
 
@@ -3051,7 +3103,7 @@ void AsyncSession::handle_message(const string& message)
 					if (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) < critChance) {
 						ClassCritTuning t = getCritTuning(player.currentClass);
 						dmg = static_cast<int>(std::round(dmg * t.critMultiplier));
-						ws.write(net::buffer("SERVER:COMBAT_LOG:Your " + spellName + " critically hits!"));
+						send("SERVER:COMBAT_LOG:Your " + spellName + " critically hits!");
 					}
 
 					player_damage = dmg;
@@ -3059,12 +3111,12 @@ void AsyncSession::handle_message(const string& message)
 					std::string log_msg =
 						"SERVER:COMBAT_LOG:You cast " + spellName +
 						" for " + std::to_string(player_damage) + " damage!";
-					ws.write(net::buffer(log_msg));
+					send(log_msg);
 				}
 				else {
 					// Self-target spells (none for wizard yet, but future-proof)
 					player_damage = 0;
-					ws.write(net::buffer("SERVER:COMBAT_LOG:You cast " + spellName + " on yourself."));
+					send("SERVER:COMBAT_LOG:You cast " + spellName + " on yourself.");
 				}
 
 				// Apply status effects from the spell definition
@@ -3088,7 +3140,7 @@ void AsyncSession::handle_message(const string& message)
 						int roll = rand() % 100;
 						if (roll >= finalChance) {
 							applyStatus = false;
-							ws.write(net::buffer("SERVER:COMBAT_LOG:The lightning crackles, but fails to stun."));
+							send("SERVER:COMBAT_LOG:The lightning crackles, but fails to stun.");
 						}
 					}
 
@@ -3124,7 +3176,7 @@ void AsyncSession::handle_message(const string& message)
 							break;
 						}
 
-						ws.write(net::buffer("SERVER:COMBAT_LOG:" + statusMsg));
+						send("SERVER:COMBAT_LOG:" + statusMsg);
 					}
 				}
 			}
@@ -3135,7 +3187,7 @@ void AsyncSession::handle_message(const string& message)
 				// Look up the skill in the global registry
 				auto itSkill = g_skill_defs.find(skillName);
 				if (itSkill == g_skill_defs.end()) {
-					ws.write(net::buffer("SERVER:COMBAT_LOG:Unknown skill: " + skillName));
+					send("SERVER:COMBAT_LOG:Unknown skill: " + skillName);
 					return;
 				}
 
@@ -3150,7 +3202,7 @@ void AsyncSession::handle_message(const string& message)
 					}
 				}
 				if (!knows_skill) {
-					ws.write(net::buffer("SERVER:COMBAT_LOG:You don't know that skill!"));
+					send("SERVER:COMBAT_LOG:You don't know that skill!");
 					return;
 				}
 
@@ -3165,13 +3217,13 @@ void AsyncSession::handle_message(const string& message)
 
 				if (skill.requiredClass != SkillClass::ANY &&
 					skill.requiredClass != playerSkillClass) {
-					ws.write(net::buffer("SERVER:COMBAT_LOG:You cannot use that skill with your class."));
+					send("SERVER:COMBAT_LOG:You cannot use that skill with your class.");
 					return;
 				}
 
 				// Check mana cost
 				if (player.stats.mana < skill.manaCost) {
-					ws.write(net::buffer("SERVER:COMBAT_LOG:Not enough mana to use " + skillName + "!"));
+					send("SERVER:COMBAT_LOG:Not enough mana to use " + skillName + "!");
 					return;
 				}
 
@@ -3201,7 +3253,7 @@ void AsyncSession::handle_message(const string& message)
 					if (((float)rand() / RAND_MAX) < critChance) {
 						ClassCritTuning t = getCritTuning(player.currentClass);
 						dmg = (int)std::round(dmg * t.critMultiplier);
-						ws.write(net::buffer("SERVER:COMBAT_LOG:A critical " + skillName + "!"));
+						send("SERVER:COMBAT_LOG:A critical " + skillName + "!");
 					}
 
 					player_damage = dmg;
@@ -3210,14 +3262,14 @@ void AsyncSession::handle_message(const string& message)
 						"SERVER:COMBAT_LOG:You use " + skillName + " on the " +
 						player.currentOpponent->type + " for " +
 						std::to_string(player_damage) + " damage!";
-					ws.write(net::buffer(log_msg));
+					send(log_msg);
 				}
 				else {
 					// Defensive / self-target skill (e.g., ShieldWall)
 					player_damage = 0;
 					std::string log_msg =
 						"SERVER:COMBAT_LOG:You use " + skillName + " on yourself.";
-					ws.write(net::buffer(log_msg));
+					send(log_msg);
 				}
 
 				// Apply status effect if the skill has one
@@ -3277,10 +3329,10 @@ void AsyncSession::handle_message(const string& message)
 					}
 
 					if (bonusTurns > 0) {
-						ws.write(net::buffer(
+						send(
 							"SERVER:COMBAT_LOG:The effects of " + skillName +
 							" linger longer than usual!"
-						));
+						);
 					}
 
 					// Flavor log about the effect itself
@@ -3293,21 +3345,21 @@ void AsyncSession::handle_message(const string& message)
 					}
 
 					if (targetIsSelf) {
-						ws.write(net::buffer(
+						send(
 							"SERVER:COMBAT_LOG:Your " + skillName + " " + statusMsg + " you."
-						));
+						);
 					}
 					else {
-						ws.write(net::buffer(
+						send(
 							"SERVER:COMBAT_LOG:Your " + skillName + " " + statusMsg +
 							" the " + player.currentOpponent->type + "."
-						));
+						);
 					}
 				}
 			}
 			else if (action_type == "DEFEND") {
 				player.isDefending = true;
-				ws.write(net::buffer("SERVER:COMBAT_LOG:You brace for the next attack."));
+				send("SERVER:COMBAT_LOG:You brace for the next attack.");
 			}
 
 			else if (action_type == "FLEE") {
@@ -3315,15 +3367,15 @@ void AsyncSession::handle_message(const string& message)
 				float flee_chance = 0.5f + ((float)finalStats.speed - (float)player.currentOpponent->speed) * 0.05f + ((float)finalStats.luck * 0.01f);
 				flee_chance = std::max(0.1f, std::min(0.9f, flee_chance));
 				if (((float)rand() / RAND_MAX) < flee_chance) { fled = true; }
-				else { ws.write(net::buffer("SERVER:COMBAT_LOG:You failed to flee!")); }
+				else { send("SERVER:COMBAT_LOG:You failed to flee!"); }
 			}
 
 			if (fled) {
 				// FIX: Store string
 				std::string log_msg = "SERVER:COMBAT_LOG:You successfully fled from the " + player.currentOpponent->type + "!";
-				ws.write(net::buffer(log_msg));
+				send(log_msg);
 				player.isInCombat = false; player.currentOpponent.reset();
-				ws.write(net::buffer("SERVER:COMBAT_VICTORY:Fled"));
+				send("SERVER:COMBAT_VICTORY:Fled");
 				SyncPlayerMonsters(player);
 				send_current_monsters_list(); return;
 			}
@@ -3333,16 +3385,16 @@ void AsyncSession::handle_message(const string& message)
 			send_player_stats();
 			// FIX: Store string
 			std::string combat_update = "SERVER:COMBAT_UPDATE:" + to_string(player.currentOpponent->health);
-			ws.write(net::buffer(combat_update));
+			send(combat_update);
 
 			// FIX: Use -> access
 			if (player.currentOpponent->health <= 0) {
 				std::string log_msg_1 = "SERVER:COMBAT_LOG:You defeated the " + player.currentOpponent->type + "!";
-				ws.write(net::buffer(log_msg_1));
+				send(log_msg_1);
 
 				int xp_gain = player.currentOpponent->xpReward;
 				std::string log_msg_2 = "SERVER:STATUS:Gained " + to_string(xp_gain) + " XP.";
-				ws.write(net::buffer(log_msg_2));
+				send(log_msg_2);
 
 				player.stats.experience += xp_gain;
 				int lootTier = player.currentOpponent->lootTier;
@@ -3400,7 +3452,7 @@ void AsyncSession::handle_message(const string& message)
 							std::string log_msg_3 =
 								"SERVER:STATUS:The " + player.currentOpponent->type +
 								" dropped: " + def.name + "!";
-							ws.write(net::buffer(log_msg_3));
+							send(log_msg_3);
 
 							std::cout << "[LOOT DEBUG] roll=" << roll
 								<< " finalDropChance=" << finalDropChance
@@ -3415,7 +3467,7 @@ void AsyncSession::handle_message(const string& message)
 					}
 				}
 
-				ws.write(net::buffer("SERVER:COMBAT_VICTORY:Defeated"));
+				send("SERVER:COMBAT_VICTORY:Defeated");
 				player.isInCombat = false;
 				player.currentOpponent.reset();
 				check_for_level_up();
@@ -3424,11 +3476,11 @@ void AsyncSession::handle_message(const string& message)
 				return;
 			}
 			if (monsterStunnedThisTurn) {
-				ws.write(net::buffer(
+				send(
 					"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
 					" is stunned and cannot act!"
-				));
-				ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
+				);
+				send("SERVER:COMBAT_TURN:Your turn.");
 				return;
 			}
 			int monster_damage = 0;
@@ -3454,18 +3506,18 @@ void AsyncSession::handle_message(const string& message)
 				std::string log_msg =
 					"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
 					" lands a critical hit!";
-				ws.write(net::buffer(log_msg));
+				send(log_msg);
 			}
 
 			player.stats.health -= monster_damage;
 			std::string log_msg_attack =
 				"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
 				" attacks you for " + std::to_string(monster_damage) + " damage!";
-			ws.write(net::buffer(log_msg_attack));
+			send(log_msg_attack);
 			send_player_stats();
 			if (player.stats.health <= 0) {
 				player.stats.health = 0;
-				ws.write(net::buffer("SERVER:COMBAT_DEFEAT:You have been defeated!"));
+				send("SERVER:COMBAT_DEFEAT:You have been defeated!");
 				player.isInCombat = false; player.currentOpponent.reset();
 				player.currentArea = "TOWN"; player.currentMonsters.clear();
 				player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
@@ -3473,7 +3525,7 @@ void AsyncSession::handle_message(const string& message)
 				broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
 				{ lock_guard<mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
 
-				ws.write(net::buffer("SERVER:AREA_CHANGED:TOWN"));
+				send("SERVER:AREA_CHANGED:TOWN");
 				send_area_map_data(player.currentArea);
 				SyncPlayerMonsters(player);
 				send_current_monsters_list();
@@ -3481,63 +3533,71 @@ void AsyncSession::handle_message(const string& message)
 				send_player_stats();
 				return;
 			}
-			ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
+			send("SERVER:COMBAT_TURN:Your turn.");
 		}
 	}
 	   else if (message.rfind("GIVE_XP:", 0) == 0) {
-		if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
-		else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:Cannot gain XP in combat.")); }
+		if (!player.isFullyInitialized) { send("SERVER:ERROR:Complete character creation first."); }
+		else if (player.isInCombat) { send("SERVER:ERROR:Cannot gain XP in combat."); }
 		else {
 			try {
 				int xp_to_give = stoi(message.substr(8));
 				if (xp_to_give > 0) {
 					player.stats.experience += xp_to_give;
-					ws.write(net::buffer("SERVER:STATUS:Gained " + to_string(xp_to_give) + " XP."));
+					send("SERVER:STATUS:Gained " + to_string(xp_to_give) + " XP.");
 					check_for_level_up();
 					send_player_stats();
 				}
-				else { ws.write(net::buffer("SERVER:ERROR:Invalid XP amount.")); }
+				else { send("SERVER:ERROR:Invalid XP amount."); }
 			}
-			catch (const exception&) { ws.write(net::buffer("SERVER:ERROR:Invalid XP amount format.")); }
+			catch (const exception&) { send("SERVER:ERROR:Invalid XP amount format."); }
 		}
 	}
 	   else if (message == "REQUEST_PLAYERS") {
 
 		if (g_area_grids.find(player.currentArea) == g_area_grids.end()) {
-			ws.write(net::buffer("SERVER:PLAYERS_IN_AREA:[]"));
+			send("SERVER:PLAYERS_IN_AREA:[]");
 			return;
 		}
 
-		std::ostringstream oss;
-		oss << "SERVER:PLAYERS_IN_AREA:[";
-		bool first_player = true;
 		std::string my_area = player.currentArea;
 
+
+		std::vector<PlayerBroadcastData> players_in_area;
 		{
 			std::lock_guard<std::mutex> lock(g_player_registry_mutex);
 			for (auto const& pair : g_player_registry) {
 				if (pair.first == player.userId) continue;
 				if (pair.second.currentArea == my_area && pair.second.playerClass != PlayerClass::UNSELECTED) {
-					if (!first_player) oss << ",";
-					oss << "{\"id\":" << nlohmann::json(pair.second.userId).dump()
-						<< ",\"name\":" << nlohmann::json(pair.second.playerName).dump()
-						<< ",\"class\":" << static_cast<int>(pair.second.playerClass)
-						<< ",\"x\":" << pair.second.posX
-						<< ",\"y\":" << pair.second.posY
-						<< ",\"action\":" << nlohmann::json(pair.second.currentAction).dump()
-						<< "}";
-					first_player = false;
+					players_in_area.push_back(pair.second); // Copy the data
 				}
 			}
+		} //
+
+
+		std::ostringstream oss;
+		oss << "SERVER:PLAYERS_IN_AREA:[";
+		bool first_player = true;
+
+		for (const auto& data : players_in_area) {
+			if (!first_player) oss << ",";
+			oss << "{\"id\":" << nlohmann::json(data.userId).dump()
+				<< ",\"name\":" << nlohmann::json(data.playerName).dump()
+				<< ",\"class\":" << static_cast<int>(data.playerClass)
+				<< ",\"x\":" << data.posX
+				<< ",\"y\":" << data.posY
+				<< ",\"action\":" << nlohmann::json(data.currentAction).dump()
+				<< "}";
+			first_player = false;
 		}
 
 		oss << "]";
 		std::string player_list_message = oss.str();
-		ws.write(net::buffer(player_list_message));
+		send(player_list_message);
 	}
 	   else if (message.rfind("USE_ITEM:", 0) == 0) {
 		if (!player.isFullyInitialized) {
-			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+			send("SERVER:ERROR:Complete character creation first.");
 		}
 		else {
 			try {
@@ -3545,28 +3605,28 @@ void AsyncSession::handle_message(const string& message)
 				useItem(instanceId);
 			}
 			catch (const exception&) {
-				ws.write(net::buffer("SERVER:ERROR:Invalid item ID format."));
+				send("SERVER:ERROR:Invalid item ID format.");
 			}
 		}
 	}
 	   else if (message.rfind("EQUIP_ITEM:", 0) == 0) {
 		if (!player.isFullyInitialized) {
-			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+			send("SERVER:ERROR:Complete character creation first.");
 		}
 		else {
 			try {
 				uint64_t instanceId = stoull(message.substr(11));
 				string equipMsg = equipItem(instanceId);
-				ws.write(net::buffer("SERVER:STATUS:" + equipMsg));
+				send("SERVER:STATUS:" + equipMsg);
 			}
 			catch (const exception&) {
-				ws.write(net::buffer("SERVER:ERROR:Invalid item ID format."));
+				send("SERVER:ERROR:Invalid item ID format.");
 			}
 		}
 	}
 	   else if (message.rfind("DROP_ITEM:", 0) == 0) {
 		if (!player.isFullyInitialized) {
-			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+			send("SERVER:ERROR:Complete character creation first.");
 		}
 		else {
 			try {
@@ -3584,13 +3644,13 @@ void AsyncSession::handle_message(const string& message)
 			}
 			catch (const exception& e) {
 				cerr << "Drop item error: " << e.what() << endl;
-				ws.write(net::buffer("SERVER:ERROR:Invalid drop command format."));
+				send("SERVER:ERROR:Invalid drop command format.");
 			}
 		}
 	}
 	   else if (message.rfind("UNEQUIP_ITEM:", 0) == 0) {
 		if (!player.isFullyInitialized) {
-			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+			send("SERVER:ERROR:Complete character creation first.");
 		}
 		else {
 			try {
@@ -3598,16 +3658,16 @@ void AsyncSession::handle_message(const string& message)
 				EquipSlot slotToUnequip = static_cast<EquipSlot>(slotInt);
 
 				string result = unequipItem(slotToUnequip);
-				ws.write(net::buffer("SERVER:STATUS:" + result));
+				send("SERVER:STATUS:" + result);
 			}
 			catch (const exception& e) {
-				ws.write(net::buffer("SERVER:ERROR:Invalid slot format."));
+				send("SERVER:ERROR:Invalid slot format.");
 			}
 		}
 	}
 	   else if (message.rfind("BUY_ITEM:", 0) == 0) {
 		if (!player.isFullyInitialized) {
-			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
+			send("SERVER:ERROR:Complete character creation first.");
 		}
 		else {
 			try {
@@ -3622,17 +3682,17 @@ void AsyncSession::handle_message(const string& message)
 				string itemId = params.substr(colon_pos + 1);
 
 				if (g_shops.count(shopId) == 0) {
-					ws.write(net::buffer("SERVER:ERROR:Unknown shop."));
+					send("SERVER:ERROR:Unknown shop.");
 					return;
 				}
 				if (itemDatabase.count(itemId) == 0) {
-					ws.write(net::buffer("SERVER:ERROR:Unknown item."));
+					send("SERVER:ERROR:Unknown item.");
 					return;
 				}
 
 				const auto& shopItems = g_shops.at(shopId);
 				if (find(shopItems.begin(), shopItems.end(), itemId) == shopItems.end()) {
-					ws.write(net::buffer("SERVER:ERROR:This shop does not sell that item."));
+					send("SERVER:ERROR:This shop does not sell that item.");
 					return;
 				}
 
@@ -3644,29 +3704,29 @@ void AsyncSession::handle_message(const string& message)
 				}
 				catch (const out_of_range&) {
 					cerr << "WARNING: Player tried to buy " << itemId << " which has no price." << endl;
-					ws.write(net::buffer("SERVER:ERROR:That item is not for sale."));
+					send("SERVER:ERROR:That item is not for sale.");
 					return;
 				}
 
 				if (player.stats.gold >= price) {
 					player.stats.gold -= price;
 					addItemToInventory(itemId, 1);
-					ws.write(net::buffer("SERVER:STATUS:Bought " + def.name + " for " + to_string(price) + " gold."));
+					send("SERVER:STATUS:Bought " + def.name + " for " + to_string(price) + " gold.");
 					send_player_stats();
 
 				}
 				else {
-					ws.write(net::buffer("SERVER:ERROR:Not enough gold. You need " + to_string(price) + "."));
+					send("SERVER:ERROR:Not enough gold. You need " + to_string(price) + ".");
 				}
 			}
 			catch (const exception&) {
 				cerr << "Buy item error: " << endl;
-				ws.write(net::buffer("SERVER:ERROR:Invalid buy command format."));
+				send("SERVER:ERROR:Invalid buy command format.");
 			}
 		}
 	}
 	   else {
 		string echo = "SERVER:ECHO: " + message;
-		ws.write(net::buffer(echo));
+		send(echo);
 	}
 }
