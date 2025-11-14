@@ -22,7 +22,7 @@ const std::vector<std::string> ALL_AREAS = {
 std::map<std::string, int> g_item_buy_prices;
 std::map<std::string, std::vector<std::string>> g_effect_suffix_pools;
 std::vector<RandomEffectDefinition> g_random_effect_pool;
-std::atomic<uint64_t> g_item_instance_id_counter{ 1 };
+//im using postgres sequencing instead bc this just wasnt reliable - std::atomic<uint64_t> g_item_instance_id_counter{ 1 };
 std::atomic<int> g_session_id_counter{ 1 };
 int global_monster_id_counter = 1;
 
@@ -677,8 +677,8 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 		{
 		   "FOREST_GUARDIAN_DIALOGUE",
 		{
-				{ "Forest Guardian" "Hello Starborn, you may start your journey in the Forest, be wary of danger", "FOREST GUARDIAN"  },
-				{ "Forest Guardian" "Good luck, you must overcome the monsters in this area and finish all quests before you proceed to the next part of the map", "FOREST GUARDIAN" }
+				{ "Forest Guardian", "Hello Starborn, you may start your journey in the Forest, be wary of danger", "FOREST GUARDIAN"  },
+				{ "Forest Guardian", "Good luck, you must overcome the monsters in this area and finish all quests before you proceed to the next part of the map", "FOREST GUARDIAN" }
 			}
 		},
 	//FOREST DIALOGUE
@@ -884,7 +884,7 @@ const std::unordered_map<std::string, SpawnPoint>& get_area_spawns()
 {"SWAMP",        {25, 19}},
 {"LAKE",         {12, 19}},
 {"CASTLEINSIDE", {18, 19}},
-{"MOUNTAINS",    {0, 0}},
+{"MOUNTAINS",    {21, 19}},
 {"DESERT",       {9, 16}},
 {"TOWN3",        {0, 0}},
 {"FOREST2",      {0, 0}},
@@ -3294,7 +3294,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 {
 	"OVERWORLD", {
 		// --- NPCs ---
-		{ "ANGEL_OVERWORLD_GUIDE",InteractableType::NPC, {4, 13}, "ANGEL_OVERWORLD_GUIDE_DIALOGUE" },
+		{ "ANGEL_OVERWORLD_GUIDE",InteractableType::NPC, {24, 19}, "ANGEL_OVERWORLD_GUIDE_DIALOGUE" },
 		{ "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" },
 		{ "OVERWORLD_PROSPECTOR", InteractableType::NPC, {19, 2},  "PROSPECTOR_MTN_DIALOGUE" },
 		{ "OVERWORLD_NOMAD",      InteractableType::NPC, {34, 20}, "NOMAD_DESERT_DIALOGUE" },
@@ -3325,6 +3325,9 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 {
 	"FOREST", {
 		{ "FOREST_HUNTER", InteractableType::NPC, {5, 15}, "HUNTER_FOREST_DIALOGUE" },
+		{ "OAK_TREE_FOREST", InteractableType::RESOURCE_NODE, {30, 17},   "OAK_TREE" },
+		{ "OAK_TREE_FOREST2", InteractableType::RESOURCE_NODE, {29, 15},   "OAK_TREE" },
+		{ "OAK_TREE_FOREST3", InteractableType::RESOURCE_NODE, {4, 18},   "OAK_TREE" },
 		{ "FOREST_EXPLORER", InteractableType::NPC, {14, 19}, "EXPLORER_FOREST_DIALOGUE" },
 		// --- Zone Transitions ---
 		{ "FOREST_TO_TOWN",     InteractableType::ZONE_TRANSITION, {0,  10}, "TOWN" },
@@ -3634,26 +3637,7 @@ void initialize_item_prices() {
 	//}
 }
 
-void initialize_item_id_counter(DatabaseManager& db_manager) {
-	try {
-		pqxx::connection C = db_manager.get_connection();
-		pqxx::nontransaction N(C);
-		std::string sql = "SELECT MAX(instance_id) FROM player_items";
-		pqxx::result R = N.exec(sql);
 
-		if (!R.empty() && !R[0][0].is_null()) {
-			g_item_instance_id_counter = R[0][0].as<uint64_t>() + 1;
-		}
-		else {
-			g_item_instance_id_counter = 1;
-		}
-		std::cout << "Item instance ID counter initialized to: " << g_item_instance_id_counter << std::endl;
-	}
-	catch (const std::exception& e) {
-		std::cerr << "Warning: Could not initialize item ID counter from DB. Defaulting to 1. Error: " << e.what() << std::endl;
-		g_item_instance_id_counter = 1;
-	}
-}
 const ItemDefinition& ItemInstance::getDefinition() const {
 	try {
 		// Look up this instance's itemId in the global database
