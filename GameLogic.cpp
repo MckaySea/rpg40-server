@@ -88,7 +88,7 @@ float attack_power_for_player(const PlayerStats& stats, PlayerClass cls) {
 			+ stats.strength * 0.3f
 			+ stats.speed * 0.3f;
 	case PlayerClass::WIZARD:
-		return stats.intellect * 1.3f
+		return stats.intellect * 0.6f
 			+ stats.dexterity * 0.4f
 			+ stats.strength * 0.2f;
 	default:
@@ -156,12 +156,84 @@ static std::string sanitize_for_json(const std::string& s)
 	return out;
 }
 
+void AsyncSession::process_gathering() {
+	PlayerState& player = getPlayerState();
 
+	// 1. Basic Checks
+	if (!player.isGathering) return;
+
+	// Safety: Stop gathering if combat starts or if valid node is lost
+	if (player.isInCombat) {
+		player.isGathering = false;
+		return;
+	}
+
+	// 2. Time Check
+	auto now = std::chrono::steady_clock::now();
+	// GATHER_INTERVAL is defined in game_session.hpp (e.g., 2000ms)
+	if (now - player.lastGatherTime < std::chrono::milliseconds(5000)) {
+		return; // Not ready for the next "swing" yet
+	}
+
+	// 3. Reset Timer
+	player.lastGatherTime = now;
+
+	// 4. Get Resource Data
+	// The player.gatheringResourceNode string holds the key, e.g., "OAK_TREE"
+	if (g_resource_defs.count(player.gatheringResourceNode) == 0) {
+		player.isGathering = false;
+		return;
+	}
+	const ResourceDefinition& def = g_resource_defs.at(player.gatheringResourceNode);
+
+	// 5. Execute One "Tick" of Gathering
+	bool gatheredSomething = false;
+	std::string statusMsg = "";
+	auto& ws = getWebSocket();
+
+	// Roll Normal Drop
+	if ((rand() % 100) < def.dropChance) {
+		addItemToInventory(def.dropItemId, 1);
+		gatheredSomething = true;
+		statusMsg = "You gathered " + def.dropItemId + ".";
+	}
+
+	// Roll Rare Drop
+	if (!def.rareItemId.empty() && (rand() % 100) < def.rareChance) {
+		addItemToInventory(def.rareItemId, 1);
+		gatheredSomething = true;
+		statusMsg += " Rare find! " + def.rareItemId + "!";
+	}
+
+	// 6. Rewards
+	if (gatheredSomething) {
+		// Determine skill name for XP
+		std::string skillName;
+		switch (def.skill) {
+		case LifeSkillType::WOODCUTTING: skillName = "Woodcutting"; break;
+		case LifeSkillType::MINING:      skillName = "Mining"; break;
+		case LifeSkillType::FISHING:     skillName = "Fishing"; break;
+		default:                         skillName = "Gathering"; break;
+		}
+
+		player.skills.life_skills[skillName] += def.xpReward;
+		ws.write(net::buffer("SERVER:STATUS:" + statusMsg + " (+" + std::to_string(def.xpReward) + " XP)"));
+
+		// Update client with new items and XP
+		send_inventory_and_equipment();
+		send_player_stats();
+	}
+	else {
+		ws.write(net::buffer("SERVER:STATUS:You attempt to gather, but find nothing."));
+	}
+}
 // -----------------------------------------------------------------------------
 // Processes one tick of player movement (called by move_timer_).
 // -----------------------------------------------------------------------------
 void AsyncSession::process_movement()
 {
+	process_gathering();
+
 	PlayerState& player = getPlayerState();
 
 	// No movement if in combat or no path
@@ -385,7 +457,231 @@ PlayerStats AsyncSession::getCalculatedStats() {
 	return finalStats;
 }
 
+//void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quantity, int bonusEffectChance) {
+//	PlayerState& player = getPlayerState();
+//	if (quantity <= 0) return;
+//
+//	if (itemDatabase.count(itemId) == 0) {
+//		std::cerr << "Error: Attempted to craft non-existent item ID: " << itemId << std::endl;
+//		return;
+//	}
+//
+//	const ItemDefinition& def = itemDatabase.at(itemId);
+//
+//	// 1. Handle Stackables (Potions, Ingots) - usually no effects
+//	if (def.stackable) {
+//		for (auto& pair : player.inventory) {
+//			ItemInstance& instance = pair.second;
+//			if (instance.itemId == itemId) {
+//				instance.quantity += quantity;
+//				send_inventory_and_equipment();
+//				return;
+//			}
+//		}
+//	}
+//
+//	// 2. Handle Non-Stackables (Weapons, Armor) - Apply Boosts!
+//	int numInstancesToAdd = def.stackable ? 1 : quantity;
+//	int qtyPerInstance = def.stackable ? quantity : 1;
+//
+//	std::random_device rd;
+//	std::mt19937 gen(rd());
+//
+//	for (int i = 0; i < numInstancesToAdd; ++i) {
+//		uint64_t newInstanceId = g_item_instance_id_counter++;
+//		ItemInstance newInstance = { newInstanceId, itemId, qtyPerInstance, {}, {} };
+//
+//		// --- BOOSTING LOGIC ---
+//		// Only roll effects if it's equipment or a high-tier item
+//		bool canHaveEffects = (def.equipSlot != EquipSlot::None) || (def.item_tier > 0);
+//
+//		if (canHaveEffects && !g_random_effect_pool.empty()) {
+//			std::uniform_int_distribution<> percentRoll(1, 100);
+//
+//			// Base chance (20%) + The Booster Bonus (e.g. +50%)
+//			int totalChance = 20 + bonusEffectChance;
+//
+//			// Cap at 100% to prevent weirdness
+//			if (totalChance > 100) totalChance = 100;
+//
+//			if (percentRoll(gen) <= totalChance) {
+//				// --- SUCCESS! Pick an effect ---
+//				int item_tier = std::max(1, def.item_tier);
+//				std::vector<const RandomEffectDefinition*> available_effects;
+//				int total_weight = 0;
+//
+//				for (const auto& effect_def : g_random_effect_pool) {
+//					if (effect_def.power_level <= item_tier) {
+//						available_effects.push_back(&effect_def);
+//						total_weight += effect_def.rarity_weight;
+//					}
+//				}
+//
+//				if (!available_effects.empty() && total_weight > 0) {
+//					std::uniform_int_distribution<> effect_roll(0, total_weight - 1);
+//					int roll_result = effect_roll(gen);
+//
+//					const RandomEffectDefinition* chosen = nullptr;
+//					for (const auto* ptr : available_effects) {
+//						if (roll_result < ptr->rarity_weight) {
+//							chosen = ptr;
+//							break;
+//						}
+//						roll_result -= ptr->rarity_weight;
+//					}
+//
+//					if (chosen) {
+//						// Apply the gameplay effect
+//						newInstance.customEffects.push_back(chosen->gameplay_effect);
+//
+//						// Apply the name suffix
+//						try {
+//							const auto& suffix_pool = g_effect_suffix_pools.at(chosen->effect_key);
+//							if (!suffix_pool.empty()) {
+//								std::string suffix = suffix_pool[gen() % suffix_pool.size()];
+//								ItemEffect suffixEffect;
+//								suffixEffect.type = "SUFFIX";
+//								suffixEffect.params["value"] = suffix;
+//								newInstance.customEffects.push_back(suffixEffect);
+//							}
+//						}
+//						catch (...) {}
+//					}
+//				}
+//			}
+//		}
+//		// --- END BOOSTING LOGIC ---
+//
+//		// (Optional) Add a "Crafted" tag?
+//		// ItemEffect craftedTag;
+//		// craftedTag.type = "CRAFTED_BY";
+//		// craftedTag.params["name"] = player.playerName;
+//		// newInstance.customEffects.push_back(craftedTag);
+//
+//		player.inventory[newInstanceId] = newInstance;
+//	}
+//
+//	send_inventory_and_equipment();
+//}
+void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quantity, int bonusEffectChance) {
+	PlayerState& player = getPlayerState();
+	if (quantity <= 0) return;
 
+	if (itemDatabase.count(itemId) == 0) {
+		std::cerr << "Error: Attempted to craft non-existent item ID: " << itemId << std::endl;
+		return;
+	}
+
+	const ItemDefinition& def = itemDatabase.at(itemId);
+
+	// 1. Handle Stackables (Potions, Ingots) - usually no effects
+	if (def.stackable) {
+		for (auto& pair : player.inventory) {
+			ItemInstance& instance = pair.second;
+			if (instance.itemId == itemId) {
+				instance.quantity += quantity;
+				send_inventory_and_equipment();
+				return;
+			}
+		}
+	}
+
+	// 2. Handle Non-Stackables (Weapons, Armor) - Apply Boosts!
+	int numInstancesToAdd = def.stackable ? 1 : quantity;
+	int qtyPerInstance = def.stackable ? quantity : 1;
+
+	std::random_device rd;
+	std::mt19937 gen(rd());
+
+	for (int i = 0; i < numInstancesToAdd; ++i) {
+
+		//  GET ID FROM DATABASE SEQUENCE now
+
+		// uint64_t newInstanceId = g_item_instance_id_counter++;
+// --- FIX: GET ID FROM DATABASE SEQUENCE ---
+		uint64_t newInstanceId;
+		try {
+			pqxx::connection C = db_manager_->get_connection();
+			pqxx::nontransaction N(C);
+			// --- THIS IS THE CORRECTED LINE ---
+			newInstanceId = N.exec("SELECT nextval('item_instance_id_seq')").one_row()[0].as<uint64_t>();
+		}
+		catch (const std::exception& e) {
+			std::cerr << "CRITICAL: Could not fetch new item instance ID: " << e.what() << std::endl;
+			ws_.write(net::buffer("SERVER:ERROR:Could not create item. Please try again."));
+			return; // Stop here, we failed to get an ID
+		}
+
+
+		ItemInstance newInstance = { newInstanceId, itemId, qtyPerInstance, {}, {} };
+
+		// --- BOOSTING LOGIC ---
+		// (Your existing boosting logic goes here, no changes needed)
+		// ...
+		bool canHaveEffects = (def.equipSlot != EquipSlot::None) || (def.item_tier > 0);
+
+		if (canHaveEffects && !g_random_effect_pool.empty()) {
+			std::uniform_int_distribution<> percentRoll(1, 100);
+
+			// Base chance (20%) + The Booster Bonus (e.g. +50%)
+			int totalChance = 20 + bonusEffectChance;
+
+			// Cap at 100% to prevent weirdness
+			if (totalChance > 100) totalChance = 100;
+
+			if (percentRoll(gen) <= totalChance) {
+				// --- SUCCESS! Pick an effect ---
+				int item_tier = std::max(1, def.item_tier);
+				std::vector<const RandomEffectDefinition*> available_effects;
+				int total_weight = 0;
+
+				for (const auto& effect_def : g_random_effect_pool) {
+					if (effect_def.power_level <= item_tier) {
+						available_effects.push_back(&effect_def);
+						total_weight += effect_def.rarity_weight;
+					}
+				}
+
+				if (!available_effects.empty() && total_weight > 0) {
+					std::uniform_int_distribution<> effect_roll(0, total_weight - 1);
+					int roll_result = effect_roll(gen);
+
+					const RandomEffectDefinition* chosen = nullptr;
+					for (const auto* ptr : available_effects) {
+						if (roll_result < ptr->rarity_weight) {
+							chosen = ptr;
+							break;
+						}
+						roll_result -= ptr->rarity_weight;
+					}
+
+					if (chosen) {
+						// Apply the gameplay effect
+						newInstance.customEffects.push_back(chosen->gameplay_effect);
+
+						// Apply the name suffix
+						try {
+							const auto& suffix_pool = g_effect_suffix_pools.at(chosen->effect_key);
+							if (!suffix_pool.empty()) {
+								std::string suffix = suffix_pool[gen() % suffix_pool.size()];
+								ItemEffect suffixEffect;
+								suffixEffect.type = "SUFFIX";
+								suffixEffect.params["value"] = suffix;
+								newInstance.customEffects.push_back(suffixEffect);
+							}
+						}
+						catch (...) {}
+					}
+				}
+			}
+		}
+
+
+		player.inventory[newInstanceId] = newInstance;
+	}
+
+	send_inventory_and_equipment();
+}
 void AsyncSession::addItemToInventory(const std::string& itemId, int quantity) {
 	PlayerState& player = getPlayerState();
 	if (quantity <= 0) return;
@@ -416,10 +712,28 @@ void AsyncSession::addItemToInventory(const std::string& itemId, int quantity) {
 	std::mt19937 gen(rd());
 
 	for (int i = 0; i < numInstancesToAdd; ++i) {
-		uint64_t newInstanceId = g_item_instance_id_counter++;
+
+		//we gotta get id from postgres sequencing atomic wasnt enuf
+	// uint64_t newInstanceId = g_item_instance_id_counter++;
+
+
+		uint64_t newInstanceId;
+		try {
+			pqxx::connection C = db_manager_->get_connection();
+			pqxx::nontransaction N(C);
+			// --- THIS IS THE CORRECTED LINE ---
+			newInstanceId = N.exec("SELECT nextval('item_instance_id_seq')").one_row()[0].as<uint64_t>();
+		}
+		catch (const std::exception& e) {
+			std::cerr << "CRITICAL: Could not fetch new item instance ID: " << e.what() << std::endl;
+			ws_.write(net::buffer("SERVER:ERROR:Could not create item. Please try again."));
+			return; // Stop here, we failed to get an ID
+		}
+
+
 		ItemInstance newInstance = { newInstanceId, itemId, qtyPerInstance, {}, {} };
 
-		// --- Weighted Random Effect Roll ---
+		// --- (Your existing random effect roll logic) ---
 		if (def.equipSlot != EquipSlot::None && !g_random_effect_pool.empty()) {
 			std::uniform_int_distribution<> initial_roll(1, 100);
 			if (initial_roll(gen) <= 20) { // 15% chance to roll
@@ -471,11 +785,11 @@ void AsyncSession::addItemToInventory(const std::string& itemId, int quantity) {
 				}
 			}
 		}
+		// --- (End of random effect logic) ---
 
 		// Add the new item to the player's inventory
 		player.inventory[newInstanceId] = newInstance;
 
-		// --- DEBUG BLOCK ---
 		std::cout << "[DEBUG] Added new item to memory inventory:"
 			<< "\n  Instance ID: " << newInstanceId
 			<< "\n  Item ID: " << itemId
@@ -1213,6 +1527,7 @@ void AsyncSession::handle_login(const string& credentials) {
 		else {
 			send_player_stats();
 			send_inventory_and_equipment();
+			send_crafting_recipes();
 			string did_load = "SERVER:CHARACTER_LOADED";
 			ws.write(net::buffer(did_load));
 			handle_message("GO_TO:" + getPlayerState().currentArea);
@@ -1665,7 +1980,37 @@ void AsyncSession::save_character() {
 }
 
 
+void AsyncSession::send_crafting_recipes() {
+	nlohmann::json j = nlohmann::json::array();
 
+	for (const auto& [recipeId, recipe] : g_crafting_recipes) {
+		// Look up the result item to get its Name and Description
+		std::string name = "Unknown Item";
+		std::string desc = "Craftable item.";
+
+		if (itemDatabase.count(recipe.resultItemId)) {
+			const auto& def = itemDatabase.at(recipe.resultItemId);
+			name = def.name;
+			desc = def.description;
+		}
+
+		j.push_back({
+			{"id", recipeId},
+			{"name", name},
+			{"description", desc},
+			{"resultItemId", recipe.resultItemId},
+			{"resultQuantity", recipe.quantityCreated},
+			{"requiredSkill", recipe.requiredSkill},
+			{"requiredLevel", recipe.requiredLevel},
+			{"ingredients", recipe.ingredients}, // Automatically maps to JSON object
+			{"xpReward", recipe.xpReward}
+			});
+	}
+
+	std::ostringstream oss;
+	oss << "SERVER:RECIPES:" << j.dump();
+	ws_.write(net::buffer(oss.str()));
+}
 
 
 void AsyncSession::handle_message(const string& message)
@@ -1843,7 +2188,7 @@ void AsyncSession::handle_message(const string& message)
 
 				ws.write(net::buffer("SERVER:STAT_UPGRADED:" + stat_name));
 				send_player_stats();
-				if (player.availableSkillPoints == 0 && player.currentClass != PlayerClass::UNSELECTED) {
+				if (player.availableSkillPoints == 0 && !player.isFullyInitialized) {
 					player.isFullyInitialized = true;
 					player.hasSpentInitialPoints = true;
 					ws.write(net::buffer("SERVER:CHARACTER_COMPLETE:Character creation complete! You can now explore."));
@@ -1897,7 +2242,7 @@ void AsyncSession::handle_message(const string& message)
 		PlayerState& player = getPlayerState();
 		PlayerBroadcastData& broadcast_data = getBroadcastData();
 		auto& ws = getWebSocket();
-
+		player.isGathering = false;
 		if (!player.isFullyInitialized)
 		{
 			ws.write(net::buffer("SERVER:ERROR:Complete character creation first."));
@@ -1924,6 +2269,15 @@ void AsyncSession::handle_message(const string& message)
 		// --- Update player + broadcast data ---
 		player.currentArea = target_area;
 		broadcast_data.currentArea = target_area;
+		const auto& spawns = get_area_spawns();
+
+		auto spawnIt = spawns.find(target_area);
+		if (spawnIt != spawns.end())
+		{
+			player.posX = spawnIt->second.x;
+			player.posY = spawnIt->second.y;
+		}
+
 
 		{
 			std::lock_guard<std::mutex> lock(g_player_registry_mutex);
@@ -1933,10 +2287,12 @@ void AsyncSession::handle_message(const string& message)
 		// --- Handle special zones (Town heals & clears combat) ---
 		if (target_area == "TOWN")
 		{
+			PlayerStats finalStats = getCalculatedStats(); // Calculate maxes WITH equipment
 			player.isInCombat = false;
 			player.currentMonsters.clear();
-			player.stats.health = player.stats.maxHealth;
-			player.stats.mana = player.stats.maxMana;
+			// Now, heal to the newly calculated maxes
+			player.stats.health = finalStats.maxHealth;
+			player.stats.mana = finalStats.maxMana;
 		}
 
 		// --- Notify client of area change ---
@@ -1955,6 +2311,20 @@ void AsyncSession::handle_message(const string& message)
 		if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
 		else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:Cannot move while in combat!")); }
 		else {
+			PlayerBroadcastData& broadcast = getBroadcastData();
+			if (!broadcast.currentAction.empty()) {
+				broadcast.currentAction = "";
+				{
+					std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+					g_player_registry[player.userId] = broadcast;
+				}
+			}
+
+			// 2. Reset the gathering flag
+			if (player.isGathering) {
+				player.isGathering = false;
+				ws.write(net::buffer("SERVER:STATUS:Gathering stopped."));
+			}
 			auto it = g_area_grids.find(player.currentArea);
 			if (it == g_area_grids.end()) {
 				ws.write(net::buffer("SERVER:ERROR:Grid movement is not available in this area."));
@@ -2140,6 +2510,71 @@ void AsyncSession::handle_message(const string& message)
 					auto& ws = getWebSocket();
 					ws.write(net::buffer("SERVER:AREA_CHANGED:" + player.currentArea));
 				}
+				else if (targetObject->type == InteractableType::RESOURCE_NODE) {
+					// 1. Find definition
+					auto itDef = g_resource_defs.find(targetObject->data);
+					if (itDef == g_resource_defs.end()) {
+						ws.write(net::buffer("SERVER:ERROR:Unknown resource type."));
+						return;
+					}
+					const ResourceDefinition& def = itDef->second;
+
+					// 2. Check Skills
+					std::string skillName;
+					std::string actionStr;
+
+					switch (def.skill) {
+					case LifeSkillType::WOODCUTTING:
+						skillName = "Woodcutting";
+						actionStr = "WOODCUTTING";
+						break;
+					case LifeSkillType::MINING:
+						skillName = "Mining";
+						actionStr = "MINING";
+						break;
+					case LifeSkillType::FISHING:
+						skillName = "Fishing";
+						actionStr = "FISHING";
+						break;
+					default:
+						skillName = "Gathering";
+						actionStr = "GATHERING";
+						break;
+					}
+
+					int currentXp = player.skills.life_skills[skillName];
+					// Simple level formula: 1 + sqrt(XP)/5
+					int currentLevel = 1 + static_cast<int>(std::sqrt(currentXp) / 5.0f);
+
+					if (currentLevel < def.requiredLevel) {
+						ws.write(net::buffer("SERVER:ERROR:Requires " + skillName + " level " + std::to_string(def.requiredLevel)));
+						return;
+					}
+					// 4. START CONTINUOUS GATHERING
+					player.isGathering = true;
+					player.gatheringResourceNode = targetObject->data;
+					player.lastGatherTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(6000);
+
+					// --- NEW: Update Broadcast Data ---
+					PlayerBroadcastData& broadcast = getBroadcastData();
+					broadcast.currentAction = actionStr; // Set the action
+
+					// updating so other can see hur
+					{
+						std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+						g_player_registry[player.userId] = broadcast;
+					}
+
+
+					ws.write(net::buffer("SERVER:STATUS:You start gathering from the " + def.dropItemId + "..."));
+					send_player_stats();
+				}
+				else if (targetObject->type == InteractableType::CRAFTING_STATION) {
+					// Send a specific signal to open the UI
+					string msg = "SERVER:OPEN_CRAFTING";
+					ws.write(net::buffer(msg));
+				}
+
 				else {
 					ws.write(net::buffer("SERVER:ERROR:Unknown interaction type."));
 				}
@@ -2149,6 +2584,123 @@ void AsyncSession::handle_message(const string& message)
 				ws.write(net::buffer("SERVER:ERROR:Invalid coordinate format."));
 			}
 		}
+	}
+	   else if (message.rfind("CRAFT_ITEM:", 0) == 0) {
+		if (!player.isFullyInitialized) {
+			ws.write(net::buffer("SERVER:ERROR:Character not initialized."));
+			return;
+		}
+
+		// Format: CRAFT_ITEM:RECIPE_ID or CRAFT_ITEM:RECIPE_ID:BOOST_ITEM_ID
+		std::string content = message.substr(11);
+		std::string recipeId = content;
+		std::string boostItemId = "";
+
+		// Check if a booster was provided (look for the second colon)
+		size_t colonPos = content.find(':');
+		if (colonPos != std::string::npos) {
+			recipeId = content.substr(0, colonPos);
+			boostItemId = content.substr(colonPos + 1);
+		}
+
+		if (g_crafting_recipes.count(recipeId) == 0) {
+			ws.write(net::buffer("SERVER:ERROR:Unknown recipe: " + recipeId));
+			return;
+		}
+
+		const CraftingRecipe& recipe = g_crafting_recipes.at(recipeId);
+
+		// 1. Check Skill Level
+		std::string skillKey = recipe.requiredSkill;
+		int currentXp = player.skills.life_skills[skillKey];
+		int currentLevel = 1 + static_cast<int>(std::sqrt(currentXp) / 5.0f);
+
+		if (currentLevel < recipe.requiredLevel) {
+			ws.write(net::buffer("SERVER:ERROR:Requires " + skillKey + " level " + std::to_string(recipe.requiredLevel)));
+			return;
+		}
+
+		// 2. Check & Consume Booster (Optional)
+		int bonusChance = 0;
+		if (!boostItemId.empty()) {
+			bool hasBooster = false;
+			uint64_t boosterInstanceId = 0;
+
+			// Search inventory for the booster
+			for (auto& pair : player.inventory) {
+				if (pair.second.itemId == boostItemId) {
+					hasBooster = true;
+					boosterInstanceId = pair.first;
+					break;
+				}
+			}
+
+			if (!hasBooster) {
+				ws.write(net::buffer("SERVER:ERROR:You are missing the boosting material: " + boostItemId));
+				return;
+			}
+
+			// Define Boosting Power
+			if (boostItemId == "RUBY") bonusChance = 5;         // +5% chance
+			else if (boostItemId == "GOLDEN_LEAF") bonusChance = 5; // +5% chance
+			else if (boostItemId == "PEARL") bonusChance = 5;   // +5% chance
+			else {
+				ws.write(net::buffer("SERVER:ERROR:That item cannot be used as a booster."));
+				return;
+			}
+
+			// Consume Booster
+			ItemInstance& b = player.inventory.at(boosterInstanceId);
+			b.quantity--;
+			if (b.quantity <= 0) {
+				player.inventory.erase(boosterInstanceId);
+			}
+		}
+
+		// 3. Check Ingredients (Standard check)
+		for (const auto& [ingId, reqQty] : recipe.ingredients) {
+			int playerHas = 0;
+			for (const auto& pair : player.inventory) {
+				if (pair.second.itemId == ingId) {
+					playerHas += pair.second.quantity;
+				}
+			}
+			if (playerHas < reqQty) {
+				ws.write(net::buffer("SERVER:ERROR:Missing material: " + ingId + " (" + std::to_string(playerHas) + "/" + std::to_string(reqQty) + ")"));
+				return;
+			}
+		}
+
+		// 4. Consume Ingredients
+		for (const auto& [ingId, reqQty] : recipe.ingredients) {
+			int remainingToRemove = reqQty;
+			std::vector<uint64_t> toRemove;
+
+			for (auto& pair : player.inventory) {
+				if (remainingToRemove <= 0) break;
+				ItemInstance& item = pair.second;
+				if (item.itemId == ingId) {
+					int take = std::min(item.quantity, remainingToRemove);
+					item.quantity -= take;
+					remainingToRemove -= take;
+					if (item.quantity <= 0) toRemove.push_back(pair.first);
+				}
+			}
+			for (uint64_t uid : toRemove) {
+				player.inventory.erase(uid);
+			}
+		}
+
+		// 5. Grant Result USING SPECIAL CRAFT FUNCTION
+		addCraftedItemToInventory(recipe.resultItemId, recipe.quantityCreated, bonusChance);
+		player.skills.life_skills[skillKey] += recipe.xpReward;
+
+		std::string msg = "SERVER:STATUS:Crafted " + recipe.resultItemId + "! (+" + std::to_string(recipe.xpReward) + " XP)";
+		if (bonusChance > 0) msg += " [Boosted!]";
+
+		ws.write(net::buffer(msg));
+		send_inventory_and_equipment();
+		send_player_stats();
 	}
 	   else if (message.rfind("MONSTER_SELECTED:", 0) == 0) {
 		if (!player.isFullyInitialized) {
@@ -2242,13 +2794,11 @@ void AsyncSession::handle_message(const string& message)
 							player.currentMonsters.clear();
 							player.stats.health = player.stats.maxHealth / 2;
 							player.stats.mana = player.stats.maxMana;
-							player.posX = 5;
-							player.posY = 5;
+							player.posX = 26;
+							player.posY = 12;
 							player.currentPath.clear();
 
 							broadcast_data.currentArea = "TOWN";
-							broadcast_data.posX = player.posX;
-							broadcast_data.posY = player.posY;
 							{
 								std::lock_guard<std::mutex> lock(g_player_registry_mutex);
 								g_player_registry[player.userId] = broadcast_data;
@@ -2258,6 +2808,8 @@ void AsyncSession::handle_message(const string& message)
 							send_area_map_data(player.currentArea);
 							send_available_areas();
 							send_player_stats();
+							broadcast_data.posX = player.posX;
+							broadcast_data.posY = player.posY;
 						}
 						else {
 							ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
@@ -2279,7 +2831,7 @@ void AsyncSession::handle_message(const string& message)
 		else {
 			PlayerStats finalStats = getCalculatedStats();
 			int extraDefFromBuffs = 0;
-
+			bool monsterStunnedThisTurn = false;
 			auto apply_statuses_to_player = [&]() {
 				int totalDefBuff = 0;
 				int totalDot = 0;
@@ -2354,6 +2906,11 @@ void AsyncSession::handle_message(const string& message)
 							std::max(1, player.currentOpponent->health - dmg);
 						break;
 					}
+					case StatusType::STUN: {
+						// Monster will skip its attack this turn
+						monsterStunnedThisTurn = true;
+						break;
+					}
 					default:
 						break;
 					}
@@ -2413,11 +2970,20 @@ void AsyncSession::handle_message(const string& message)
 				ws.write(net::buffer(log_msg));
 			}
 			else if (action_type == "SPELL") {
-				int base_damage = 0; mana_cost = 0; float variance = 1.0f;
+				std::string spellName = action_param;
 
+				// Look up the spell definition
+				auto itSkill = g_skill_defs.find(spellName);
+				if (itSkill == g_skill_defs.end() || itSkill->second.type != SkillType::SPELL) {
+					ws.write(net::buffer("SERVER:COMBAT_LOG:Unknown spell: " + spellName));
+					return;
+				}
+				const SkillDefinition& spell = itSkill->second;
+
+				// Make sure the player actually knows this spell
 				bool knows_spell = false;
-				for (const auto& spell : player.temporary_spells_list) {
-					if (spell == action_param) {
+				for (const auto& s : player.temporary_spells_list) {
+					if (s == spellName) {
 						knows_spell = true;
 						break;
 					}
@@ -2427,43 +2993,142 @@ void AsyncSession::handle_message(const string& message)
 					return;
 				}
 
-				if (action_param == "Fireball") {
-					mana_cost = 25;
-					if (player.stats.mana >= mana_cost) {
-						base_damage = static_cast<int>(finalStats.intellect * 1.3) + (finalStats.maxMana / 10);
-						variance = 0.8f + ((float)(rand() % 41) / 100.0f);
-					}
-				}
-				else if (action_param == "Lightning") {
-					mana_cost = 20;
-					if (player.stats.mana >= mana_cost) {
-						base_damage = static_cast<int>(finalStats.intellect * 1.1) + (finalStats.maxMana / 8);
-						variance = 0.7f + ((float)(rand() % 61) / 100.0f);
-					}
-				}
-				else if (action_param == "Freeze") {
-					mana_cost = 10;
-					if (player.stats.mana >= mana_cost) {
-						base_damage = (finalStats.intellect) + (finalStats.maxMana / 10);
-						variance = 0.9f + ((float)(rand() % 21) / 100.0f);
-					}
+				// Class requirement check
+				SkillClass playerSkillClass = SkillClass::ANY;
+				switch (player.currentClass) {
+				case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
+				case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
+				case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
+				default:                   playerSkillClass = SkillClass::ANY;     break;
 				}
 
-				if (mana_cost > 0 && player.stats.mana >= mana_cost) {
-					player.stats.mana -= mana_cost;
-					player_damage = std::max(1, (int)(base_damage * variance)); // FIX: std::max
-					std::string log_msg = "SERVER:COMBAT_LOG:You cast " + action_param + " for " + to_string(player_damage) + " damage!";
-					ws.write(net::buffer(log_msg));
+				if (spell.requiredClass != SkillClass::ANY &&
+					spell.requiredClass != playerSkillClass) {
+					ws.write(net::buffer("SERVER:COMBAT_LOG:You cannot cast that spell with your class."));
+					return;
 				}
-				else if (mana_cost > 0) {
-					std::string log_msg = "SERVER:COMBAT_LOG:Not enough mana to cast " + action_param + "! (Needs " + to_string(mana_cost) + ")";
+
+				// Mana check
+				if (player.stats.mana < spell.manaCost) {
+					ws.write(net::buffer(
+						"SERVER:COMBAT_LOG:Not enough mana to cast " + spellName +
+						"! (Needs " + std::to_string(spell.manaCost) + ")"
+					));
+					return;
+				}
+
+				player.stats.mana -= spell.manaCost;
+
+				bool targetIsSelf = (spell.target == SkillTarget::SELF);
+
+				// Compute spell power using stat scales
+				float scaledAttack =
+					finalStats.strength * spell.strScale +
+					finalStats.dexterity * spell.dexScale +
+					finalStats.intellect * spell.intScale +
+					spell.flatDamage;
+
+				int base_damage = 0;
+				float variance = 1.0f;
+
+				if (!targetIsSelf) {
+					// Magic partially ignores defense instead of fully ignoring it
+					int targetDefense = player.currentOpponent->defense;
+					if (spell.isMagic) {
+						// 40% defense penetration: spells feel good vs tanky enemies
+						targetDefense = static_cast<int>(std::round(targetDefense * 0.4f));
+					}
+
+					base_damage = damage_after_defense(scaledAttack, targetDefense);
+
+					// Tight-ish variance for consistency (0.9–1.1)
+					variance = 0.9f + (static_cast<float>(rand() % 21) / 100.0f);
+
+					int dmg = std::max(1, static_cast<int>(std::round(base_damage * variance)));
+
+					// Spells can crit too (fun!)
+					float critChance = crit_chance_for_player(finalStats, player.currentClass);
+					if (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) < critChance) {
+						ClassCritTuning t = getCritTuning(player.currentClass);
+						dmg = static_cast<int>(std::round(dmg * t.critMultiplier));
+						ws.write(net::buffer("SERVER:COMBAT_LOG:Your " + spellName + " critically hits!"));
+					}
+
+					player_damage = dmg;
+
+					std::string log_msg =
+						"SERVER:COMBAT_LOG:You cast " + spellName +
+						" for " + std::to_string(player_damage) + " damage!";
 					ws.write(net::buffer(log_msg));
 				}
 				else {
-					std::string log_msg = "SERVER:COMBAT_LOG:Cannot cast " + action_param + ".";
-					ws.write(net::buffer(log_msg));
+					// Self-target spells (none for wizard yet, but future-proof)
+					player_damage = 0;
+					ws.write(net::buffer("SERVER:COMBAT_LOG:You cast " + spellName + " on yourself."));
+				}
+
+				// Apply status effects from the spell definition
+				if (spell.appliesStatus) {
+					bool applyStatus = true;
+
+					StatusEffect eff;
+					eff.type = spell.statusType;
+					eff.magnitude = spell.statusMagnitude;
+					eff.remainingTurns = spell.statusDuration;
+					eff.appliedByPlayer = true;
+
+					// Special behavior: Lightning stun is chance-based
+					if (spellName == "Lightning" && spell.statusType == StatusType::STUN) {
+						int baseChance = 20;                   // 20% base
+						int fromLuck = finalStats.luck / 2;  // +0.5% per LUCK
+						int finalChance = baseChance + fromLuck;
+						if (finalChance > 70) finalChance = 70;
+						if (finalChance < 20) finalChance = 20;
+
+						int roll = rand() % 100;
+						if (roll >= finalChance) {
+							applyStatus = false;
+							ws.write(net::buffer("SERVER:COMBAT_LOG:The lightning crackles, but fails to stun."));
+						}
+					}
+
+					// Fireball burn scales a bit with INT
+					if (spellName == "Fireball" && spell.statusType == StatusType::BURN) {
+						eff.magnitude += std::max(1, finalStats.intellect / 10);
+					}
+
+					if (applyStatus) {
+						if (targetIsSelf) {
+							player.activeStatusEffects.push_back(eff);
+						}
+						else {
+							player.currentOpponent->activeStatusEffects.push_back(eff);
+						}
+
+						std::string statusMsg;
+						switch (spell.statusType) {
+						case StatusType::BURN:
+							statusMsg = targetIsSelf
+								? "You are burning!"
+								: "The " + player.currentOpponent->type + " is set ablaze!";
+							break;
+						case StatusType::STUN:
+							statusMsg = targetIsSelf
+								? "You are stunned!"
+								: "The " + player.currentOpponent->type + " is stunned!";
+							break;
+						default:
+							statusMsg = targetIsSelf
+								? "You are affected by a status effect."
+								: "The " + player.currentOpponent->type + " is affected by a status effect.";
+							break;
+						}
+
+						ws.write(net::buffer("SERVER:COMBAT_LOG:" + statusMsg));
+					}
 				}
 			}
+
 			else if (action_type == "SKILL") {
 				std::string skillName = action_param;
 
@@ -2606,7 +3271,10 @@ void AsyncSession::handle_message(const string& message)
 					else {
 						player.currentOpponent->activeStatusEffects.push_back(eff);
 					}
-
+					if (!targetIsSelf &&
+						(skill.statusType == StatusType::BURN || skill.statusType == StatusType::BLEED)) {
+						apply_statuses_to_monster();
+					}
 
 					if (bonusTurns > 0) {
 						ws.write(net::buffer(
@@ -2755,7 +3423,14 @@ void AsyncSession::handle_message(const string& message)
 				send_current_monsters_list();
 				return;
 			}
-
+			if (monsterStunnedThisTurn) {
+				ws.write(net::buffer(
+					"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
+					" is stunned and cannot act!"
+				));
+				ws.write(net::buffer("SERVER:COMBAT_TURN:Your turn."));
+				return;
+			}
 			int monster_damage = 0;
 
 			// include DEF_UP buff if you added extraDefFromBuffs above
@@ -2794,7 +3469,7 @@ void AsyncSession::handle_message(const string& message)
 				player.isInCombat = false; player.currentOpponent.reset();
 				player.currentArea = "TOWN"; player.currentMonsters.clear();
 				player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
-				player.posX = 5; player.posY = 5; player.currentPath.clear();
+				player.posX = 26; player.posY = 12; player.currentPath.clear();
 				broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
 				{ lock_guard<mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
 
@@ -2849,6 +3524,7 @@ void AsyncSession::handle_message(const string& message)
 						<< ",\"class\":" << static_cast<int>(pair.second.playerClass)
 						<< ",\"x\":" << pair.second.posX
 						<< ",\"y\":" << pair.second.posY
+						<< ",\"action\":" << nlohmann::json(pair.second.currentAction).dump()
 						<< "}";
 					first_player = false;
 				}

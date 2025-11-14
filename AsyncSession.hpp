@@ -47,6 +47,8 @@ public:
 	void save_character();
 	void send_shutdown_warning(int seconds); // <-- ADD THIS
 	void disconnect();
+	void do_async_write(std::shared_ptr<std::string> message);
+
 	// These allow the game logic functions to interact with the session
 	PlayerState& getPlayerState() { return player_; }
 	PlayerBroadcastData& getBroadcastData() { return broadcast_data_; }
@@ -75,6 +77,7 @@ private:
 	 */
 	void process_movement();
 
+	void process_gathering();
 	/**
 	 * @brief The main router for all incoming client messages.
 	 * @param message The raw message from the client.
@@ -120,7 +123,9 @@ private:
 
 	//gets the plyrs final stats with equips and all
 	PlayerStats getCalculatedStats();
-
+	//similar t add item can roll rare rolls on your crafted items using rare mats you gather
+	void addCraftedItemToInventory(const std::string& itemId, int quantity, int bonusEffectChance);
+	void send_crafting_recipes();
 	//this adds an item to the players inventory but always rolls for random stats from its base
 	void addItemToInventory(const std::string& itemId, int quantity = 1);
 	void sellItem(uint64_t itemInstanceId, int quantity);
