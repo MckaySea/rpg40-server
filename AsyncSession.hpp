@@ -121,7 +121,9 @@ private:
 
 	//gets the plyrs final stats with equips and all
 	PlayerStats getCalculatedStats();
-
+	//similar t add item can roll rare rolls on your crafted items using rare mats you gather
+	void addCraftedItemToInventory(const std::string& itemId, int quantity, int bonusEffectChance);
+	void send_crafting_recipes();
 	//this adds an item to the players inventory but always rolls for random stats from its base
 	void addItemToInventory(const std::string& itemId, int quantity = 1);
 	void sellItem(uint64_t itemInstanceId, int quantity);

@@ -457,6 +457,112 @@ PlayerStats AsyncSession::getCalculatedStats() {
 	return finalStats;
 }
 
+void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quantity, int bonusEffectChance) {
+	PlayerState& player = getPlayerState();
+	if (quantity <= 0) return;
+
+	if (itemDatabase.count(itemId) == 0) {
+		std::cerr << "Error: Attempted to craft non-existent item ID: " << itemId << std::endl;
+		return;
+	}
+
+	const ItemDefinition& def = itemDatabase.at(itemId);
+
+	// 1. Handle Stackables (Potions, Ingots) - usually no effects
+	if (def.stackable) {
+		for (auto& pair : player.inventory) {
+			ItemInstance& instance = pair.second;
+			if (instance.itemId == itemId) {
+				instance.quantity += quantity;
+				send_inventory_and_equipment();
+				return;
+			}
+		}
+	}
+
+	// 2. Handle Non-Stackables (Weapons, Armor) - Apply Boosts!
+	int numInstancesToAdd = def.stackable ? 1 : quantity;
+	int qtyPerInstance = def.stackable ? quantity : 1;
+
+	std::random_device rd;
+	std::mt19937 gen(rd());
+
+	for (int i = 0; i < numInstancesToAdd; ++i) {
+		uint64_t newInstanceId = g_item_instance_id_counter++;
+		ItemInstance newInstance = { newInstanceId, itemId, qtyPerInstance, {}, {} };
+
+		// --- BOOSTING LOGIC ---
+		// Only roll effects if it's equipment or a high-tier item
+		bool canHaveEffects = (def.equipSlot != EquipSlot::None) || (def.item_tier > 0);
+
+		if (canHaveEffects && !g_random_effect_pool.empty()) {
+			std::uniform_int_distribution<> percentRoll(1, 100);
+
+			// Base chance (20%) + The Booster Bonus (e.g. +50%)
+			int totalChance = 20 + bonusEffectChance;
+
+			// Cap at 100% to prevent weirdness
+			if (totalChance > 100) totalChance = 100;
+
+			if (percentRoll(gen) <= totalChance) {
+				// --- SUCCESS! Pick an effect ---
+				int item_tier = std::max(1, def.item_tier);
+				std::vector<const RandomEffectDefinition*> available_effects;
+				int total_weight = 0;
+
+				for (const auto& effect_def : g_random_effect_pool) {
+					if (effect_def.power_level <= item_tier) {
+						available_effects.push_back(&effect_def);
+						total_weight += effect_def.rarity_weight;
+					}
+				}
+
+				if (!available_effects.empty() && total_weight > 0) {
+					std::uniform_int_distribution<> effect_roll(0, total_weight - 1);
+					int roll_result = effect_roll(gen);
+
+					const RandomEffectDefinition* chosen = nullptr;
+					for (const auto* ptr : available_effects) {
+						if (roll_result < ptr->rarity_weight) {
+							chosen = ptr;
+							break;
+						}
+						roll_result -= ptr->rarity_weight;
+					}
+
+					if (chosen) {
+						// Apply the gameplay effect
+						newInstance.customEffects.push_back(chosen->gameplay_effect);
+
+						// Apply the name suffix
+						try {
+							const auto& suffix_pool = g_effect_suffix_pools.at(chosen->effect_key);
+							if (!suffix_pool.empty()) {
+								std::string suffix = suffix_pool[gen() % suffix_pool.size()];
+								ItemEffect suffixEffect;
+								suffixEffect.type = "SUFFIX";
+								suffixEffect.params["value"] = suffix;
+								newInstance.customEffects.push_back(suffixEffect);
+							}
+						}
+						catch (...) {}
+					}
+				}
+			}
+		}
+		// --- END BOOSTING LOGIC ---
+
+		// (Optional) Add a "Crafted" tag?
+		// ItemEffect craftedTag;
+		// craftedTag.type = "CRAFTED_BY";
+		// craftedTag.params["name"] = player.playerName;
+		// newInstance.customEffects.push_back(craftedTag);
+
+		player.inventory[newInstanceId] = newInstance;
+	}
+
+	send_inventory_and_equipment();
+}
 
 void AsyncSession::addItemToInventory(const std::string& itemId, int quantity) {
 	PlayerState& player = getPlayerState();
@@ -1285,6 +1391,7 @@ void AsyncSession::handle_login(const string& credentials) {
 		else {
 			send_player_stats();
 			send_inventory_and_equipment();
+			send_crafting_recipes();
 			string did_load = "SERVER:CHARACTER_LOADED";
 			ws.write(net::buffer(did_load));
 			handle_message("GO_TO:" + getPlayerState().currentArea);
@@ -1737,7 +1844,37 @@ void AsyncSession::save_character() {
 }
 
 
+void AsyncSession::send_crafting_recipes() {
+	nlohmann::json j = nlohmann::json::array();
 
+	for (const auto& [recipeId, recipe] : g_crafting_recipes) {
+		// Look up the result item to get its Name and Description
+		std::string name = "Unknown Item";
+		std::string desc = "Craftable item.";
+
+		if (itemDatabase.count(recipe.resultItemId)) {
+			const auto& def = itemDatabase.at(recipe.resultItemId);
+			name = def.name;
+			desc = def.description;
+		}
+
+		j.push_back({
+			{"id", recipeId},
+			{"name", name},
+			{"description", desc},
+			{"resultItemId", recipe.resultItemId},
+			{"resultQuantity", recipe.quantityCreated},
+			{"requiredSkill", recipe.requiredSkill},
+			{"requiredLevel", recipe.requiredLevel},
+			{"ingredients", recipe.ingredients}, // Automatically maps to JSON object
+			{"xpReward", recipe.xpReward}
+			});
+	}
+
+	std::ostringstream oss;
+	oss << "SERVER:RECIPES:" << j.dump();
+	ws_.write(net::buffer(oss.str()));
+}
 
 
 void AsyncSession::handle_message(const string& message)
@@ -2264,6 +2401,11 @@ void AsyncSession::handle_message(const string& message)
 
 					ws.write(net::buffer("SERVER:STATUS:You start gathering from the " + def.dropItemId + "..."));
 				}
+				else if (targetObject->type == InteractableType::CRAFTING_STATION) {
+					// Send a specific signal to open the UI
+					string msg = "SERVER:OPEN_CRAFTING";
+					ws.write(net::buffer(msg));
+				}
 
 				else {
 					ws.write(net::buffer("SERVER:ERROR:Unknown interaction type."));
@@ -2281,8 +2423,17 @@ void AsyncSession::handle_message(const string& message)
 			return;
 		}
 
-		// Format: CRAFT_ITEM:RECIPE_ID
-		std::string recipeId = message.substr(11);
+		// Format: CRAFT_ITEM:RECIPE_ID or CRAFT_ITEM:RECIPE_ID:BOOST_ITEM_ID
+		std::string content = message.substr(11);
+		std::string recipeId = content;
+		std::string boostItemId = "";
+
+		// Check if a booster was provided (look for the second colon)
+		size_t colonPos = content.find(':');
+		if (colonPos != std::string::npos) {
+			recipeId = content.substr(0, colonPos);
+			boostItemId = content.substr(colonPos + 1);
+		}
 
 		if (g_crafting_recipes.count(recipeId) == 0) {
 			ws.write(net::buffer("SERVER:ERROR:Unknown recipe: " + recipeId));
@@ -2301,7 +2452,44 @@ void AsyncSession::handle_message(const string& message)
 			return;
 		}
 
-		// 2. Check Ingredients
+		// 2. Check & Consume Booster (Optional)
+		int bonusChance = 0;
+		if (!boostItemId.empty()) {
+			bool hasBooster = false;
+			uint64_t boosterInstanceId = 0;
+
+			// Search inventory for the booster
+			for (auto& pair : player.inventory) {
+				if (pair.second.itemId == boostItemId) {
+					hasBooster = true;
+					boosterInstanceId = pair.first;
+					break;
+				}
+			}
+
+			if (!hasBooster) {
+				ws.write(net::buffer("SERVER:ERROR:You are missing the boosting material: " + boostItemId));
+				return;
+			}
+
+			// Define Boosting Power
+			if (boostItemId == "RUBY") bonusChance = 5;         // +5% chance
+			else if (boostItemId == "GOLDEN_LEAF") bonusChance = 5; // +5% chance
+			else if (boostItemId == "PEARL") bonusChance = 5;   // +5% chance
+			else {
+				ws.write(net::buffer("SERVER:ERROR:That item cannot be used as a booster."));
+				return;
+			}
+
+			// Consume Booster
+			ItemInstance& b = player.inventory.at(boosterInstanceId);
+			b.quantity--;
+			if (b.quantity <= 0) {
+				player.inventory.erase(boosterInstanceId);
+			}
+		}
+
+		// 3. Check Ingredients (Standard check)
 		for (const auto& [ingId, reqQty] : recipe.ingredients) {
 			int playerHas = 0;
 			for (const auto& pair : player.inventory) {
@@ -2315,7 +2503,7 @@ void AsyncSession::handle_message(const string& message)
 			}
 		}
 
-		// 3. Consume Ingredients
+		// 4. Consume Ingredients
 		for (const auto& [ingId, reqQty] : recipe.ingredients) {
 			int remainingToRemove = reqQty;
 			std::vector<uint64_t> toRemove;
@@ -2335,11 +2523,14 @@ void AsyncSession::handle_message(const string& message)
 			}
 		}
 
-		// 4. Grant Result & XP
-		addItemToInventory(recipe.resultItemId, recipe.quantityCreated);
+		// 5. Grant Result USING SPECIAL CRAFT FUNCTION
+		addCraftedItemToInventory(recipe.resultItemId, recipe.quantityCreated, bonusChance);
 		player.skills.life_skills[skillKey] += recipe.xpReward;
 
-		ws.write(net::buffer("SERVER:STATUS:Crafted " + recipe.resultItemId + "! (+" + std::to_string(recipe.xpReward) + " XP)"));
+		std::string msg = "SERVER:STATUS:Crafted " + recipe.resultItemId + "! (+" + std::to_string(recipe.xpReward) + " XP)";
+		if (bonusChance > 0) msg += " [Boosted!]";
+
+		ws.write(net::buffer(msg));
 		send_inventory_and_equipment();
 		send_player_stats();
 	}
