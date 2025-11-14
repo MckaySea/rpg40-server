@@ -1044,9 +1044,6 @@ const std::unordered_map<std::string, SpawnPoint>& get_area_spawns()
 {"CASTLEINSIDE", {18, 19}},
 {"MOUNTAINS",    {21, 19}},
 {"DESERT",       {9, 16}},
-{"TOWN3",        {0, 0}},
-{"FOREST2",      {0, 0}},
-{"FOREST3",      {0, 0}},
 {"MARKET",       {0, 0}}
 	};
 	return area_spawns;
@@ -1073,14 +1070,7 @@ void initializeAreas() {
 		{"CASTLEINSIDE", "/castleInside.png", &CASTLEINSIDE_GRID},
 		{"MOUNTAINS", "/mountains.png", &MOUNTAINS_GRID},
 		{"DESERT", "/desert.png", &DESERT_GRID},
-
-		// Assuming these are variants or future areas
-		/*{"TOWN2", "/town.png", &TOWN2_GRID},*/
-		{"TOWN3", "/town.png", &TOWN3_GRID},
-		{"FOREST2", "/forest.png", &FOREST2_GRID},
-		{"FOREST3", "/forest.png", &FOREST3_GRID},
-
-		{"MARKET", "/market.png", &MARKET_GRID}
+		
 	};
 
 
@@ -1112,9 +1102,13 @@ void initializeAreas() {
 
 	g_areas["FOREST"].monsters = {
 		{global_monster_id_counter++, "SLIME", 12, 8, 2, 4},
+		{global_monster_id_counter++, "SLIME", 29, 12, 2, 4},
 		{global_monster_id_counter++, "WOLF", 20, 12, 1, 3},
+		{global_monster_id_counter++, "WOLF", 2, 13, 1, 3},
 		{global_monster_id_counter++, "GOBLIN_PEON", 5, 5, 1, 3},
+		{global_monster_id_counter++, "GOBLIN_PEON", 28, 6, 1, 3},
 		{global_monster_id_counter++, "FOREST_SPRITE", 10, 15, 2, 5},
+		{global_monster_id_counter++, "FOREST_SPRITE", 17, 3, 2, 5},
 		{global_monster_id_counter++, "GIANT_SPIDER", 25, 18, 1, 1}, // <-- Fixed: space
 		{global_monster_id_counter++, "TREANT", 28, 5, 1, 1}        // <-- Added
 	};
@@ -1125,7 +1119,11 @@ void initializeAreas() {
 		{global_monster_id_counter++, "ORC_BRUTE", 15, 15, 1, 2},    // <-- Fixed: space
 		{global_monster_id_counter++, "OGRE_WARRIOR", 25, 8, 1, 1},
 		{global_monster_id_counter++, "BAT", 5, 5, 2, 4},
-		{global_monster_id_counter++, "ORC_SCOUT", 22, 16, 1, 3}       // <-- Added
+		{global_monster_id_counter++, "ORC_SCOUT", 22, 16, 1, 3},       // <-- Added
+		{global_monster_id_counter++, "ORC_BRUTE", 12, 3, 1, 2},
+		{global_monster_id_counter++, "BAT", 2, 17, 2, 4},
+		{global_monster_id_counter++, "OGRE_WARRIOR", 25, 8, 1, 1},
+		{global_monster_id_counter++, "ORC_SCOUT", 8, 10, 1, 3} 
 	};
 
 	// --- Adding monsters for the other zones ---
@@ -1141,11 +1139,15 @@ void initializeAreas() {
 
 	g_areas["RUINS"].monsters = {
 		{global_monster_id_counter++, "SKELETON", 8, 8, 2, 5},
+		{global_monster_id_counter++, "SKELETON", 3, 12, 2, 5},
 		{global_monster_id_counter++, "UNDEAD_GUARD", 16, 7, 1, 3},
+		{global_monster_id_counter++, "UNDEAD_GUARD", 17, 18, 1, 3},
 		{global_monster_id_counter++, "GOBLIN_SHAMAN", 26, 11, 1, 1},
+		{global_monster_id_counter++, "GOBLIN_SHAMAN", 28, 18, 1, 1},
 		{global_monster_id_counter++, "DARK_WIZARD", 25, 5, 1, 1},
-		{global_monster_id_counter++, "BAT", 30, 18, 2, 5},
-		{global_monster_id_counter++, "GIANT_RAT", 10, 13, 2, 5},     // <-- Added
+		{global_monster_id_counter++, "GIANT_RAT", 30, 18, 2, 5},
+		{global_monster_id_counter++, "GIANT_RAT", 10, 13, 2, 5},
+		{global_monster_id_counter++, "NECROMANCER", 34, 6, 1, 1},  // <-- Added
 		{global_monster_id_counter++, "NECROMANCER", 6, 4, 1, 1}      // <-- Added
 	};
 
@@ -1162,38 +1164,51 @@ void initializeAreas() {
 	};
 
 	g_areas["MOUNTAINS"].monsters = {
-		{global_monster_id_counter++, "ROCK_GOLEM", 10, 10, 1, 2},
+		{global_monster_id_counter++, "ROCK_GOLEM", 10, 8, 1, 2},
+		{global_monster_id_counter++, "ROCK_GOLEM", 19, 10, 1, 2},
 		{global_monster_id_counter++, "HARPY", 15, 5, 2, 4},
-		{global_monster_id_counter++, "ORC_SCOUT", 20, 15, 1, 3},
+		{global_monster_id_counter++, "ORC_SCOUT", 18, 13, 1, 3},
 		{global_monster_id_counter++, "GRIFFIN", 25, 8, 1, 1},
-		{global_monster_id_counter++, "WYVERN", 30, 5, 1, 1}         // <-- Added
+		{global_monster_id_counter++, "WYVERN", 33, 16, 1, 1}         // <-- Added
 	};
 
 	g_areas["DESERT"].monsters = {
 		{global_monster_id_counter++, "GIANT_SCORPION", 10, 10, 1, 3},
 		{global_monster_id_counter++, "KOBOLD", 18, 15, 2, 4},
-		{global_monster_id_counter++, "HARPY", 25, 5, 1, 2},
+		{global_monster_id_counter++, "HARPY", 7, 4, 1, 2},
 		{global_monster_id_counter++, "SKELETON", 15, 18, 2, 4},
+		{global_monster_id_counter++, "GIANT_SCORPION", 20, 2, 1, 3},
+		{global_monster_id_counter++, "GIANT_SCORPION", 32, 18, 1, 3},
+		{global_monster_id_counter++, "HARPY", 36, 6, 1, 2},
+		{global_monster_id_counter++, "KOBOLD", 21, 9, 2, 4},
+		{global_monster_id_counter++, "SKELETON", 10, 17, 2, 4},
 		{global_monster_id_counter++, "MINOTAUR", 28, 12, 1, 1}      // <-- Added
 	};
 	g_areas["LAKE"].monsters = {
 		{global_monster_id_counter++, "WYVERN", 5, 14, 3, 5},
 		{global_monster_id_counter++, "BANDIT_ROGUE", 2, 8, 2, 4},
+		{global_monster_id_counter++, "BANDIT_ROGUE", 34, 7, 2, 4},
 		{global_monster_id_counter++, "BANDIT_CAPTAIN", 33, 16, 2, 3},
-		{global_monster_id_counter++, "SWAMP_THING", 25, 15, 1, 2},
+		{global_monster_id_counter++, "BANDIT_CAPTAIN", 12, 19, 2, 3},
 		{global_monster_id_counter++, "FOREST_SPRITE", 8, 24, 2, 4},
 		{global_monster_id_counter++, "HARPY", 11, 2, 1, 2},
+		{global_monster_id_counter++, "HARPY", 25, 15, 1, 2},
 		{global_monster_id_counter++, "SUN_DRAGONLING", 23, 4, 1, 1}
 	};
 
 	g_areas["CASTLEINSIDE"].monsters = {
-		{global_monster_id_counter++, "SKELETON", 10, 10, 2, 5},
-		{global_monster_id_counter++, "UNDEAD_GUARD", 12, 14, 2, 4},
-		{global_monster_id_counter++, "DARK_WIZARD", 16, 12, 1, 2},
+		{global_monster_id_counter++, "SKELETON", 7, 10, 2, 5},
+		{global_monster_id_counter++, "SKELETON", 23, 13, 2, 5},
+		{global_monster_id_counter++, "UNDEAD_GUARD", 7, 5, 2, 4},
+		{global_monster_id_counter++, "UNDEAD_GUARD", 35, 6, 2, 4},
+		{global_monster_id_counter++, "DARK_WIZARD", 18, 12, 1, 2},
 		{global_monster_id_counter++, "NECROMANCER", 18, 16, 1, 1},
+		{global_monster_id_counter++, "NECROMANCER", 22, 12, 1, 1},
+		{global_monster_id_counter++, "NECROMANCER", 14, 12, 1, 1},
 		{global_monster_id_counter++, "BLOOD_KNIGHT", 14, 8, 1, 1},
 		{global_monster_id_counter++, "BLOOD_KNIGHT", 22, 8, 1, 1},
-		{global_monster_id_counter++, "VOID_STALKER", 24, 14, 1, 2},
+		{global_monster_id_counter++, "VOID_STALKER", 17, 8, 1, 2},
+		{global_monster_id_counter++, "VOID_STALKER", 27, 6, 1, 2},
 		{global_monster_id_counter++, "LICH_KING", 18, 4, 1, 1}
 	};
 
