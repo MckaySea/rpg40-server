@@ -274,3 +274,21 @@ void AsyncSession::disconnect()
 			self->ws_.close(websocket::close_code::service_restart, ec);
 		});
 }
+//void AsyncSession::do_async_write(std::shared_ptr<std::string> message)
+//{
+//	// Post the write operation to this session's strand to ensure
+//	// that only one write operation is active at a time.
+//	net::dispatch(ws_.get_executor(),
+//		[self = shared_from_this(), message]()
+//		{
+//			// We use async_write, and our existing on_write handler
+//			// will be called when it completes.
+//			self->ws_.async_write(net::buffer(*message),
+//				net::bind_executor(self->ws_.get_executor(),
+//					[self_again = self->shared_from_this()](beast::error_code ec, std::size_t bytes)
+//					{
+//						// We just call our existing on_write handler
+//						self_again->on_write(ec, bytes);
+//					}));
+//		});
+//}

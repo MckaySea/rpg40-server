@@ -47,6 +47,8 @@ public:
 	void save_character();
 	void send_shutdown_warning(int seconds); // <-- ADD THIS
 	void disconnect();
+	void do_async_write(std::shared_ptr<std::string> message);
+
 	// These allow the game logic functions to interact with the session
 	PlayerState& getPlayerState() { return player_; }
 	PlayerBroadcastData& getBroadcastData() { return broadcast_data_; }
