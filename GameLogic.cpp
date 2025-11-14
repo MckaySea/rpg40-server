@@ -457,6 +457,112 @@ PlayerStats AsyncSession::getCalculatedStats() {
 	return finalStats;
 }
 
+//void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quantity, int bonusEffectChance) {
+//	PlayerState& player = getPlayerState();
+//	if (quantity <= 0) return;
+//
+//	if (itemDatabase.count(itemId) == 0) {
+//		std::cerr << "Error: Attempted to craft non-existent item ID: " << itemId << std::endl;
+//		return;
+//	}
+//
+//	const ItemDefinition& def = itemDatabase.at(itemId);
+//
+//	// 1. Handle Stackables (Potions, Ingots) - usually no effects
+//	if (def.stackable) {
+//		for (auto& pair : player.inventory) {
+//			ItemInstance& instance = pair.second;
+//			if (instance.itemId == itemId) {
+//				instance.quantity += quantity;
+//				send_inventory_and_equipment();
+//				return;
+//			}
+//		}
+//	}
+//
+//	// 2. Handle Non-Stackables (Weapons, Armor) - Apply Boosts!
+//	int numInstancesToAdd = def.stackable ? 1 : quantity;
+//	int qtyPerInstance = def.stackable ? quantity : 1;
+//
+//	std::random_device rd;
+//	std::mt19937 gen(rd());
+//
+//	for (int i = 0; i < numInstancesToAdd; ++i) {
+//		uint64_t newInstanceId = g_item_instance_id_counter++;
+//		ItemInstance newInstance = { newInstanceId, itemId, qtyPerInstance, {}, {} };
+//
+//		// --- BOOSTING LOGIC ---
+//		// Only roll effects if it's equipment or a high-tier item
+//		bool canHaveEffects = (def.equipSlot != EquipSlot::None) || (def.item_tier > 0);
+//
+//		if (canHaveEffects && !g_random_effect_pool.empty()) {
+//			std::uniform_int_distribution<> percentRoll(1, 100);
+//
+//			// Base chance (20%) + The Booster Bonus (e.g. +50%)
+//			int totalChance = 20 + bonusEffectChance;
+//
+//			// Cap at 100% to prevent weirdness
+//			if (totalChance > 100) totalChance = 100;
+//
+//			if (percentRoll(gen) <= totalChance) {
+//				// --- SUCCESS! Pick an effect ---
+//				int item_tier = std::max(1, def.item_tier);
+//				std::vector<const RandomEffectDefinition*> available_effects;
+//				int total_weight = 0;
+//
+//				for (const auto& effect_def : g_random_effect_pool) {
+//					if (effect_def.power_level <= item_tier) {
+//						available_effects.push_back(&effect_def);
+//						total_weight += effect_def.rarity_weight;
+//					}
+//				}
+//
+//				if (!available_effects.empty() && total_weight > 0) {
+//					std::uniform_int_distribution<> effect_roll(0, total_weight - 1);
+//					int roll_result = effect_roll(gen);
+//
+//					const RandomEffectDefinition* chosen = nullptr;
+//					for (const auto* ptr : available_effects) {
+//						if (roll_result < ptr->rarity_weight) {
+//							chosen = ptr;
+//							break;
+//						}
+//						roll_result -= ptr->rarity_weight;
+//					}
+//
+//					if (chosen) {
+//						// Apply the gameplay effect
+//						newInstance.customEffects.push_back(chosen->gameplay_effect);
+//
+//						// Apply the name suffix
+//						try {
+//							const auto& suffix_pool = g_effect_suffix_pools.at(chosen->effect_key);
+//							if (!suffix_pool.empty()) {
+//								std::string suffix = suffix_pool[gen() % suffix_pool.size()];
+//								ItemEffect suffixEffect;
+//								suffixEffect.type = "SUFFIX";
+//								suffixEffect.params["value"] = suffix;
+//								newInstance.customEffects.push_back(suffixEffect);
+//							}
+//						}
+//						catch (...) {}
+//					}
+//				}
+//			}
+//		}
+//		// --- END BOOSTING LOGIC ---
+//
+//		// (Optional) Add a "Crafted" tag?
+//		// ItemEffect craftedTag;
+//		// craftedTag.type = "CRAFTED_BY";
+//		// craftedTag.params["name"] = player.playerName;
+//		// newInstance.customEffects.push_back(craftedTag);
+//
+//		player.inventory[newInstanceId] = newInstance;
+//	}
+//
+//	send_inventory_and_equipment();
+//}
 void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quantity, int bonusEffectChance) {
 	PlayerState& player = getPlayerState();
 	if (quantity <= 0) return;
@@ -488,11 +594,30 @@ void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quan
 	std::mt19937 gen(rd());
 
 	for (int i = 0; i < numInstancesToAdd; ++i) {
-		uint64_t newInstanceId = g_item_instance_id_counter++;
+
+		//  GET ID FROM DATABASE SEQUENCE now
+
+		// uint64_t newInstanceId = g_item_instance_id_counter++;
+// --- FIX: GET ID FROM DATABASE SEQUENCE ---
+		uint64_t newInstanceId;
+		try {
+			pqxx::connection C = db_manager_->get_connection();
+			pqxx::nontransaction N(C);
+			// --- THIS IS THE CORRECTED LINE ---
+			newInstanceId = N.exec("SELECT nextval('item_instance_id_seq')").one_row()[0].as<uint64_t>();
+		}
+		catch (const std::exception& e) {
+			std::cerr << "CRITICAL: Could not fetch new item instance ID: " << e.what() << std::endl;
+			ws_.write(net::buffer("SERVER:ERROR:Could not create item. Please try again."));
+			return; // Stop here, we failed to get an ID
+		}
+
+
 		ItemInstance newInstance = { newInstanceId, itemId, qtyPerInstance, {}, {} };
 
 		// --- BOOSTING LOGIC ---
-		// Only roll effects if it's equipment or a high-tier item
+		// (Your existing boosting logic goes here, no changes needed)
+		// ...
 		bool canHaveEffects = (def.equipSlot != EquipSlot::None) || (def.item_tier > 0);
 
 		if (canHaveEffects && !g_random_effect_pool.empty()) {
@@ -550,20 +675,13 @@ void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quan
 				}
 			}
 		}
-		// --- END BOOSTING LOGIC ---
 
-		// (Optional) Add a "Crafted" tag?
-		// ItemEffect craftedTag;
-		// craftedTag.type = "CRAFTED_BY";
-		// craftedTag.params["name"] = player.playerName;
-		// newInstance.customEffects.push_back(craftedTag);
 
 		player.inventory[newInstanceId] = newInstance;
 	}
 
 	send_inventory_and_equipment();
 }
-
 void AsyncSession::addItemToInventory(const std::string& itemId, int quantity) {
 	PlayerState& player = getPlayerState();
 	if (quantity <= 0) return;
@@ -594,10 +712,28 @@ void AsyncSession::addItemToInventory(const std::string& itemId, int quantity) {
 	std::mt19937 gen(rd());
 
 	for (int i = 0; i < numInstancesToAdd; ++i) {
-		uint64_t newInstanceId = g_item_instance_id_counter++;
+
+		//we gotta get id from postgres sequencing atomic wasnt enuf
+	// uint64_t newInstanceId = g_item_instance_id_counter++;
+
+
+		uint64_t newInstanceId;
+		try {
+			pqxx::connection C = db_manager_->get_connection();
+			pqxx::nontransaction N(C);
+			// --- THIS IS THE CORRECTED LINE ---
+			newInstanceId = N.exec("SELECT nextval('item_instance_id_seq')").one_row()[0].as<uint64_t>();
+		}
+		catch (const std::exception& e) {
+			std::cerr << "CRITICAL: Could not fetch new item instance ID: " << e.what() << std::endl;
+			ws_.write(net::buffer("SERVER:ERROR:Could not create item. Please try again."));
+			return; // Stop here, we failed to get an ID
+		}
+
+
 		ItemInstance newInstance = { newInstanceId, itemId, qtyPerInstance, {}, {} };
 
-		// --- Weighted Random Effect Roll ---
+		// --- (Your existing random effect roll logic) ---
 		if (def.equipSlot != EquipSlot::None && !g_random_effect_pool.empty()) {
 			std::uniform_int_distribution<> initial_roll(1, 100);
 			if (initial_roll(gen) <= 20) { // 15% chance to roll
@@ -649,11 +785,11 @@ void AsyncSession::addItemToInventory(const std::string& itemId, int quantity) {
 				}
 			}
 		}
+		// --- (End of random effect logic) ---
 
 		// Add the new item to the player's inventory
 		player.inventory[newInstanceId] = newInstance;
 
-		// --- DEBUG BLOCK ---
 		std::cout << "[DEBUG] Added new item to memory inventory:"
 			<< "\n  Instance ID: " << newInstanceId
 			<< "\n  Item ID: " << itemId
@@ -2175,7 +2311,16 @@ void AsyncSession::handle_message(const string& message)
 		if (!player.isFullyInitialized) { ws.write(net::buffer("SERVER:ERROR:Complete character creation first.")); }
 		else if (player.isInCombat) { ws.write(net::buffer("SERVER:ERROR:Cannot move while in combat!")); }
 		else {
+			PlayerBroadcastData& broadcast = getBroadcastData();
+			if (!broadcast.currentAction.empty()) {
+				broadcast.currentAction = "";
+				{
+					std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+					g_player_registry[player.userId] = broadcast;
+				}
+			}
 
+			// 2. Reset the gathering flag
 			if (player.isGathering) {
 				player.isGathering = false;
 				ws.write(net::buffer("SERVER:STATUS:Gathering stopped."));
@@ -2376,11 +2521,25 @@ void AsyncSession::handle_message(const string& message)
 
 					// 2. Check Skills
 					std::string skillName;
+					std::string actionStr;
+
 					switch (def.skill) {
-					case LifeSkillType::WOODCUTTING: skillName = "Woodcutting"; break;
-					case LifeSkillType::MINING:      skillName = "Mining"; break;
-					case LifeSkillType::FISHING:     skillName = "Fishing"; break;
-					default:                         skillName = "Gathering"; break;
+					case LifeSkillType::WOODCUTTING:
+						skillName = "Woodcutting";
+						actionStr = "WOODCUTTING";
+						break;
+					case LifeSkillType::MINING:
+						skillName = "Mining";
+						actionStr = "MINING";
+						break;
+					case LifeSkillType::FISHING:
+						skillName = "Fishing";
+						actionStr = "FISHING";
+						break;
+					default:
+						skillName = "Gathering";
+						actionStr = "GATHERING";
+						break;
 					}
 
 					int currentXp = player.skills.life_skills[skillName];
@@ -2391,15 +2550,24 @@ void AsyncSession::handle_message(const string& message)
 						ws.write(net::buffer("SERVER:ERROR:Requires " + skillName + " level " + std::to_string(def.requiredLevel)));
 						return;
 					}
-
-					// 3. START CONTINUOUS GATHERING
+					// 4. START CONTINUOUS GATHERING
 					player.isGathering = true;
-					player.gatheringResourceNode = targetObject->data; // e.g., "OAK_TREE"
+					player.gatheringResourceNode = targetObject->data;
+					player.lastGatherTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(6000);
 
-					// Set timer back so the first tick happens immediately
-					player.lastGatherTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(2000);
+					// --- NEW: Update Broadcast Data ---
+					PlayerBroadcastData& broadcast = getBroadcastData();
+					broadcast.currentAction = actionStr; // Set the action
+
+					// updating so other can see hur
+					{
+						std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+						g_player_registry[player.userId] = broadcast;
+					}
+
 
 					ws.write(net::buffer("SERVER:STATUS:You start gathering from the " + def.dropItemId + "..."));
+					send_player_stats();
 				}
 				else if (targetObject->type == InteractableType::CRAFTING_STATION) {
 					// Send a specific signal to open the UI
@@ -3356,6 +3524,7 @@ void AsyncSession::handle_message(const string& message)
 						<< ",\"class\":" << static_cast<int>(pair.second.playerClass)
 						<< ",\"x\":" << pair.second.posX
 						<< ",\"y\":" << pair.second.posY
+						<< ",\"action\":" << nlohmann::json(pair.second.currentAction).dump()
 						<< "}";
 					first_player = false;
 				}

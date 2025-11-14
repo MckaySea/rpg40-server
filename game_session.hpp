@@ -72,6 +72,7 @@ struct PlayerBroadcastData {
 	std::string currentArea = "TOWN";
 	int posX = 0;
 	int posY = 0;
+	std::string currentAction = ""; // e.g. "MINING", "FISHING", "WOODCUTTING"
 };
 
 //i removed attack to make more interesting encounters based on different stats and make some fights harder! Added int,dex,str,luck
@@ -201,7 +202,6 @@ struct PlayerState {
 
 	// Stats and progression
 	PlayerStats stats;
-
 	// --- MODIFIED: Replaced old 'spells' vector ---
 	// Holds data loaded from the DB (learned spells, life skills)
 	PlayerSkills skills;

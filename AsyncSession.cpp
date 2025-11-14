@@ -194,18 +194,31 @@ void AsyncSession::on_session_end()
 {
 	// Stop the movement timer
 	move_timer_.cancel();
-	// Stop the movement timer
 
-	// --- ADD THIS BLOCK ---
-	// Save the character data immediately on disconnect
-	try {
-		save_character();
+	// --- ASYNCHRONOUS SAVE ON DISCONNECT ---
+	// Check if the player was actually logged in before trying to save
+	if (is_authenticated_ && account_id_ != 0)
+	{
+		// --- FIX ---
+		// Post the save_character work to the session's own strand
+		// (which runs on the main thread pool).
+		// Capturing 'self' (a shared_ptr) keeps the object alive
+		// until this posted task completes.
+		net::post(ws_.get_executor(), [self = shared_from_this()]() {
+			try {
+				// This is now running on a background thread
+				self->save_character();
+			}
+			catch (std::exception const& e) {
+				// This error is now logged from the background thread
+				std::cerr << "[" << self->client_address_ << "] CRITICAL: FAILED TO SAVE on async disconnect: " << e.what() << "\n";
+			}
+			});
+		// --- END FIX ---
 	}
-	catch (std::exception const& e) {
-		std::cerr << "[" << client_address_ << "] CRITICAL: FAILED TO SAVE on disconnect: " << e.what() << "\n";
-	}
-	// --- END ADDED BLOCK ---
-	// Remove player from the broadcast registry
+
+	// The rest of your cleanup logic runs *immediately*
+	// without waiting for the save to finish.
 	try {
 		std::lock_guard<std::mutex> lock(g_player_registry_mutex);
 		g_player_registry.erase(player_.userId);
@@ -225,6 +238,7 @@ void AsyncSession::on_session_end()
 
 	std::cout << "[" << client_address_ << "] Client disconnected.\n";
 	// The session (shared_ptr) will be destroyed when this handler finishes
+	// (or when the async save task above finally completes, whichever is later)
 }
 /**
  * @brief Sends a non-blocking shutdown warning to the client.
