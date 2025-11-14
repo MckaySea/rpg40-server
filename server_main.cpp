@@ -16,7 +16,7 @@
 #include <vector>
 #include <chrono>
 #include <sodium.h>
-
+#include "ThreadPool.hpp" // <-- ADD THIS
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
 using namespace std::chrono_literals;
@@ -29,10 +29,12 @@ class listener : public std::enable_shared_from_this<listener>
 	net::io_context& ioc_;
 	tcp::acceptor acceptor_;
 	std::shared_ptr<DatabaseManager> db_manager_;
+	std::shared_ptr<ThreadPool> db_pool_;
+	std::shared_ptr<ThreadPool> save_pool_; // <-- ADD THIS
 
 public:
-	listener(net::io_context& ioc, tcp::endpoint endpoint, std::shared_ptr<DatabaseManager> db_manager)
-		: ioc_(ioc), acceptor_(ioc), db_manager_(std::move(db_manager))
+	listener(net::io_context& ioc, tcp::endpoint endpoint, std::shared_ptr<DatabaseManager> db_manager, std::shared_ptr<ThreadPool> db_pool, std::shared_ptr<ThreadPool> save_pool)
+		: ioc_(ioc), acceptor_(ioc), db_manager_(std::move(db_manager)), db_pool_(std::move(db_pool)), save_pool_(std::move(save_pool))
 	{
 		boost::system::error_code ec;
 
@@ -70,7 +72,9 @@ private:
 				{
 					std::make_shared<AsyncSession>(
 						std::move(socket),
-						self->db_manager_
+						self->db_manager_,
+						self->db_pool_,
+						self->save_pool_
 					)->run();
 				}
 				else
@@ -173,7 +177,8 @@ int main()
 	const unsigned short port = 8080;
 	net::io_context ioc;
 	net::steady_timer save_timer(ioc);
-
+	auto db_pool = std::make_shared<ThreadPool>(4);
+	auto save_pool = std::make_shared<ThreadPool>(1);
 	try {
 		// --- Database Initialization ---
 		auto db_manager = std::make_shared<DatabaseManager>(connection_string);
@@ -195,7 +200,7 @@ int main()
 
 		// --- Listener ---
 		auto listener_ptr = std::make_shared<listener>(
-			ioc, tcp::endpoint{ address, port }, db_manager);
+			ioc, tcp::endpoint{ address, port }, db_manager, db_pool, save_pool);
 		listener_ptr->run();
 
 		// --- Batch Auto-Save ---

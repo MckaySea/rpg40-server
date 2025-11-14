@@ -13,6 +13,8 @@
 #include <string>
 #include <functional>
 #include <atomic>
+#include "ThreadPool.hpp"
+#include <queue>
 namespace beast = boost::beast;
 namespace websocket = beast::websocket;
 namespace net = boost::asio;
@@ -22,11 +24,15 @@ using tcp = net::ip::tcp;
 class AsyncSession : public std::enable_shared_from_this<AsyncSession>
 {
 	// --- Networking Members ---
+	std::queue<std::shared_ptr<std::string>> write_queue_;
+	bool is_writing_ = false;
 	websocket::stream<tcp::socket> ws_;// The WebSocket stream
 	net::steady_timer move_timer_; // Timer for player movement ticks
 	beast::flat_buffer buffer_; // Buffer for reading messages
 	std::string client_address_; // Client's IP for logging
 	std::shared_ptr<DatabaseManager> db_manager_;
+	std::shared_ptr<ThreadPool> db_pool_; //logins
+	std::shared_ptr<ThreadPool> save_pool_; //qued saves
 	std::atomic<bool> is_authenticated_ = false;
 	std::atomic<int> account_id_ = 0;
 	PlayerState player_; // This session's unique player state
@@ -36,18 +42,20 @@ public:
 	// Take ownership of the socket
 	explicit AsyncSession(
 		tcp::socket socket,
-		std::shared_ptr<DatabaseManager> db_manager
+		std::shared_ptr<DatabaseManager> db_manager,
+		std::shared_ptr<ThreadPool> db_pool,
+		std::shared_ptr<ThreadPool> save_pool
 	);
 
 	// Destructor for proper cleanup
 	~AsyncSession() noexcept;
-
+	void send(std::string message);
 	// Start the session's asynchronous operations
 	void run();
 	void save_character();
 	void send_shutdown_warning(int seconds); // <-- ADD THIS
 	void disconnect();
-	void do_async_write(std::shared_ptr<std::string> message);
+	//void do_async_write(std::shared_ptr<std::string> message);
 
 	// These allow the game logic functions to interact with the session
 	PlayerState& getPlayerState() { return player_; }
@@ -62,10 +70,18 @@ private:
 	void load_character(int accountId);
 	void on_run();
 	void do_read();
+	void do_async_write();
 	void on_read(beast::error_code ec, std::size_t bytes_transferred);
 	void on_write(beast::error_code ec, std::size_t bytes_transferred);
 	void do_move_tick(beast::error_code ec);
 	void on_session_end();
+	struct LoginResult {
+		bool success = false;
+		std::string error_message;
+		int account_id = 0;
+		std::string player_class_str;
+	};
+	void on_login_finished(const LoginResult& result);
 	void useItem(uint64_t itemInstanceId);
 	void dropItem(uint64_t itemInstanceId, int quantity);
 	void ensureAutoGrantedSkillsForClass();
