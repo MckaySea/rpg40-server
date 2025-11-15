@@ -3189,24 +3189,27 @@ void AsyncSession::handle_message(const string& message)
 	}
 	   else if (message.rfind("INTERACT_AT:", 0) == 0) {
 		if (player.isInCombat) {
-			send("SERVER:ERROR:Cannot interact while in combat!"); {
-			}
+			send("SERVER:ERROR:Cannot interact while in combat!");
 		}
 		else {
 			try {
-				string coords_str = message.substr(12);
+				// --- Parse coordinates ---
+				std::string coords_str = message.substr(12);
 				size_t comma_pos = coords_str.find(',');
-				if (comma_pos == string::npos) throw invalid_argument("Invalid coordinate format.");
+				if (comma_pos == std::string::npos) {
+					throw std::invalid_argument("Invalid coordinate format.");
+				}
 
-				int target_x = stoi(coords_str.substr(0, comma_pos));
-				int target_y = stoi(coords_str.substr(comma_pos + 1));
+				int target_x = std::stoi(coords_str.substr(0, comma_pos));
+				int target_y = std::stoi(coords_str.substr(comma_pos + 1));
 
-				InteractableObject* targetObject = nullptr;
-				auto it = g_interactable_objects.find(player.currentArea);
-				if (it != g_interactable_objects.end()) {
-					for (auto& obj : it->second) {
+				// --- Find interactable at those coords in the current area ---
+				const InteractableObject* targetObject = nullptr;
+				auto areaIt = g_interactable_objects.find(player.currentArea);
+				if (areaIt != g_interactable_objects.end()) {
+					for (const auto& obj : areaIt->second) {
 						if (obj.position.x == target_x && obj.position.y == target_y) {
-							targetObject = const_cast<InteractableObject*>(&obj);
+							targetObject = &obj;
 							break;
 						}
 					}
@@ -3217,64 +3220,112 @@ void AsyncSession::handle_message(const string& message)
 					return;
 				}
 
-				int dist = abs(player.posX - target_x) + abs(player.posY - target_y);
-				if (dist > 1) {
+				// --- Distance check ---
+				int dx = std::abs(player.posX - target_x);
+				int dy = std::abs(player.posY - target_y);
+				bool tooFar = false;
+
+				if (targetObject->type == InteractableType::ZONE_TRANSITION) {
+					// Zone transitions: must be ON the tile
+					int dist = std::max(dx, dy); // 0 only if on the exact tile
+					if (dist > 0) {
+						tooFar = true;
+					}
+				}
+				else {
+					// Everything else: Chebyshev <= 1 (8 surrounding tiles)
+					int dist = std::max(dx, dy);
+					if (dist > 1) {
+						tooFar = true;
+					}
+				}
+
+				if (tooFar) {
 					send("SERVER:ERROR:You are too far away to interact with that.");
 					return;
 				}
 
+				// Stop any current movement
 				player.currentPath.clear();
 
+				// --- Handle interaction by type ---
 				if (targetObject->type == InteractableType::NPC) {
+					// 1) Basic "you are interacting" message (for chat log)
 					send("SERVER:NPC_INTERACT:" + targetObject->data);
-					if (targetObject->data == "GUARD_DIALOGUE_1") {
-						send("SERVER:PROMPT:Guard: \"This place gets scary at night\"");
+
+					// 2) Look up dialogue by key (e.g. "MAYOR_WELCOME_DIALOGUE", "GUARD_DIALOGUE", etc.)
+					auto dlgIt = g_dialogues.find(targetObject->data);
+					if (dlgIt != g_dialogues.end()) {
+						nlohmann::json dlgJson;
+						dlgJson["npcId"] = targetObject->id;       // e.g. "TOWN_MAYOR"
+						dlgJson["dialogueId"] = targetObject->data; // e.g. "MAYOR_WELCOME_DIALOGUE"
+						dlgJson["lines"] = nlohmann::json::array();
+
+						for (const auto& line : dlgIt->second) {
+							nlohmann::json lineJson;
+							lineJson["speaker"] = line.speaker;    // "Mayor"
+							lineJson["text"] = line.text;       // dialogue text
+							lineJson["portraitId"] = line.portraitKey; // "MAYOR" etc.
+							dlgJson["lines"].push_back(lineJson);
+						}
+
+						// This is what the React client listens for to open the dialogue box
+						send("SERVER:DIALOGUE:" + dlgJson.dump());
 					}
-					else if (targetObject->data == "MERCHANT_SHOP_1") {
-						send("SERVER:PROMPT:Merchant: \"You there, got some gold, I've got stuff that might appeal to you\"");
-						auto shop_it = g_shops.find("MERCHANT_SHOP_1");
-						if (shop_it == g_shops.end()) {
-							send("SERVER:ERROR:Shop inventory not found.");
-							return;
-						}
-
-						ostringstream oss;
-						oss << "SERVER:SHOW_SHOP:{\"shopId\":\"" << shop_it->first << "\",\"items\":[";
-						bool firstItem = true;
-						for (const string& itemId : shop_it->second) {
-							if (itemDatabase.count(itemId) == 0) continue;
-							const ItemDefinition& def = itemDatabase.at(itemId);
-
-							int price = 1;
-							try {
-								price = g_item_buy_prices.at(itemId);
-							}
-							catch (const out_of_range&) {
-								cerr << "WARNING: Shop item " << itemId << " has no price. Defaulting to 1." << endl;
-							}
-
-							if (!firstItem) oss << ",";
-							oss << "{\"itemId\":" << nlohmann::json(def.id).dump()
-								<< ",\"name\":" << nlohmann::json(def.name).dump()
-								<< ",\"desc\":" << nlohmann::json(def.description).dump()
-								<< ",\"imagePath\":" << nlohmann::json(def.imagePath).dump()
-								<< ",\"price\":" << price
-								<< ",\"slot\":" << static_cast<int>(def.equipSlot)
-								<< ",\"baseStats\":" << nlohmann::json(def.stats).dump()
-								<< "}";
-							firstItem = false;
-						}
-						oss << "]}";
-						send(oss.str());
+					else {
+						// Fallback if no dialogue is defined for this NPC key
+						send("SERVER:PROMPT:They have nothing to say right now.");
 					}
 				}
+				else if (targetObject->type == InteractableType::SHOP) {
+					// targetObject->data holds the shop id like "SHOP_TOWN_POTIONS", "SHOP_TOWN_ARMOR", etc.
+					auto shop_it = g_shops.find(targetObject->data);
+					if (shop_it == g_shops.end()) {
+						send("SERVER:ERROR:Shop inventory not found.");
+						return;
+					}
+
+					send("SERVER:PROMPT:Merchant: \"You there, got some gold, I've got stuff that might appeal to you\"");
+
+					std::ostringstream oss;
+					oss << "SERVER:SHOW_SHOP:{\"shopId\":\"" << shop_it->first << "\",\"items\":[";
+					bool firstItem = true;
+
+					for (const std::string& itemId : shop_it->second) {
+						auto itemIt = itemDatabase.find(itemId);
+						if (itemIt == itemDatabase.end()) continue;
+						const ItemDefinition& def = itemIt->second;
+
+						int price = 1;
+						try {
+							price = g_item_buy_prices.at(itemId);
+						}
+						catch (const std::out_of_range&) {
+							std::cerr << "WARNING: Shop item " << itemId << " has no price. Defaulting to 1." << std::endl;
+						}
+
+						if (!firstItem) oss << ",";
+						oss << "{"
+							<< "\"itemId\":" << nlohmann::json(def.id).dump()
+							<< ",\"name\":" << nlohmann::json(def.name).dump()
+							<< ",\"desc\":" << nlohmann::json(def.description).dump()
+							<< ",\"imagePath\":" << nlohmann::json(def.imagePath).dump()
+							<< ",\"price\":" << price
+							<< ",\"slot\":" << static_cast<int>(def.equipSlot)
+							<< ",\"baseStats\":" << nlohmann::json(def.stats).dump()
+							<< "}";
+						firstItem = false;
+					}
+
+					oss << "]}";
+					send(oss.str());
+				}
 				else if (targetObject->type == InteractableType::ZONE_TRANSITION) {
+					// Area change
 					handle_message("GO_TO:" + targetObject->data);
 					send_area_map_data(player.currentArea);
 					SyncPlayerMonsters(player);
 					send_current_monsters_list();
-					// --- Optional: confirm area change
-					auto& ws = getWebSocket();
 					send("SERVER:AREA_CHANGED:" + player.currentArea);
 				}
 				else if (targetObject->type == InteractableType::RESOURCE_NODE) {
@@ -3310,48 +3361,45 @@ void AsyncSession::handle_message(const string& message)
 					}
 
 					int currentXp = player.skills.life_skills[skillName];
-					// Simple level formula: 1 + sqrt(XP)/5
 					int currentLevel = 1 + static_cast<int>(std::sqrt(currentXp) / 5.0f);
 
 					if (currentLevel < def.requiredLevel) {
 						send("SERVER:ERROR:Requires " + skillName + " level " + std::to_string(def.requiredLevel));
 						return;
 					}
+
 					// 4. START CONTINUOUS GATHERING
 					player.isGathering = true;
 					player.gatheringResourceNode = targetObject->data;
 					player.lastGatherTime = std::chrono::steady_clock::now() - std::chrono::milliseconds(6000);
 
-					// --- NEW: Update Broadcast Data ---
+					// Update broadcast
 					PlayerBroadcastData& broadcast = getBroadcastData();
-					broadcast.currentAction = actionStr; // Set the action
+					broadcast.currentAction = actionStr;
 
-					// updating so other can see hur
 					{
 						std::lock_guard<std::mutex> lock(g_player_registry_mutex);
 						g_player_registry[player.userId] = broadcast;
 					}
 
-
 					send("SERVER:STATUS:You start gathering from the " + def.dropItemId + "...");
 					send_player_stats();
 				}
 				else if (targetObject->type == InteractableType::CRAFTING_STATION) {
-					// Send a specific signal to open the UI
-					string msg = "SERVER:OPEN_CRAFTING";
+					std::string msg = "SERVER:OPEN_CRAFTING";
 					send(msg);
 				}
-
 				else {
 					send("SERVER:ERROR:Unknown interaction type.");
 				}
 			}
-			catch (const exception&) {
-				cerr << "Error parsing INTERACT_AT: " << "\n";
+			catch (const std::exception&) {
+				std::cerr << "Error parsing INTERACT_AT\n";
 				send("SERVER:ERROR:Invalid coordinate format.");
 			}
 		}
 	}
+
 	   else if (message.rfind("CRAFT_ITEM:", 0) == 0) {
 		if (!player.isFullyInitialized) {
 			send("SERVER:ERROR:Character not initialized.");
