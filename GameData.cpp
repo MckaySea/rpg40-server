@@ -14,6 +14,7 @@
 #include <string>
 #include "AreaData.hpp"
 #include <unordered_map>
+#include <algorithm>
 // All global variables are defined here, at the top, so all functions in this file can see them.
 
 const std::vector<std::string> ALL_AREAS = {
@@ -31,6 +32,8 @@ std::map<std::string, PlayerBroadcastData> g_player_registry;
 std::mutex g_player_registry_mutex;
 std::map<std::string, std::weak_ptr<AsyncSession>> g_session_registry;
 std::mutex g_session_registry_mutex;
+std::map<std::string, std::shared_ptr<TradeSession>> g_active_trades;
+std::mutex g_active_trades_mutex;
 std::unordered_map<std::string, AreaData> g_areas;
 // --- Gathering Resource Definitions ---
 std::map<std::string, ResourceDefinition> g_resource_defs = {
@@ -5382,10 +5385,11 @@ namespace { // Use anonymous namespace to keep these helpers file-local
 	}
 
 	/**
-	 * @brief Calculates the Manhattan distance heuristic for A*.
+	 * @brief Calculates the Chebyshev distance heuristic for A*.
 	 */
 	int calculate_heuristic(Point a, Point b) {
-		return std::abs(a.x - b.x) + std::abs(a.y - b.y);
+		// Use Chebyshev distance (max of x or y)
+		return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
 	}
 
 } // end anonymous namespace
@@ -5408,9 +5412,12 @@ std::deque<Point> A_Star_Search(Point start, Point end, const std::vector<std::v
 	node_storage.push_back(std::move(start_node));
 
 	const int D = 1; // Cost for 4-directional movement
-	int dx[] = { 0, 0, 1, -1 };
-	int dy[] = { 1, -1, 0, 0 };
-	int num_directions = 4;
+	const int D2 = 1; // Cost for diagonal movement (set to 1 for Chebyshev)
+
+	// 8 directions (4 cardinal, 4 diagonal)
+	int dx[] = { 0,  0, 1, -1, 1,  1, -1, -1 };
+	int dy[] = { 1, -1, 0,  0, 1, -1,  1, -1 };
+	int num_directions = 8;
 
 	while (!open_list.empty()) {
 		Node current = open_list.top();
@@ -5434,32 +5441,48 @@ std::deque<Point> A_Star_Search(Point start, Point end, const std::vector<std::v
 		for (int i = 0; i < num_directions; ++i) {
 			Point next_pos = { current.pos.x + dx[i], current.pos.y + dy[i] };
 
+			// Check 1: Is the destination tile walkable and not in closed list?
 			if (!is_walkable(next_pos.x, next_pos.y, grid) ||
 				closed_list.count({ next_pos.x, next_pos.y })) {
 				continue;
 			}
 
-			int new_g = current.g + D;
+			// Check 2: Prevent corner cutting for diagonal moves
+			if (i >= 4) { // i >= 4 are the diagonal moves
+				// Check the two adjacent cardinal tiles
+				Point adjacent1 = { current.pos.x + dx[i], current.pos.y };
+				Point adjacent2 = { current.pos.x, current.pos.y + dy[i] };
+				if (!is_walkable(adjacent1.x, adjacent1.y, grid) ||
+					!is_walkable(adjacent2.x, adjacent2.y, grid)) {
+					continue; // Block this diagonal move
+				}
+			}
+
+			// Determine cost based on direction
+			int move_cost = (i < 4) ? D : D2; // First 4 are cardinal, next 4 are diagonal
+			int new_g = current.g + move_cost;
 			int new_h = calculate_heuristic(next_pos, end);
 
 			const Node* current_node_ptr = nullptr;
+			// Find the pointer to the 'current' node in storage
 			for (auto it = node_storage.rbegin(); it != node_storage.rend(); ++it) {
-				if ((*it)->pos == current.pos && (*it)->g == current.g) { // Check g-cost too
+				if ((*it)->pos == current.pos && (*it)->g == current.g) {
+					// --- THIS IS THE FIX ---
+					// Call .get() on the unique_ptr (*it), not the Node
 					current_node_ptr = it->get();
 					break;
 				}
 			}
 
+			// Fallback, though the reverse iterator should find it
 			if (current_node_ptr == nullptr) {
-				// This should not happen if start node is handled, but as a fallback
 				for (auto& node : node_storage) {
 					if (node->pos == current.pos) {
-						current_node_ptr = node.get();
+						current_node_ptr = node.get(); // This line was already correct
 						break;
 					}
 				}
 			}
-
 
 			auto next_node = std::make_unique<Node>(next_pos, new_g, new_h, current_node_ptr);
 			open_list.push(*next_node);

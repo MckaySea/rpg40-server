@@ -66,7 +66,8 @@ extern std::mutex g_player_registry_mutex;
 
 extern std::map<std::string, std::weak_ptr<AsyncSession>> g_session_registry;
 extern std::mutex g_session_registry_mutex;
-
+extern std::map<std::string, std::shared_ptr<TradeSession>> g_active_trades;
+extern std::mutex g_active_trades_mutex;
 // --- NEW: Definition for a rollable effect ---
 // This struct links a cosmetic suffix pool (e.g., "FIRE_EFFECT")
 // to a tangible gameplay mechanic (e.g., +5 strength) and a rarity.
@@ -157,6 +158,9 @@ extern std::unordered_map<std::string, SkillDefinition> g_skill_defs;
 // Initializes all skills. Call this during server startup.
 void initialize_skill_definitions();
 
+
+std::shared_ptr<AsyncSession> get_session_by_id(const std::string& userId);
+void cleanup_trade_session(std::string playerAId, std::string playerBId);
 // --- END NEW ---
 //maps a shop id to a list of item ids it sells for the shops imma make alterable later on so we can have different shops sell different stuff
 extern const std::map<std::string, std::vector<std::string>> g_shops;
