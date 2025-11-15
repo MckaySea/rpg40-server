@@ -56,7 +56,7 @@ extern const std::map<std::string, std::vector<DialogueLine>> g_dialogues;
 extern const std::map<std::string, std::string> MONSTER_ASSETS;
 extern const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES;
 extern const std::vector<std::string> MONSTER_KEYS;
-
+int calculateItemSellPrice(const ItemInstance& instance, const ItemDefinition& def);
 extern int global_monster_id_counter;
 //we're just mapping items to a sell price (which will be whatever tier of gear theyre in)
 extern std::map<std::string, int> g_item_buy_prices;

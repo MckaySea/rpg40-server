@@ -5544,7 +5544,50 @@ std::optional<MonsterInstance> create_monster(int id, const std::string& type) {
 	std::cerr << "CRITICAL: No monster templates defined! Returning empty optional." << std::endl;
 	return std::nullopt;
 }
+int calculateItemSellPrice(const ItemInstance& instance, const ItemDefinition& def) {
+	int sellPricePerItem = 0;
 
+	// Base Price based on Tier (Lower Prices for tight economy)
+	if (def.item_tier <= 1) { // Tier 0 or 1: Junk/Basic
+		sellPricePerItem = 3;
+	}
+	else if (def.item_tier <= 3) { // Tier 2-3: Common/Intermediate
+		sellPricePerItem = 6;
+	}
+	else if (def.item_tier <= 6) { // Tier 4-6: Mid-Grade
+		sellPricePerItem = 14;
+	}
+	else if (def.item_tier <= 9) { // Tier 7-9: High-Grade
+		sellPricePerItem = 50;
+	}
+	else { // Tier 10+: Legendary/Mythic
+		sellPricePerItem = 75 + (def.item_tier - 10) * 15;
+	}
+
+	if (!def.stackable) { // Only apply bonus to non-stackable items (equipment/uniques)
+		// Check if item instance has special customization
+		bool hasSpecialEffects = !instance.customEffects.empty() || !instance.customStats.empty();
+
+		// Check the definition's stats as well, for base non-junk gear
+		if (!hasSpecialEffects) {
+			for (const auto& statPair : def.stats) {
+				if (statPair.second != 0) {
+					hasSpecialEffects = true;
+					break;
+				}
+			}
+		}
+
+		if (hasSpecialEffects) {
+			sellPricePerItem += 7; // Add bonus for special effects/stats
+		}
+	}
+
+	// Ensure minimum price is 1
+	sellPricePerItem = std::max(1, sellPricePerItem);
+
+	return sellPricePerItem;
+}
 void initialize_item_prices() {
 	// Clear the map to ensure only manually set prices exist
 	g_item_buy_prices.clear();
@@ -5574,6 +5617,7 @@ void initialize_item_prices() {
 	// --- RARE MONSTER DROPS (HIGH CONVENIENCE TAX) ---
 	// These are priced prohibitively high to purchase.
 	g_item_buy_prices["RUBY"] = 1500;
+	g_item_buy_prices["EMERALD"] = 6000;
 	g_item_buy_prices["SAPPHIRE"] = 3000;
 	g_item_buy_prices["DIAMOND"] = 15000;
 	g_item_buy_prices["MONSTER_BONE"] = 250;

@@ -1098,49 +1098,10 @@ void AsyncSession::sellItem(uint64_t itemInstanceId, int quantity) {
 	ItemInstance& instance = player.inventory.at(itemInstanceId);
 	const ItemDefinition& def = instance.getDefinition();
 
-
-	int sellPricePerItem = 0;
-
-	// Base Price based on Tier (Lower Prices for tight economy)
-	if (def.item_tier <= 1) { // Tier 0 or 1: Junk/Basic
-		sellPricePerItem = 6;
-	}
-	else if (def.item_tier <= 3) { // Tier 2-3: Common/Intermediate
-		sellPricePerItem = 12;
-	}
-	else if (def.item_tier <= 6) { // Tier 4-6: Mid-Grade
-		sellPricePerItem = 25;
-	}
-	else if (def.item_tier <= 9) { // Tier 7-9: High-Grade
-		sellPricePerItem = 50;
-	}
-	else { // Tier 10+: Legendary/Mythic
-		sellPricePerItem = 100 + (def.item_tier - 10) * 15;
-	}
-
-
-	if (!def.stackable) { // Only apply bonus to non-stackable items (equipment/uniques)
-		// Check if item instance has special customization
-		bool hasSpecialEffects = !instance.customEffects.empty() || !instance.customStats.empty();
-
-		// Check the definition's stats as well, for base non-junk gear
-		// This makes non-junk Tier 1 items (like Copper Sword) sell for slightly more than junk.
-		if (!hasSpecialEffects) {
-			for (const auto& statPair : def.stats) {
-				if (statPair.second != 0) {
-					hasSpecialEffects = true;
-					break;
-				}
-			}
-		}
-
-		if (hasSpecialEffects) {
-			sellPricePerItem += 15; // Add bonus for special effects/stats
-		}
-	}
-
-	// Ensure minimum price is 1
-	sellPricePerItem = std::max(1, sellPricePerItem);
+	// --- REFACTORED LOGIC ---
+	// Price is now calculated by the global helper function
+	int sellPricePerItem = calculateItemSellPrice(instance, def);
+	// --- END REFACTORED LOGIC ---
 
 	// --- 3. Process Sale ---
 	int totalSellPrice = 0;
@@ -1250,7 +1211,7 @@ void AsyncSession::send_inventory_and_equipment() {
 			continue; // skip equipped items in the inventory list
 
 		const ItemDefinition& def = instance.getDefinition();
-
+		int sellPrice = calculateItemSellPrice(instance, def);
 		// --- Find suffix (e.g. " of Flames") ---
 		std::string suffix;
 		for (const auto& effect : instance.customEffects) {
@@ -1280,7 +1241,8 @@ void AsyncSession::send_inventory_and_equipment() {
 			{"slot", static_cast<int>(def.equipSlot)},
 			{"baseStats", def.stats},
 			{"customStats", instance.customStats},
-			{"customEffects", effects_json}
+			{"customEffects", effects_json},
+			{"sellPrice", sellPrice}
 		};
 
 		inventory.push_back(item_json);
@@ -1314,7 +1276,7 @@ void AsyncSession::send_inventory_and_equipment() {
 					eff_json["params"] = eff.params;
 					effects_json.push_back(eff_json);
 				}
-
+				int sellPrice = calculateItemSellPrice(instance, def);
 				// --- Add full equipment object ---
 				equipment[std::to_string(slotInt)] = {
 					{"instanceId", instance.instanceId},
@@ -1326,7 +1288,8 @@ void AsyncSession::send_inventory_and_equipment() {
 					{"slot", slotInt},
 					{"baseStats", def.stats},
 					{"customStats", instance.customStats},
-					{"customEffects", effects_json}
+					{"customEffects", effects_json},
+					{"sellPrice", sellPrice}
 				};
 			}
 			else {
