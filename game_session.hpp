@@ -64,6 +64,16 @@ struct StatusEffect {
 	bool appliedByPlayer = false;
 };
 
+struct TradeSession {
+	std::string playerAId;
+	std::string playerBId;
+	std::map<uint64_t, int> offerAItems; // Item instance IDs and quantities
+	int offerAGold = 0;
+	bool confirmA = false;
+	std::map<uint64_t, int> offerBItems; // Items offered by B
+	int offerBGold = 0;
+	bool confirmB = false;
+};
 /**
  * @struct PlayerBroadcastData
  * @brief A lightweight struct containing only the data needed
@@ -239,4 +249,6 @@ struct PlayerState {
 	bool isGathering = false;
 	std::string gatheringResourceNode; // The key, e.g., "OAK_TREE"
 	std::chrono::steady_clock::time_point lastGatherTime;
+	bool isTrading = false;
+	std::string tradePartnerId;
 };

@@ -27,7 +27,98 @@
 #include <algorithm>
 
 using namespace std;
+std::shared_ptr<AsyncSession> get_session_by_id(const std::string& userId) {
+	std::lock_guard<std::mutex> lock(g_session_registry_mutex);
+	auto it = g_session_registry.find(userId);
+	if (it != g_session_registry.end()) {
+		if (auto session = it->second.lock()) {
+			return session;
+		}
+	}
+	return nullptr;
+}
 
+// Helper function to safely end a trade and reset player states
+void cleanup_trade_session(std::string playerAId, std::string playerBId) {
+	// 1. Remove the trade from the global map
+	{
+		std::lock_guard<std::mutex> lock(g_active_trades_mutex);
+		g_active_trades.erase(playerAId);
+		g_active_trades.erase(playerBId);
+	}
+
+	// 2. Find sessions (if they are still online) and reset their flags
+	if (auto sessionA = get_session_by_id(playerAId)) {
+		sessionA->getPlayerState().isTrading = false;
+		sessionA->getPlayerState().tradePartnerId.clear();
+	}
+	if (auto sessionB = get_session_by_id(playerBId)) {
+		sessionB->getPlayerState().isTrading = false;
+		sessionB->getPlayerState().tradePartnerId.clear();
+	}
+}
+
+// Helper function to send the current trade state to both players
+void send_trade_update(std::shared_ptr<TradeSession> trade) {
+	if (!trade) return;
+
+	// Find both sessions
+	auto sessionA = get_session_by_id(trade->playerAId);
+	auto sessionB = get_session_by_id(trade->playerBId);
+
+	// Build the JSON payload
+	using json = nlohmann::json;
+	json j;
+
+	// --- Player A's Offer ---
+	json offerA;
+	json itemsA = json::array();
+	if (sessionA) { // Need sessionA to get item details
+		PlayerState& playerA = sessionA->getPlayerState();
+		for (auto const& [instanceId, quantity] : trade->offerAItems) {
+			if (playerA.inventory.count(instanceId)) {
+				const auto& item = playerA.inventory.at(instanceId);
+				itemsA.push_back({
+					{"instanceId", instanceId},
+					{"name", item.getDefinition().name}, // Get name from definition
+					{"quantity", quantity}
+					});
+			}
+		}
+	}
+	offerA["items"] = itemsA;
+	offerA["gold"] = trade->offerAGold;
+	offerA["confirmed"] = trade->confirmA;
+
+	// --- Player B's Offer ---
+	json offerB;
+	json itemsB = json::array();
+	if (sessionB) { // Need sessionB to get item details
+		PlayerState& playerB = sessionB->getPlayerState();
+		for (auto const& [instanceId, quantity] : trade->offerBItems) {
+			if (playerB.inventory.count(instanceId)) {
+				const auto& item = playerB.inventory.at(instanceId);
+				itemsB.push_back({
+					{"instanceId", instanceId},
+					{"name", item.getDefinition().name}, // Get name from definition
+					{"quantity", quantity}
+					});
+			}
+		}
+	}
+	offerB["items"] = itemsB;
+	offerB["gold"] = trade->offerBGold;
+	offerB["confirmed"] = trade->confirmB;
+
+	j["offerA"] = offerA;
+	j["offerB"] = offerB;
+
+	std::string payload = "SERVER:TRADE_UPDATE:" + j.dump();
+
+	// Send to both players (if they are still online)
+	if (sessionA) sessionA->send(payload);
+	if (sessionB) sessionB->send(payload);
+}
 // --- Combat math helpers ---
 
 static const float DEF_SCALE = 1.0f;
@@ -845,7 +936,7 @@ void AsyncSession::addItemToInventory(const std::string& itemId, int quantity) {
 		// --- (Your existing random effect roll logic) ---
 		if (def.equipSlot != EquipSlot::None && !g_random_effect_pool.empty()) {
 			std::uniform_int_distribution<> initial_roll(1, 100);
-			if (initial_roll(gen) <= 20) { // 15% chance to roll
+			if (initial_roll(gen) <= 5) { //5 percent chance to roll unique
 				int item_tier = std::max(1, def.item_tier);
 				std::vector<const RandomEffectDefinition*> available_effects;
 				int total_weight = 0;
@@ -1163,7 +1254,10 @@ void AsyncSession::useItem(uint64_t itemInstanceId) {
 void AsyncSession::dropItem(uint64_t itemInstanceId, int quantity) {
 	PlayerState& player = getPlayerState();
 	auto& ws = getWebSocket();
-
+	if (player.isTrading) {
+		send("SERVER:ERROR:Cannot drop items while trading.");
+		return;
+	}
 	if (quantity <= 0) {
 		send("SERVER:ERROR:Invalid quantity.");
 		return;
@@ -1203,7 +1297,10 @@ void AsyncSession::dropItem(uint64_t itemInstanceId, int quantity) {
 void AsyncSession::sellItem(uint64_t itemInstanceId, int quantity) {
 	PlayerState& player = getPlayerState();
 	auto& ws = getWebSocket();
-
+	if (player.isTrading) {
+		send("SERVER:ERROR:Cannot sell items while trading.");
+		return;
+	}
 	if (quantity <= 0) {
 		send("SERVER:ERROR:Invalid quantity.");
 		return;
@@ -2305,7 +2402,20 @@ void AsyncSession::handle_message(const string& message)
 	PlayerBroadcastData& broadcast_data = getBroadcastData();
 	auto& ws = ws_;
 	string client_address = client_address_;
-
+	auto get_current_trade = [&]() -> std::shared_ptr<TradeSession> {
+		if (!player.isTrading) {
+			send("SERVER:ERROR:You are not in a trade.");
+			return nullptr;
+		}
+		std::lock_guard<std::mutex> lock(g_active_trades_mutex);
+		auto it = g_active_trades.find(player.userId);
+		if (it == g_active_trades.end()) {
+			send("SERVER:ERROR:Trade session not found.");
+			player.isTrading = false; // Fix broken state
+			return nullptr;
+		}
+		return it->second;
+		};
 	// --- 1. AUTH COMMANDS (Allowed *before* login) ---
 	if (message.rfind("REGISTER:", 0) == 0) {
 		handle_register(message.substr(9));
@@ -2354,6 +2464,369 @@ void AsyncSession::handle_message(const string& message)
 			}
 		}
 	}*/
+	else if (message.rfind("TRADE_REQUEST:", 0) == 0) {
+		if (player.isTrading) {
+			send("SERVER:ERROR:You are already in a trade.");
+			return;
+		}
+		std::string targetId = message.substr(14);
+		if (targetId == player.userId) {
+			send("SERVER:ERROR:You cannot trade with yourself.");
+			return;
+		}
+
+		auto targetSession = get_session_by_id(targetId);
+		if (!targetSession) {
+			send("SERVER:ERROR:Player not found or offline.");
+			return;
+		}
+
+		if (targetSession->getPlayerState().isTrading) {
+			send("SERVER:ERROR:That player is busy.");
+			return;
+		}
+
+		// Mark self as busy
+		player.isTrading = true;
+		player.tradePartnerId = targetId;
+
+		// Send request to target
+		nlohmann::json req;
+		req["from"] = player.playerName;
+		req["fromId"] = player.userId;
+		targetSession->send("SERVER:TRADE_REQUEST:" + req.dump());
+
+		send("SERVER:STATUS:Trade request sent to " + targetSession->getPlayerState().playerName + ".");
+	}
+	else if (message.rfind("TRADE_DECLINE:", 0) == 0) {
+		std::string initiatorId = message.substr(14);
+
+		// Clear self's trading status (if we were the one declining)
+		if (player.isTrading && player.tradePartnerId == initiatorId) {
+			player.isTrading = false;
+			player.tradePartnerId.clear();
+		}
+
+		auto initiatorSession = get_session_by_id(initiatorId);
+		if (initiatorSession) {
+			// Tell initiator they were declined
+			initiatorSession->send("SERVER:TRADE_DECLINED:" + nlohmann::json(player.playerName).dump());
+
+			// Clear initiator's trading status
+			initiatorSession->getPlayerState().isTrading = false;
+			initiatorSession->getPlayerState().tradePartnerId.clear();
+		}
+	}
+	else if (message.rfind("TRADE_ACCEPT:", 0) == 0) {
+		std::string initiatorId = message.substr(13);
+
+		auto initiatorSession = get_session_by_id(initiatorId);
+		if (!initiatorSession) {
+			send("SERVER:ERROR:That player is no longer available.");
+			return;
+		}
+
+		// Final check: are both players still available?
+		if (!initiatorSession->getPlayerState().isTrading || initiatorSession->getPlayerState().tradePartnerId != player.userId) {
+			send("SERVER:ERROR:The trade request expired.");
+			return;
+		}
+		if (player.isTrading) {
+			send("SERVER:ERROR:You are already busy.");
+			return;
+		}
+
+		// --- Both are valid! Create the session ---
+		player.isTrading = true;
+		player.tradePartnerId = initiatorId;
+		// Initiator is already set to isTrading=true, tradePartnerId=player.userId
+
+		auto trade = std::make_shared<TradeSession>();
+		trade->playerAId = initiatorId;
+		trade->playerBId = player.userId;
+
+		{
+			std::lock_guard<std::mutex> lock(g_active_trades_mutex);
+			g_active_trades[initiatorId] = trade;
+			g_active_trades[player.userId] = trade;
+		}
+
+		// Notify both clients to open the trade window
+		nlohmann::json j_to_A;
+		j_to_A["partnerName"] = player.playerName;
+		j_to_A["partnerId"] = player.userId;
+		initiatorSession->send("SERVER:TRADE_STARTED:" + j_to_A.dump());
+
+		nlohmann::json j_to_B;
+		j_to_B["partnerName"] = initiatorSession->getPlayerState().playerName;
+		j_to_B["partnerId"] = initiatorId;
+		send("SERVER:TRADE_STARTED:" + j_to_B.dump());
+	}
+	else if (message.rfind("TRADE_ADD_ITEM:", 0) == 0) {
+		auto trade = get_current_trade();
+		if (!trade) return;
+
+		try {
+			std::string params = message.substr(15); // "TRADE_ADD_ITEM:"
+			size_t colon_pos = params.find(':');
+			if (colon_pos == std::string::npos) throw std::invalid_argument("Invalid format");
+			uint64_t instanceId = std::stoull(params.substr(0, colon_pos));
+			int quantity = std::stoi(params.substr(colon_pos + 1));
+
+			if (quantity <= 0) throw std::invalid_argument("Qty <= 0");
+
+			if (player.inventory.count(instanceId) == 0) {
+				send("SERVER:ERROR:Item not in inventory.");
+				return;
+			}
+			// Check if equipped
+			for (const auto& slotPair : player.equipment.slots) {
+				if (slotPair.second.has_value() && slotPair.second.value() == instanceId) {
+					send("SERVER:ERROR:Cannot trade an equipped item.");
+					return;
+				}
+			}
+
+			auto& offerItems = (trade->playerAId == player.userId) ? trade->offerAItems : trade->offerBItems;
+
+			// Check total quantity needed vs. what's in inventory
+			int currentOffered = offerItems.count(instanceId) ? offerItems[instanceId] : 0;
+			if (quantity > player.inventory.at(instanceId).quantity) {
+				send("SERVER:ERROR:Not enough quantity.");
+				return;
+			}
+
+			// This logic *sets* the offer to the specified quantity
+			offerItems[instanceId] = quantity;
+			trade->confirmA = false;
+			trade->confirmB = false;
+			send_trade_update(trade);
+
+		}
+		catch (const std::exception& e) {
+			std::cerr << "TRADE_ADD_ITEM error: " << e.what() << std::endl;
+			send("SERVER:ERROR:Invalid item format.");
+		}
+	}
+	else if (message.rfind("TRADE_REMOVE_ITEM:", 0) == 0) {
+		auto trade = get_current_trade();
+		if (!trade) return;
+
+		try {
+			uint64_t instanceId = std::stoull(message.substr(18)); // "TRADE_REMOVE_ITEM:"
+			auto& offerItems = (trade->playerAId == player.userId) ? trade->offerAItems : trade->offerBItems;
+
+			if (offerItems.count(instanceId)) {
+				offerItems.erase(instanceId);
+				trade->confirmA = false;
+				trade->confirmB = false;
+				send_trade_update(trade);
+			}
+		}
+		catch (const std::exception&) {
+			send("SERVER:ERROR:Invalid item ID.");
+		}
+	}
+	else if (message.rfind("TRADE_OFFER_GOLD:", 0) == 0) {
+		auto trade = get_current_trade();
+		if (!trade) return;
+
+		try {
+			int amount = std::stoi(message.substr(17)); // "TRADE_OFFER_GOLD:"
+			if (amount < 0) throw std::invalid_argument("Amount < 0");
+
+			if (player.stats.gold < amount) {
+				send("SERVER:ERROR:You do not have that much gold.");
+				return;
+			}
+
+			if (trade->playerAId == player.userId) {
+				trade->offerAGold = amount;
+			}
+			else {
+				trade->offerBGold = amount;
+			}
+
+			trade->confirmA = false;
+			trade->confirmB = false;
+			send_trade_update(trade);
+
+		}
+		catch (const std::exception&) {
+			send("SERVER:ERROR:Invalid gold amount.");
+		}
+	}
+	else if (message == "TRADE_CONFIRM") {
+		auto trade = get_current_trade();
+		if (!trade) return;
+
+		bool isPlayerA = (trade->playerAId == player.userId);
+		if (isPlayerA) {
+			trade->confirmA = true;
+		}
+		else {
+			trade->confirmB = true;
+		}
+
+		// Check if both players have confirmed
+		if (trade->confirmA && trade->confirmB) {
+			// --- FINAL EXCHANGE ---
+			auto sessionA = get_session_by_id(trade->playerAId);
+			auto sessionB = get_session_by_id(trade->playerBId);
+
+			if (!sessionA || !sessionB) {
+				send("SERVER:ERROR:Partner disconnected. Trade cancelled.");
+				if (sessionA) sessionA->send("SERVER:ERROR:Partner disconnected. Trade cancelled.");
+				cleanup_trade_session(trade->playerAId, trade->playerBId);
+				return;
+			}
+
+			PlayerState& playerA = sessionA->getPlayerState();
+			PlayerState& playerB = sessionB->getPlayerState();
+
+			// 1. Re-validate Gold
+			if (playerA.stats.gold < trade->offerAGold) {
+				sessionA->send("SERVER:ERROR:You no longer have the required gold. Trade cancelled.");
+				sessionB->send("SERVER:ERROR:Partner does not have the required gold. Trade cancelled.");
+				cleanup_trade_session(trade->playerAId, trade->playerBId);
+				return;
+			}
+			if (playerB.stats.gold < trade->offerBGold) {
+				sessionB->send("SERVER:ERROR:You no longer have the required gold. Trade cancelled.");
+				sessionA->send("SERVER:ERROR:Partner does not have the required gold. Trade cancelled.");
+				cleanup_trade_session(trade->playerAId, trade->playerBId);
+				return;
+			}
+
+			// 2. Re-validate Items
+			for (auto const& [id, qty] : trade->offerAItems) {
+				if (playerA.inventory.count(id) == 0 || playerA.inventory.at(id).quantity < qty) {
+					sessionA->send("SERVER:ERROR:You no longer have the offered items. Trade cancelled.");
+					sessionB->send("SERVER:ERROR:Partner no longer has the offered items. Trade cancelled.");
+					cleanup_trade_session(trade->playerAId, trade->playerBId);
+					return;
+				}
+			}
+			for (auto const& [id, qty] : trade->offerBItems) {
+				if (playerB.inventory.count(id) == 0 || playerB.inventory.at(id).quantity < qty) {
+					sessionB->send("SERVER:ERROR:You no longer have the offered items. Trade cancelled.");
+					sessionA->send("SERVER:ERROR:Partner no longer has the offered items. Trade cancelled.");
+					cleanup_trade_session(trade->playerAId, trade->playerBId);
+					return;
+				}
+			}
+
+			// --- VALIDATION PASSED - PERFORM EXCHANGE ---
+
+			// 3. Gold Transfer
+			playerA.stats.gold = (playerA.stats.gold - trade->offerAGold) + trade->offerBGold;
+			playerB.stats.gold = (playerB.stats.gold - trade->offerBGold) + trade->offerAGold;
+
+			// 4. Item Transfer (A -> B)
+			std::vector<uint64_t> itemsToRemoveA;
+			std::vector<ItemInstance> itemsToAddB;
+			for (auto const& [id, qty] : trade->offerAItems) {
+				ItemInstance& itemA = playerA.inventory.at(id);
+
+				uint64_t newInstanceId;
+				try {
+					pqxx::connection C = db_manager_->get_connection();
+					pqxx::nontransaction N(C);
+					newInstanceId = N.exec("SELECT nextval('item_instance_id_seq')").one_row()[0].as<uint64_t>();
+				}
+				catch (const std::exception& e) {
+					std::cerr << "CRITICAL: Trade failed, could not get new item ID: " << e.what() << std::endl;
+					sessionA->send("SERVER:ERROR:Database error during trade. Trade cancelled.");
+					sessionB->send("SERVER:ERROR:Database error during trade. Trade cancelled.");
+					cleanup_trade_session(trade->playerAId, trade->playerBId);
+					return;
+				}
+
+				ItemInstance newItemForB = itemA; // Copy all data
+				newItemForB.instanceId = newInstanceId;
+				newItemForB.quantity = qty;
+				itemsToAddB.push_back(newItemForB);
+
+				// Decrement from A
+				itemA.quantity -= qty;
+				if (itemA.quantity <= 0) {
+					itemsToRemoveA.push_back(id);
+				}
+			}
+
+			// 5. Item Transfer (B -> A)
+			std::vector<uint64_t> itemsToRemoveB;
+			std::vector<ItemInstance> itemsToAddA;
+			for (auto const& [id, qty] : trade->offerBItems) {
+				ItemInstance& itemB = playerB.inventory.at(id);
+
+				uint64_t newInstanceId;
+				try {
+					pqxx::connection C = db_manager_->get_connection();
+					pqxx::nontransaction N(C);
+					newInstanceId = N.exec("SELECT nextval('item_instance_id_seq')").one_row()[0].as<uint64_t>();
+				}
+				catch (const std::exception& e) {
+					std::cerr << "CRITICAL: Trade (B->A) failed, could not get new item ID: " << e.what() << std::endl;
+					sessionA->send("SERVER:ERROR:Database error during trade. Trade cancelled.");
+					sessionB->send("SERVER:ERROR:Database error during trade. Trade cancelled.");
+					// Don't cleanup, as A->B may have succeeded
+					return;
+				}
+
+				ItemInstance newItemForA = itemB; // Copy
+				newItemForA.instanceId = newInstanceId;
+				newItemForA.quantity = qty;
+				itemsToAddA.push_back(newItemForA);
+
+				// Decrement from B
+				itemB.quantity -= qty;
+				if (itemB.quantity <= 0) {
+					itemsToRemoveB.push_back(id);
+				}
+			}
+
+			// 6. Now that all DB calls are done, apply changes to memory
+			for (auto id : itemsToRemoveA) playerA.inventory.erase(id);
+			for (auto id : itemsToRemoveB) playerB.inventory.erase(id);
+			for (const auto& item : itemsToAddA) playerA.inventory[item.instanceId] = item;
+			for (const auto& item : itemsToAddB) playerB.inventory[item.instanceId] = item;
+
+			// 7. Notify and Cleanup
+			sessionA->send("SERVER:TRADE_COMPLETE");
+			sessionB->send("SERVER:TRADE_COMPLETE");
+
+			sessionA->send_inventory_and_equipment();
+			sessionB->send_inventory_and_equipment();
+			sessionA->send_player_stats();
+			sessionB->send_player_stats();
+
+			cleanup_trade_session(trade->playerAId, trade->playerBId);
+
+		}
+		else {
+			// Only one player confirmed, send update to show "Ready" status
+			send_trade_update(trade);
+		}
+	}
+	else if (message == "TRADE_CANCEL") {
+		auto trade = get_current_trade();
+		if (!trade) return;
+
+		// Find the partner's ID
+		std::string partnerId = (trade->playerAId == player.userId) ? trade->playerBId : trade->playerAId;
+
+		// Notify the partner (if they are online)
+		auto partnerSession = get_session_by_id(partnerId);
+		if (partnerSession) {
+			partnerSession->send("SERVER:TRADE_CANCELLED:Partner cancelled the trade.");
+		}
+
+		send("SERVER:TRADE_CANCELLED:You cancelled the trade.");
+
+		// Use the helper to clean up
+		cleanup_trade_session(trade->playerAId, trade->playerBId);
+	}
 	else if (message.rfind("SELECT_CLASS:", 0) == 0 && player.currentClass == PlayerClass::UNSELECTED) {
 		string class_str = message.substr(13);
 		string class_to_db;
@@ -2529,6 +3002,10 @@ void AsyncSession::handle_message(const string& message)
 		PlayerBroadcastData& broadcast_data = getBroadcastData();
 		auto& ws = getWebSocket();
 		player.isGathering = false;
+		if (player.isTrading) {
+			send("SERVER:ERROR:Cannot travel while trading.");
+			return;
+		}
 		if (!player.isFullyInitialized)
 		{
 			send("SERVER:ERROR:Complete character creation first.");
@@ -2594,6 +3071,11 @@ void AsyncSession::handle_message(const string& message)
 	}
 
 	   else if (message.rfind("MOVE_TO:", 0) == 0) {
+		if (player.isTrading) {
+			send("SERVER:ERROR:Cannot move while trading.");
+			player.currentPath.clear(); // Clear path just in case
+			return;
+		}
 		if (!player.isFullyInitialized) { send("SERVER:ERROR:Complete character creation first."); }
 		else if (player.isInCombat) { send("SERVER:ERROR:Cannot move while in combat!"); }
 		else {

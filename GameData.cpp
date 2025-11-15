@@ -31,6 +31,8 @@ std::map<std::string, PlayerBroadcastData> g_player_registry;
 std::mutex g_player_registry_mutex;
 std::map<std::string, std::weak_ptr<AsyncSession>> g_session_registry;
 std::mutex g_session_registry_mutex;
+std::map<std::string, std::shared_ptr<TradeSession>> g_active_trades;
+std::mutex g_active_trades_mutex;
 std::unordered_map<std::string, AreaData> g_areas;
 // --- Gathering Resource Definitions ---
 std::map<std::string, ResourceDefinition> g_resource_defs = {

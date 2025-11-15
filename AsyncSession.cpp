@@ -243,6 +243,38 @@ void AsyncSession::do_move_tick(beast::error_code ec)
  */
 void AsyncSession::on_session_end()
 {
+	if (player_.isTrading && !player_.tradePartnerId.empty()) {
+		std::string partnerId = player_.tradePartnerId;
+		std::string myId = player_.userId;
+
+		// Find partner session
+		// We use the raw function here since this isn't in GameLogic.cpp
+		std::shared_ptr<AsyncSession> partnerSession = nullptr;
+		{
+			std::lock_guard<std::mutex> lock(g_session_registry_mutex);
+			auto it = g_session_registry.find(partnerId);
+			if (it != g_session_registry.end()) {
+				partnerSession = it->second.lock();
+			}
+		}
+
+		// Clean up the global map
+		{
+			std::lock_guard<std::mutex> lock(g_active_trades_mutex);
+			g_active_trades.erase(myId);
+			g_active_trades.erase(partnerId);
+		}
+
+		// Notify partner and clear their flags
+		if (partnerSession) {
+			// Post the notification to the partner's own strand
+			net::dispatch(partnerSession->getWebSocket().get_executor(), [partnerSession] {
+				partnerSession->send("SERVER:TRADE_CANCELLED:Partner disconnected.");
+				partnerSession->getPlayerState().isTrading = false;
+				partnerSession->getPlayerState().tradePartnerId.clear();
+				});
+		}
+	}
 	move_timer_.cancel();
 
 	if (is_authenticated_ && account_id_ != 0)
