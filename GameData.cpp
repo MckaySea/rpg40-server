@@ -46,29 +46,29 @@ std::map<std::string, ResourceDefinition> g_resource_defs = {
 	{"TROUT_SPOT",   {LifeSkillType::FISHING,     10, 35,  "RAW_TROUT", 90, "GLISTENING_SCALE", 1}},
 
 	// --- TIER 3 (Lvl 20) ---
-	{"MAGIC_TREE",   {LifeSkillType::WOODCUTTING, 20, 60,  "MAGIC_LOG",   85, "LIVING_ROOT", 2}},
-	{"MITHRIL_VEIN", {LifeSkillType::MINING,      20, 70,  "MITHRIL_ORE", 85, "EMERALD", 2}},
-	{"SHARK_SPOT",   {LifeSkillType::FISHING,     20, 80,  "RAW_SHARK",   85, "SHARK_TOOTH", 2}},
+	{"MAGIC_TREE",   {LifeSkillType::WOODCUTTING, 20, 60,  "MAGIC_LOG",   85, "LIVING_ROOT", 1}},
+	{"MITHRIL_VEIN", {LifeSkillType::MINING,      20, 70,  "MITHRIL_ORE", 85, "EMERALD", 1}},
+	{"SHARK_SPOT",   {LifeSkillType::FISHING,     20, 80,  "RAW_SHARK",   85, "SHARK_TOOTH", 1}},
 
 	// --- TIER 4 (Lvl 30) ---
-	{"REDWOOD_TREE", {LifeSkillType::WOODCUTTING, 30, 150, "REDWOOD_LOG", 80, "BLOODWOOD_SAP", 2}},
-	{"ADAMANT_VEIN", {LifeSkillType::MINING,      30, 170, "ADAMANT_ORE", 80, "DIAMOND", 2}},
-	{"ANGLER_SPOT",  {LifeSkillType::FISHING,     30, 190, "RAW_ANGLER",  80, "DEEP_CRYSTAL", 2}},
+	{"REDWOOD_TREE", {LifeSkillType::WOODCUTTING, 30, 150, "REDWOOD_LOG", 80, "BLOODWOOD_SAP", 1}},
+	{"ADAMANT_VEIN", {LifeSkillType::MINING,      30, 170, "ADAMANT_ORE", 80, "DIAMOND", 1}},
+	{"ANGLER_SPOT",  {LifeSkillType::FISHING,     30, 190, "RAW_ANGLER",  80, "DEEP_CRYSTAL", 1}},
 
 	// --- TIER 5 (Lvl 40) ---
-	{"ELDER_TREE",   {LifeSkillType::WOODCUTTING, 40, 300, "ELDER_LOG",   75, "WORLD_TREE_HEART", 3}},
-	{"ORICHALCUM_VEIN",{LifeSkillType::MINING,    40, 325, "ORICHALCUM_ORE",75, "VOID_GEM", 3}},
-	{"LEVIATHAN_SPOT", {LifeSkillType::FISHING,   40, 350, "RAW_LEVIATHAN", 75, "KRAKENS_EYE", 3}},
+	{"ELDER_TREE",   {LifeSkillType::WOODCUTTING, 40, 300, "ELDER_LOG",   75, "WORLD_TREE_HEART", 1}},
+	{"ORICHALCUM_VEIN",{LifeSkillType::MINING,    40, 325, "ORICHALCUM_ORE",75, "VOID_GEM", 1}},
+	{"LEVIATHAN_SPOT", {LifeSkillType::FISHING,   40, 350, "RAW_LEVIATHAN", 75, "KRAKENS_EYE", 1}},
 
 	// --- TIER 6 (Lvl 50) ---
-	{"ANCIENT_TREE", {LifeSkillType::WOODCUTTING, 50, 450, "ANCIENT_LOG", 70, "ETERNAL_EMBER", 3}},
-	{"RUNITE_VEIN",  {LifeSkillType::MINING,      50, 500, "RUNITE_ORE",  70, "STAR_METAL_FRAGMENT", 3}},
-	{"SQUID_SPOT",   {LifeSkillType::FISHING,     50, 550, "SQUID_INK",   70, "AZURE_GEM", 3}},
+	{"ANCIENT_TREE", {LifeSkillType::WOODCUTTING, 50, 450, "ANCIENT_LOG", 70, "ETERNAL_EMBER", 1}},
+	{"RUNITE_VEIN",  {LifeSkillType::MINING,      50, 500, "RUNITE_ORE",  70, "STAR_METAL_FRAGMENT", 1}},
+	{"SQUID_SPOT",   {LifeSkillType::FISHING,     50, 550, "SQUID_INK",   70, "AZURE_GEM", 1}},
 
 	// --- TIER 7 (Lvl 60) ---
-	{"CRYSTAL_TREE", {LifeSkillType::WOODCUTTING, 60, 700, "CRYSTAL_SHARD", 65, "CRYSTALLINE_CORE", 4}},
-	{"NEBULITE_VEIN",{LifeSkillType::MINING,      60, 750, "NEBULITE_ORE",  65, "NEBULA_MOTE", 4}},
-	{"DEEP_SEA_SPOT",{LifeSkillType::FISHING,     60, 800, "ABYSSAL_FIN",   65, "VOID_TENDRIL", 4}}
+	{"CRYSTAL_TREE", {LifeSkillType::WOODCUTTING, 60, 700, "CRYSTAL_SHARD", 65, "CRYSTALLINE_CORE", 1}},
+	{"NEBULITE_VEIN",{LifeSkillType::MINING,      60, 750, "NEBULITE_ORE",  65, "NEBULA_MOTE", 1}},
+	{"DEEP_SEA_SPOT",{LifeSkillType::FISHING,     60, 800, "ABYSSAL_FIN",   65, "VOID_TENDRIL", 1}}
 };
 
 // --- Crafting Recipes ---
@@ -77,8 +77,8 @@ std::map<std::string, CraftingRecipe> g_crafting_recipes = {
 	// ID             Result, Qty, Skill, Lvl, Ingredients, XP
 
 	// --- TIER 1 INTERMEDIATE (Lvl 1) ---
-	{"COPPER_INGOT",  {"COPPER_INGOT",  1, "Crafting", 1, {{"COPPER_ORE", 2}}, 12}},
-	{"OAK_PLANK",     {"OAK_PLANK",     1, "Crafting", 1, {{"OAK_LOG", 1}},    8}},
+	{"COPPER_INGOT",  {"COPPER_INGOT",  1, "Crafting", 1, {{"COPPER_ORE", 2}}, 3}},
+	{"OAK_PLANK",     {"OAK_PLANK",     1, "Crafting", 1, {{"OAK_LOG", 1}},    3}},
 
 	// --- TIER 1 EQUIPMENT (Lvl 1-7) ---
 	{"WOODEN_BOOTS",    {"WOODEN_BOOTS",    1, "Crafting", 1, {{"OAK_PLANK", 3}}, 15}},
@@ -203,7 +203,60 @@ std::map<std::string, CraftingRecipe> g_crafting_recipes = {
 	{"NEBULITE_WARHAMMER", {"NEBULITE_WARHAMMER", 1, "Crafting", 66, {{"NEBULITE_INGOT", 4}, {"ANCIENT_PLANK", 2}}, 2500}},
 	{"CRYSTAL_WAND",       {"CRYSTAL_WAND",       1, "Crafting", 66, {{"CRYSTAL_PLANK", 3}, {"CRYSTALLINE_CORE", 1}}, 3200}},
 	{"CORE_STAFF",         {"CORE_STAFF",         1, "Crafting", 68, {{"CRYSTAL_PLANK", 3}, {"ELEMENTAL_CORE", 3}, {"NEBULA_MOTE", 1}}, 4000}},
-	{"ABYSSAL_SPEAR",      {"ABYSSAL_SPEAR",      1, "Crafting", 70, {{"ABYSSAL_FIN", 5}, {"VOID_TENDRIL", 1}, {"ANCIENT_PLANK", 1}}, 5000}}
+	{"ABYSSAL_SPEAR",      {"ABYSSAL_SPEAR",      1, "Crafting", 70, {{"ABYSSAL_FIN", 5}, {"VOID_TENDRIL", 1}, {"ANCIENT_PLANK", 1}}, 5000}},
+	// --- Stage 1: Simple Cooking (Raw -> Cooked) ---
+	{ "COOK_FISH",      {"COOKED_FISH",      1, "Cooking", 1,  {{"RAW_FISH", 1}}, 5} },
+	{ "COOK_TROUT",     {"COOKED_TROUT",     1, "Cooking", 10, {{"RAW_TROUT", 1}}, 20} },
+	{ "COOK_SHARK",     {"COOKED_SHARK",     1, "Cooking", 20, {{"RAW_SHARK", 1}}, 50} },
+	{ "COOK_ANGLER",    {"COOKED_ANGLER",    1, "Cooking", 30, {{"RAW_ANGLER", 1}}, 120} },
+	{ "COOK_LEVIATHAN", {"COOKED_LEVIATHAN", 1, "Cooking", 40, {{"RAW_LEVIATHAN", 1}}, 250} },
+
+	// --- Stage 2: Complex Meals (Cooked + Mats -> Meal) ---
+	{ "FISH_STEW", {
+		"FISH_STEW", 1, "Cooking", 5,
+		{
+			{"COOKED_FISH", 2},
+			{"HERBS", 1}
+		},
+		30
+	} },
+	{ "SAVORY_TROUT", {
+		"SAVORY_TROUT", 1, "Cooking", 15,
+		{
+			{"COOKED_TROUT", 1},
+			{"HERBS", 2},
+			{"GOLDEN_LEAF", 1}
+		},
+		70
+	} },
+	{ "SHARK_FEAST", {
+		"SHARK_FEAST", 1, "Cooking", 25,
+		{
+			{"COOKED_SHARK", 2},
+			{"HERBS", 3},
+			{"SHARK_TOOTH", 1}
+		},
+		200
+	} },
+	{ "DEEP_SEA_FEAST", {
+		"DEEP_SEA_FEAST", 1, "Cooking", 45,
+		{
+			{"COOKED_LEVIATHAN", 1},
+			{"COOKED_ANGLER", 1},
+			{"DEEP_CRYSTAL", 1},
+			{"KRAKENS_EYE", 1}
+		},
+		1000
+	} },
+	{ "ABYSSAL_PLATTER", {
+		"ABYSSAL_PLATTER", 1, "Cooking", 60,
+		{
+			{"ABYSSAL_FIN", 2},
+			{"SQUID_INK", 1},
+			{"VOID_TENDRIL", 1}
+		},
+		2500
+	} },
 };
 
 // --- Grid Definitions ---
@@ -1425,6 +1478,7 @@ void initializeAreas() {
 	std::vector<TempArea> areaTemplates = {
 		{"TOWN", "/town.png", &TOWN_GRID},
 		{"FOREST", "/forest.png", &FOREST_GRID},
+		{"FOREST2", "/forest.png", &FOREST_GRID},
 		{"VOLCANO", "/volcano.png", &VOLCANO_GRID},
 		{"OVERWORLD", "/overworld.png", &OVERWORLD_GRID},
 		{"CAVES", "/caves.png", &CAVES_GRID},
@@ -2080,8 +2134,137 @@ std::map<std::string, ItemDefinition> itemDatabase;
 void initialize_item_database() {
 	ItemDefinition def;
 
+	def = {};
+	def.id = "HERBS";
+	def.name = "Wild Herbs";
+	def.description = "A bundle of fragrant herbs. Used in cooking.";
+	def.imagePath = "HERBS"; // You'll need to add this icon
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 1;
+	itemDatabase[def.id] = def;
 
+	def = {};
+	def.id = "COOKED_FISH";
+	def.name = "Cooked Fish";
+	def.description = "A simple cooked fish. Restores 15 Health."; // 40 -> 15
+	def.imagePath = "COOKED_FISH";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 1;
+	def.effects = { ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "15"}}} };
+	itemDatabase[def.id] = def;
 
+	// --- NEW: T2 Cooked Fish ---
+	def = {};
+	def.id = "COOKED_TROUT";
+	def.name = "Cooked Trout";
+	def.description = "A well-cooked trout. Restores 40 Health."; // 90 -> 40
+	def.imagePath = "COOKED_TROUT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 3;
+	def.effects = { ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "40"}}} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW: T3 Cooked Fish ---
+	def = {};
+	def.id = "COOKED_SHARK";
+	def.name = "Cooked Shark";
+	def.description = "A hearty slab of shark meat. Restores 80 Health."; // 180 -> 80
+	def.imagePath = "COOKED_SHARK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 5;
+	def.effects = { ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "80"}}} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW: T4 Cooked Fish ---
+	def = {};
+	def.id = "COOKED_ANGLER";
+	def.name = "Cooked Anglerfish";
+	def.description = "Surprisingly tasty. Restores 150 Health."; // 350 -> 150
+	def.imagePath = "COOKED_ANGLER";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 7;
+	def.effects = { ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "150"}}} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW: T5 Cooked Fish ---
+	def = {};
+	def.id = "COOKED_LEVIATHAN";
+	def.name = "Cooked Leviathan";
+	def.description = "A massive steak. Restores 220 Health."; // 600 -> 220
+	def.imagePath = "COOKED_LEVIATHAN";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 9;
+	def.effects = { ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "220"}}} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW: T2 Complex Meal ---
+	def = {};
+	def.id = "FISH_STEW";
+	def.name = "Fish Stew";
+	def.description = "A hot stew with herbs. Restores 30 Health."; // 100 -> 30
+	def.imagePath = "FISH_STEW";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 2;
+	def.effects = { ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "30"}}} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW: T4 Complex Meal --- (Tier 4)
+	def = {};
+	def.id = "SAVORY_TROUT";
+	def.name = "Savory Trout";
+	def.description = "Trout cooked with fine herbs. Restores 70 Health."; // 200 -> 70
+	def.imagePath = "SAVORY_TROUT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 4;
+	def.effects = { ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "70"}}} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW: T6 Complex Meal --- (Tier 6)
+	def = {};
+	def.id = "SHARK_FEAST";
+	def.name = "Shark Feast";
+	def.description = "A feast of shark and herbs. Restores 120 Health."; // 400 -> 120
+	def.imagePath = "SHARK_FEAST";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 6;
+	def.effects = { ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "120"}}} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW: T10 Complex Meal --- (Tier 10)
+	def = {};
+	def.id = "DEEP_SEA_FEAST";
+	def.name = "Deep Sea Feast";
+	def.description = "A legendary meal from the depths. Restores 300 Health."; // 1000 -> 300
+	def.imagePath = "DEEP_SEA_FEAST";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 10;
+	def.effects = { ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "300"}}} };
+	itemDatabase[def.id] = def;
+
+	// --- NEW: T14 Complex Meal --- (Tier 14)
+	def = {};
+	def.id = "ABYSSAL_PLATTER";
+	def.name = "Abyssal Platter";
+	def.description = "Tastes like darkness and power. Restores 500 Health and 200 Mana."; // 800/400 -> 500/200
+	def.imagePath = "ABYSSAL_PLATTER";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 14;
+	def.effects = {
+		ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "500"}}},
+		ItemEffect{"USE", {{"action", "RESTORE_MANA"}, {"amount", "200"}}}
+	};
+	itemDatabase[def.id] = def;
 	// --- NEW GENERIC MONSTER DROPS (ALL TIERS) ---
 	def = {};
 	def.id = "MONSTER_BONE";
@@ -3480,6 +3663,16 @@ void initialize_item_database() {
 	def.equipSlot = EquipSlot::None;
 	def.stackable = true;
 	def.item_tier = 1;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "YEW_LOG";
+	def.name = "Yew Log";
+	def.description = "A hearty wooden log.";
+	def.imagePath = "YEW_LOG";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 2;
 	itemDatabase[def.id] = def;
 
 	def = {};
@@ -5181,50 +5374,58 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 	"OVERWORLD", {
 		// --- NPCs ---
 		{ "ANGEL_OVERWORLD_GUIDE",InteractableType::NPC, {24, 19}, "ANGEL_OVERWORLD_GUIDE_DIALOGUE" },
-		{ "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" },
-		{ "OVERWORLD_PROSPECTOR", InteractableType::NPC, {19, 2},  "PROSPECTOR_MTN_DIALOGUE" },
-		{ "OVERWORLD_NOMAD",      InteractableType::NPC, {34, 20}, "NOMAD_DESERT_DIALOGUE" },
+		/*	{ "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" },*/
+			{ "OVERWORLD_PROSPECTOR", InteractableType::NPC, {19, 2},  "PROSPECTOR_MTN_DIALOGUE" },
+			{ "OVERWORLD_NOMAD",      InteractableType::NPC, {34, 20}, "NOMAD_DESERT_DIALOGUE" },
 
-		// --- Zone Transitions ---
-		// East edge back into TOWN west gate
-		{ "OVERWORLD_TO_TOWN",      InteractableType::ZONE_TRANSITION, {29, 8}, "TOWN" },
-		{ "OVERWORLD_TO_CAVES",      InteractableType::ZONE_TRANSITION, {8, 4}, "CAVES" },
-		{ "OVERWORLD_TO_FOREST",    InteractableType::ZONE_TRANSITION, {25, 5},  "FOREST" },
-		{ "OVERWORLD_TO_MOUNTAINS", InteractableType::ZONE_TRANSITION, {26, 2},  "MOUNTAINS" },
-		{ "OVERWORLD_TO_RUINS",     InteractableType::ZONE_TRANSITION, {4,  13}, "RUINS" },
-		{ "OVERWORLD_TO_DESERT",    InteractableType::ZONE_TRANSITION, {28, 14}, "DESERT" },
-		{ "OVERWORLD_TO_VOLCANO",   InteractableType::ZONE_TRANSITION, {8, 9}, "VOLCANO" },
-		{ "OVERWORLD_TO_CASTLEINSIDE",  InteractableType::ZONE_TRANSITION, {19, 8}, "CASTLEINSIDE" },
-		{ "OVERWORLD_TO_LAKE",    InteractableType::ZONE_TRANSITION, {13, 13}, "LAKE" },
+			// --- Zone Transitions ---
+			// East edge back into TOWN west gate
+			{ "OVERWORLD_TO_TOWN",      InteractableType::ZONE_TRANSITION, {29, 8}, "TOWN" },
+			{ "OVERWORLD_TO_CAVES",      InteractableType::ZONE_TRANSITION, {8, 4}, "CAVES" },
+			{ "OVERWORLD_TO_FOREST2",      InteractableType::ZONE_TRANSITION, {12, 6}, "FOREST2" },
+			{ "OVERWORLD_TO_FOREST",    InteractableType::ZONE_TRANSITION, {25, 5},  "FOREST" },
+			{ "OVERWORLD_TO_MOUNTAINS", InteractableType::ZONE_TRANSITION, {26, 2},  "MOUNTAINS" },
+			{ "OVERWORLD_TO_RUINS",     InteractableType::ZONE_TRANSITION, {4,  13}, "RUINS" },
+			{ "OVERWORLD_TO_DESERT",    InteractableType::ZONE_TRANSITION, {28, 14}, "DESERT" },
+			{ "OVERWORLD_TO_VOLCANO",   InteractableType::ZONE_TRANSITION, {8, 9}, "VOLCANO" },
+			{ "OVERWORLD_TO_CASTLEINSIDE",  InteractableType::ZONE_TRANSITION, {19, 8}, "CASTLEINSIDE" },
+			{ "OVERWORLD_TO_LAKE",    InteractableType::ZONE_TRANSITION, {13, 13}, "LAKE" },
+			{ "OVERWORLD_TO_SWAMP",    InteractableType::ZONE_TRANSITION, {2, 1}, "SWAMP" },
 
-	}
-},
-{
-	"MARKET", {
-		{ "MARKET_MERCHANT_1", InteractableType::SHOP, {10, 10}, "GENERAL_STORE_2" },
-		{ "MARKET_MERCHANT_2", InteractableType::SHOP, {15, 10}, "WEAPON_SHOP_2" },
-		{ "MARKET_MERCHANT_3", InteractableType::SHOP, {20, 10}, "ARMOR_SHOP_2" },
+		}
+	},
+	{
+		"MARKET", {
+			{ "MARKET_MERCHANT_1", InteractableType::SHOP, {10, 10}, "GENERAL_STORE_2" },
+			{ "MARKET_MERCHANT_2", InteractableType::SHOP, {15, 10}, "WEAPON_SHOP_2" },
+			{ "MARKET_MERCHANT_3", InteractableType::SHOP, {20, 10}, "ARMOR_SHOP_2" },
 
-		// --- Zone Transitions ---
-		{ "MARKET_TO_TOWN", InteractableType::ZONE_TRANSITION, {10, 21}, "TOWN" }
-	}
-},
-{
-	"FOREST", {
-		{ "FOREST_HUNTER", InteractableType::NPC, {5, 15}, "HUNTER_FOREST_DIALOGUE" },
-		/*{ "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" },*/
-		{ "OAK_TREE_FOREST", InteractableType::RESOURCE_NODE, {30, 17},   "OAK_TREE" },
-		{ "OAK_TREE_FOREST2", InteractableType::RESOURCE_NODE, {29, 15},   "OAK_TREE" },
-		{ "OAK_TREE_FOREST3", InteractableType::RESOURCE_NODE, {4, 18},   "OAK_TREE" },
-		{ "FOREST_EXPLORER", InteractableType::NPC, {14, 19}, "EXPLORER_FOREST_DIALOGUE" },
-		// --- Zone Transitions ---
-		{ "FOREST_TO_TOWN",     InteractableType::ZONE_TRANSITION, {0,  10}, "TOWN" },
-		{ "FOREST_TO_FOREST2",  InteractableType::ZONE_TRANSITION, {39, 15}, "FOREST2" },
-		{ "FOREST_TO_OVERWORLD",InteractableType::ZONE_TRANSITION, {20, 0},  "OVERWORLD" }
-	}
-},
-{
-	"FOREST2", {
+			// --- Zone Transitions ---
+			{ "MARKET_TO_TOWN", InteractableType::ZONE_TRANSITION, {10, 21}, "TOWN" }
+		}
+	},
+	{
+		"FOREST", {
+			{ "FOREST_HUNTER", InteractableType::NPC, {5, 15}, "HUNTER_FOREST_DIALOGUE" },
+			/*{ "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" },*/
+			{ "OAK_TREE_FOREST",  InteractableType::RESOURCE_NODE, {30, 17}, "OAK_TREE" },
+			{ "OAK_TREE_FOREST2", InteractableType::RESOURCE_NODE, {29, 15}, "OAK_TREE" },
+			{ "OAK_TREE_FOREST3", InteractableType::RESOURCE_NODE, {4,  18}, "OAK_TREE" },
+			{ "FOREST_EXPLORER",  InteractableType::NPC, {14, 19}, "EXPLORER_FOREST_DIALOGUE" },
+
+			// --- Zone Transitions ---
+			{ "FOREST_TO_TOWN",      InteractableType::ZONE_TRANSITION, {0,  10}, "TOWN" },
+			{ "FOREST_TO_FOREST2",   InteractableType::ZONE_TRANSITION, {39, 15}, "FOREST2" },
+			{ "FOREST_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {20, 0},  "OVERWORLD" }
+		}
+	},
+	{
+		"FOREST2", {
+		// --- Resource Nodes ---
+		{ "FOREST2_YEW_1",   InteractableType::RESOURCE_NODE, {10, 12}, "YEW_TREE" },
+		{ "FOREST2_YEW_2",   InteractableType::RESOURCE_NODE, {15, 18}, "YEW_TREE" },
+		{ "FOREST2_MAGIC_1", InteractableType::RESOURCE_NODE, {28,  6}, "MAGIC_TREE" },
+
 		// --- Zone Transitions ---
 		{ "FOREST2_TO_FOREST", InteractableType::ZONE_TRANSITION, {0,  15}, "FOREST" },
 		{ "FOREST2_TO_SWAMP",  InteractableType::ZONE_TRANSITION, {39, 10}, "SWAMP" },
@@ -5236,21 +5437,35 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "CAVE_HERMIT",       InteractableType::NPC,  {5, 5},  "HERMIT_CAVE_DIALOGUE" },
 		{ "CAVE_SHADY_DEALER", InteractableType::SHOP, {7, 5},  "SHOP_SHADY_DEALER" },
 
+		// --- Resource Nodes ---
+		{ "CAVE_IRON_1",       InteractableType::RESOURCE_NODE, {12, 10}, "IRON_VEIN" },
+		{ "CAVE_MITHRIL_1",    InteractableType::RESOURCE_NODE, {25,  8}, "MITHRIL_VEIN" },
+
 		// --- Zone Transitions ---
 		{ "CAVES_TO_TOWN", InteractableType::ZONE_TRANSITION, {20, 21}, "TOWN" }
 	}
 },
 {
 	"RUINS", {
-		{ "RUINS_ARCHAEOLOGIST", InteractableType::NPC, {3, 3}, "ARCHAEOLOGIST_RUINS_DIALOGUE" },
-		{ "CAVE_COPPER_1", InteractableType::RESOURCE_NODE, {6, 17},   "COPPER_VEIN" },
+		{ "RUINS_ARCHAEOLOGIST", InteractableType::NPC,          {3,  3},  "ARCHAEOLOGIST_RUINS_DIALOGUE" },
+		{ "CAVE_COPPER_1",       InteractableType::RESOURCE_NODE, {6, 17}, "COPPER_VEIN" },
+
+		// --- Resource Nodes ---
+		{ "RUINS_IRON_1",        InteractableType::RESOURCE_NODE, {10, 14}, "IRON_VEIN" },
+		{ "RUINS_MITHRIL_1",     InteractableType::RESOURCE_NODE, {25,  6}, "MITHRIL_VEIN" },
+
 		// --- Zone Transitions ---
-		{ "RUINS_TO_FOREST2",  InteractableType::ZONE_TRANSITION, {20, 21}, "FOREST2" },
-		{ "RUINS_TO_OVERWORLD",InteractableType::ZONE_TRANSITION, {0,  10}, "OVERWORLD" }
+		{ "RUINS_TO_FOREST2",   InteractableType::ZONE_TRANSITION, {20, 21}, "FOREST2" },
+		{ "RUINS_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0,  10}, "OVERWORLD" }
 	}
 },
 {
 	"VOLCANO", {
+		// --- Resource Nodes ---
+		{ "VOLCANO_ORICHALCUM_1", InteractableType::RESOURCE_NODE, {10, 12}, "ORICHALCUM_VEIN" },
+		{ "VOLCANO_RUNITE_1",     InteractableType::RESOURCE_NODE, {7,  4}, "RUNITE_VEIN" },
+		{ "VOLCANO_NEBULITE_1",   InteractableType::RESOURCE_NODE, {25, 16}, "NEBULITE_VEIN" },
+
 		// --- Zone Transitions ---
 		{ "VOLCANO_TO_DESERT",    InteractableType::ZONE_TRANSITION, {0,  10}, "DESERT" },
 		{ "VOLCANO_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {20, 21}, "OVERWORLD" }
@@ -5258,6 +5473,11 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 },
 {
 	"DESERT", {
+		// --- Resource Nodes ---
+		{ "DESERT_MITHRIL_1",    InteractableType::RESOURCE_NODE, { 8, 14}, "MITHRIL_VEIN" },
+		{ "DESERT_ADAMANT_1",    InteractableType::RESOURCE_NODE, {20,  6}, "ADAMANT_VEIN" },
+		{ "DESERT_ORICHALCUM_1", InteractableType::RESOURCE_NODE, {30, 16}, "ORICHALCUM_VEIN" },
+
 		// --- Zone Transitions ---
 		{ "DESERT_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0,  10}, "OVERWORLD" },
 		{ "DESERT_TO_VOLCANO",   InteractableType::ZONE_TRANSITION, {39, 10}, "VOLCANO" }
@@ -5266,26 +5486,46 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 {
 	"SWAMP", {
 		// --- NPC ---
-	 {"WITCH_SWAMP_DIALOGUE", InteractableType::NPC, {12, 10}, "WITCH_DIALOGUE" },
-	 // --- Zone Transitions ---
-	 { "SWAMP_TO_FOREST2", InteractableType::ZONE_TRANSITION, {0, 10}, "FOREST2" }
- }
+		{ "WITCH_SWAMP", InteractableType::NPC, {12, 10}, "WITCH_DIALOGUE" },
+
+		// --- Resource Nodes ---
+		{ "SWAMP_REDWOOD_1", InteractableType::RESOURCE_NODE, { 6, 14}, "REDWOOD_TREE" },
+		{ "SWAMP_ELDER_1",   InteractableType::RESOURCE_NODE, {16,  6}, "ELDER_TREE" },
+		{ "SWAMP_ANGLER_1",  InteractableType::RESOURCE_NODE, {24, 12}, "ANGLER_SPOT" },
+
+		// --- Zone Transitions ---
+		{ "SWAMP_TO_FOREST2", InteractableType::ZONE_TRANSITION, {0, 10}, "FOREST2" }
+	}
 },
 {
 	"MOUNTAINS", {
+		// --- Resource Nodes ---
+		{ "MOUNTAINS_IRON_1",    InteractableType::RESOURCE_NODE, { 5,  4}, "IRON_VEIN" },
+		{ "MOUNTAINS_MITHRIL_1", InteractableType::RESOURCE_NODE, {22,  5}, "MITHRIL_VEIN" },
+		{ "MOUNTAINS_ADAMANT_1", InteractableType::RESOURCE_NODE, {30,  9}, "ADAMANT_VEIN" },
+		{ "MOUNTAINS_RUNITE_1",  InteractableType::RESOURCE_NODE, {18, 17}, "RUNITE_VEIN" },
+
+		// --- Existing Copper Nodes ---
+		{ "CAVE_COPPER_2", InteractableType::RESOURCE_NODE, {12,  8}, "COPPER_VEIN" },
+		{ "CAVE_COPPER_3", InteractableType::RESOURCE_NODE, {27, 11}, "COPPER_VEIN" },
+		{ "CAVE_COPPER_4", InteractableType::RESOURCE_NODE, {14, 15}, "COPPER_VEIN" },
+
 		// --- Zone Transitions ---
-		{ "MOUNTAINS_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {20, 21}, "OVERWORLD" },
-		{ "CAVE_COPPER_2", InteractableType::RESOURCE_NODE, {12, 8},   "COPPER_VEIN" },
-		{ "CAVE_COPPER_3", InteractableType::RESOURCE_NODE, {27, 11},   "COPPER_VEIN" },
-		{ "CAVE_COPPER_4", InteractableType::RESOURCE_NODE, {14, 15},   "COPPER_VEIN" },
+		{ "MOUNTAINS_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {20, 21}, "OVERWORLD" }
 	}
 },
 {
 	"LAKE", {
-		// --- Zone Transitions ---
-		{ "LAKE_FISH_1", InteractableType::RESOURCE_NODE, {10, 14}, "FISHING_SPOT" },
-		{ "LAKE_FISH_2", InteractableType::RESOURCE_NODE, {19, 12}, "FISHING_SPOT" }
+		// --- Resource Nodes (Fishing) ---
+		{ "LAKE_FISH_1",      InteractableType::RESOURCE_NODE, {10, 14}, "FISHING_SPOT" },
+		{ "LAKE_TROUT_1",     InteractableType::RESOURCE_NODE, { 19, 12}, "TROUT_SPOT" },
+		{ "LAKE_SHARK_1",     InteractableType::RESOURCE_NODE, {22, 7}, "SHARK_SPOT" },
+		{ "LAKE_ANGLER_1",    InteractableType::RESOURCE_NODE, {20,  4}, "ANGLER_SPOT" },
+		//{ "LAKE_LEVIATHAN_1", InteractableType::RESOURCE_NODE, {32, 12}, "LEVIATHAN_SPOT" },
+		//{ "LAKE_SQUID_1",     InteractableType::RESOURCE_NODE, {14,  6}, "SQUID_SPOT" },
+		//{ "LAKE_DEEP_SEA_1",  InteractableType::RESOURCE_NODE, {20,  4}, "DEEP_SEA_SPOT" }
 	}
+
 },
 };
 
@@ -5564,24 +5804,24 @@ int calculateItemSellPrice(const ItemInstance& instance, const ItemDefinition& d
 		sellPricePerItem = 75 + (def.item_tier - 10) * 15;
 	}
 
-	if (!def.stackable) { // Only apply bonus to non-stackable items (equipment/uniques)
-		// Check if item instance has special customization
-		bool hasSpecialEffects = !instance.customEffects.empty() || !instance.customStats.empty();
+	//if (!def.stackable) { // Only apply bonus to non-stackable items (equipment/uniques)
+	//	// Check if item instance has special customization
+	//	bool hasSpecialEffects = !instance.customEffects.empty() || !instance.customStats.empty();
 
-		// Check the definition's stats as well, for base non-junk gear
-		if (!hasSpecialEffects) {
-			for (const auto& statPair : def.stats) {
-				if (statPair.second != 0) {
-					hasSpecialEffects = true;
-					break;
-				}
-			}
-		}
+	//	// Check the definition's stats as well, for base non-junk gear
+	//	if (!hasSpecialEffects) {
+	//		for (const auto& statPair : def.stats) {
+	//			if (statPair.second != 0) {
+	//				hasSpecialEffects = true;
+	//				break;
+	//			}
+	//		}
+	//	}
 
-		if (hasSpecialEffects) {
-			sellPricePerItem += 7; // Add bonus for special effects/stats
-		}
-	}
+	//	if (hasSpecialEffects) {
+	//		sellPricePerItem += 7; // Add bonus for special effects/stats
+	//	}
+	//}
 
 	// Ensure minimum price is 1
 	sellPricePerItem = std::max(1, sellPricePerItem);

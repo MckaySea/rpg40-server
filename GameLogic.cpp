@@ -983,9 +983,10 @@ void AsyncSession::useItem(uint64_t itemInstanceId) {
 
 	bool itemUsed = false;
 	string effectMsg = "";
+	PlayerStats finalStats = getCalculatedStats(); // Get stats *once*
 
+	// --- Potion Logic ---
 	if (instance.itemId == "SMALL_HEALTH_POTION") {
-		PlayerStats finalStats = getCalculatedStats();
 		int healAmount = 50;
 		if (player.stats.health < finalStats.maxHealth) {
 			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
@@ -997,8 +998,7 @@ void AsyncSession::useItem(uint64_t itemInstanceId) {
 		}
 	}
 	else if (instance.itemId == "LARGE_HEALTH_POTION") {
-		PlayerStats finalStats = getCalculatedStats();
-		int healAmount = 250;
+		int healAmount = 250; // <-- This is the potion value
 		if (player.stats.health < finalStats.maxHealth) {
 			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
 			itemUsed = true;
@@ -1009,7 +1009,6 @@ void AsyncSession::useItem(uint64_t itemInstanceId) {
 		}
 	}
 	else if (instance.itemId == "SMALL_MANA_POTION") {
-		PlayerStats finalStats = getCalculatedStats();
 		int manaAmount = 50;
 		if (player.stats.mana < finalStats.maxMana) {
 			player.stats.mana = min(finalStats.maxMana, player.stats.mana + manaAmount);
@@ -1020,6 +1019,132 @@ void AsyncSession::useItem(uint64_t itemInstanceId) {
 			effectMsg = "Your mana is already full.";
 		}
 	}
+
+	// --- UPDATED FOOD LOGIC ---
+	else if (instance.itemId == "COOKED_FISH") {
+		int healAmount = 15; // <-- New Value
+		if (player.stats.health < finalStats.maxHealth) {
+			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
+			itemUsed = true;
+			effectMsg = "You eat the Cooked Fish and restore " + to_string(healAmount) + " health.";
+		}
+		else {
+			effectMsg = "Your health is already full.";
+		}
+	}
+	else if (instance.itemId == "COOKED_TROUT") {
+		int healAmount = 40; // <-- New Value
+		if (player.stats.health < finalStats.maxHealth) {
+			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
+			itemUsed = true;
+			effectMsg = "You eat the Cooked Trout and restore " + to_string(healAmount) + " health.";
+		}
+		else {
+			effectMsg = "Your health is already full.";
+		}
+	}
+	else if (instance.itemId == "COOKED_SHARK") {
+		int healAmount = 80; // <-- New Value
+		if (player.stats.health < finalStats.maxHealth) {
+			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
+			itemUsed = true;
+			effectMsg = "You eat the Cooked Shark and restore " + to_string(healAmount) + " health.";
+		}
+		else {
+			effectMsg = "Your health is already full.";
+		}
+	}
+	else if (instance.itemId == "COOKED_ANGLER") {
+		int healAmount = 150; // <-- New Value
+		if (player.stats.health < finalStats.maxHealth) {
+			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
+			itemUsed = true;
+			effectMsg = "You eat the Cooked Anglerfish and restore " + to_string(healAmount) + " health.";
+		}
+		else {
+			effectMsg = "Your health is already full.";
+		}
+	}
+	else if (instance.itemId == "COOKED_LEVIATHAN") {
+		int healAmount = 220; // <-- New Value
+		if (player.stats.health < finalStats.maxHealth) {
+			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
+			itemUsed = true;
+			effectMsg = "You eat the Cooked Leviathan and restore " + to_string(healAmount) + " health.";
+		}
+		else {
+			effectMsg = "Your health is already full.";
+		}
+	}
+	else if (instance.itemId == "FISH_STEW") {
+		int healAmount = 30; // <-- New Value
+		if (player.stats.health < finalStats.maxHealth) {
+			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
+			itemUsed = true;
+			effectMsg = "You eat the Fish Stew and restore " + to_string(healAmount) + " health.";
+		}
+		else {
+			effectMsg = "Your health is already full.";
+		}
+	}
+	else if (instance.itemId == "SAVORY_TROUT") {
+		int healAmount = 70; // <-- New Value
+		if (player.stats.health < finalStats.maxHealth) {
+			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
+			itemUsed = true;
+			effectMsg = "You eat the Savory Trout and restore " + to_string(healAmount) + " health.";
+		}
+		else {
+			effectMsg = "Your health is already full.";
+		}
+	}
+	else if (instance.itemId == "SHARK_FEAST") {
+		int healAmount = 120; // <-- New Value
+		if (player.stats.health < finalStats.maxHealth) {
+			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
+			itemUsed = true;
+			effectMsg = "You eat the Shark Feast and restore " + to_string(healAmount) + " health.";
+		}
+		else {
+			effectMsg = "Your health is already full.";
+		}
+	}
+	else if (instance.itemId == "DEEP_SEA_FEAST") {
+		int healAmount = 300; // <-- New Value
+		if (player.stats.health < finalStats.maxHealth) {
+			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
+			itemUsed = true;
+			effectMsg = "You eat the Deep Sea Feast and restore " + to_string(healAmount) + " health.";
+		}
+		else {
+			effectMsg = "Your health is already full.";
+		}
+	}
+	else if (instance.itemId == "ABYSSAL_PLATTER") {
+		int healAmount = 500; // <-- New Value
+		int manaAmount = 200; // <-- New Value
+		bool healed = false;
+		bool manaed = false;
+
+		if (player.stats.health < finalStats.maxHealth) {
+			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
+			healed = true;
+		}
+		if (player.stats.mana < finalStats.maxMana) {
+			player.stats.mana = min(finalStats.maxMana, player.stats.mana + manaAmount);
+			manaed = true;
+		}
+
+		if (healed || manaed) {
+			itemUsed = true;
+			effectMsg = "You consume the Abyssal Platter. You restore " + to_string(healAmount) + " health and " + to_string(manaAmount) + " mana.";
+		}
+		else {
+			effectMsg = "Your health and mana are already full.";
+		}
+	}
+	// --- END UPDATED FOOD LOGIC ---
+
 	else {
 		effectMsg = "That item has no use.";
 	}
@@ -1035,7 +1160,6 @@ void AsyncSession::useItem(uint64_t itemInstanceId) {
 		send_player_stats();
 	}
 }
-
 void AsyncSession::dropItem(uint64_t itemInstanceId, int quantity) {
 	PlayerState& player = getPlayerState();
 	auto& ws = getWebSocket();
