@@ -1030,13 +1030,376 @@ void initialize_skill_definitions() {
 		true                        // autoGranted for warriors
 	};
 }
+std::unordered_map<std::string, SkillDefinition> g_monster_spell_defs;
+void initialize_monster_spell_definitions() {
+	g_monster_spell_defs.clear();
+
+	// ====================================================================
+	// 01-10: BASE/UTILITY/CORE ELEMENTAL SPELLS
+	// ====================================================================
+
+	// 01. SHADOW_BOLT – Basic magic attack (Pure INT scaling)
+	g_monster_spell_defs["SHADOW_BOLT"] = SkillDefinition{
+		"Shadow Bolt", SkillClass::ANY, SkillType::SPELL, 0, 0, SkillTarget::ENEMY,
+		0.0f, 0.0f, 1.2f, 10.0f, false, StatusType::NONE, 0, 0, false, true, false
+	};
+
+	// 02. VILE_PLAGUE – Damage + Bleed DoT
+	g_monster_spell_defs["VILE_PLAGUE"] = SkillDefinition{
+		"Vile Plague", SkillClass::ANY, SkillType::SPELL, 0, 2, SkillTarget::ENEMY,
+		0.0f, 0.0f, 0.8f, 5.0f,
+		true, StatusType::BLEED, 5, 2, false, true, false
+	};
+
+	// 03. REGENERATE – Self-Heal (INT-based healing)
+	g_monster_spell_defs["REGENERATE"] = SkillDefinition{
+		"Regenerate", SkillClass::ANY, SkillType::SPELL, 0, 3, SkillTarget::SELF,
+		0.0f, 0.0f, -0.6f, -30.0f,
+		false, StatusType::NONE, 0, 0, true, true, false
+	};
+
+	// 04. CRUSHING_BLOW – Heavy Physical attack (Heavy STR scaling)
+	g_monster_spell_defs["CRUSHING_BLOW"] = SkillDefinition{
+		"Crushing Blow", SkillClass::ANY, SkillType::ABILITY, 0, 1, SkillTarget::ENEMY,
+		1.8f, 0.0f, 0.0f, 15.0f,
+		false, StatusType::NONE, 0, 0, false, false, false
+	};
+
+	// 05. LAVA_BURST – INT damage + strong Burn DoT
+	g_monster_spell_defs["LAVA_BURST"] = SkillDefinition{
+		"Lava Burst", SkillClass::ANY, SkillType::SPELL, 0, 2, SkillTarget::ENEMY,
+		0.0f, 0.0f, 1.5f, 20.0f,
+		true, StatusType::BURN, 8, 3, false, true, false
+	};
+
+	// 06. FREEZING_TOUCH – Damage + Speed debuff
+	g_monster_spell_defs["FREEZING_TOUCH"] = SkillDefinition{
+		"Freezing Touch", SkillClass::ANY, SkillType::SPELL, 0, 1, SkillTarget::ENEMY,
+		0.0f, 0.2f, 1.0f, 10.0f,
+		true, StatusType::SPEED_DOWN, 5, 2, false, true, false // Magnitude is Speed loss
+	};
+
+	// 07. VENOM_SPIT – Low magic damage + high Bleed DoT (Poison flavor)
+	g_monster_spell_defs["VENOM_SPIT"] = SkillDefinition{
+		"Venom Spit", SkillClass::ANY, SkillType::SPELL, 0, 2, SkillTarget::ENEMY,
+		0.0f, 0.0f, 0.7f, 3.0f,
+		true, StatusType::BLEED, 12, 3, false, true, false
+	};
+
+	// 08. TAUNT – Self-Defense buff
+	g_monster_spell_defs["TAUNT"] = SkillDefinition{
+		"Taunt", SkillClass::ANY, SkillType::ABILITY, 0, 2, SkillTarget::SELF,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		true, StatusType::DEFENSE_UP, 15, 2, true, false, false
+	};
+
+	// 09. CRIPPLING_STRIKE – Strong DEX damage + Defense debuff
+	g_monster_spell_defs["CRIPPLING_STRIKE"] = SkillDefinition{
+		"Crippling Strike", SkillClass::ANY, SkillType::ABILITY, 0, 2, SkillTarget::ENEMY,
+		0.5f, 1.5f, 0.0f, 15.0f,
+		true, StatusType::DEFENSE_DOWN, 5, 2, false, false, false
+	};
+
+	// 10. WAR_CRY – Self-buff to STR (Attack Up)
+	g_monster_spell_defs["WAR_CRY"] = SkillDefinition{
+		"War Cry", SkillClass::ANY, SkillType::ABILITY, 0, 3, SkillTarget::SELF,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		true, StatusType::ATTACK_UP, 10, 3, true, false, false
+	};
+
+	// ====================================================================
+	// 11-20: PHYSICAL/MELEE ABILITIES & DEBUFFS
+	// ====================================================================
+
+	// 11. SUNDER_ARMOR (BRUTES) – Heavy STR damage + strong DEFENSE_DOWN
+	g_monster_spell_defs["SUNDER_ARMOR"] = SkillDefinition{
+		"Sunder Armor", SkillClass::ANY, SkillType::ABILITY, 0, 3, SkillTarget::ENEMY,
+		1.5f, 0.0f, 0.0f, 20.0f,
+		true, StatusType::DEFENSE_DOWN, 15, 2, false, false, false
+	};
+
+	// 12. PREDATORY_STRIKE (WOLVES) – DEX/SPD focused attack
+	g_monster_spell_defs["PREDATORY_STRIKE"] = SkillDefinition{
+		"Predatory Strike", SkillClass::ANY, SkillType::ABILITY, 0, 1, SkillTarget::ENEMY,
+		0.5f, 1.3f, 0.0f, 5.0f,
+		false, StatusType::NONE, 0, 0, false, false, false
+	};
+
+	// 13. WING_FLAP (HARPY) – Low damage, pushes back/SPD down
+	g_monster_spell_defs["WING_FLAP"] = SkillDefinition{
+		"Wing Flap", SkillClass::ANY, SkillType::ABILITY, 0, 1, SkillTarget::ENEMY,
+		0.0f, 0.5f, 0.0f, 3.0f,
+		true, StatusType::SPEED_DOWN, 8, 1, false, false, false
+	};
+
+	// 14. SAND_BLIND (DESERT/HARPY) – Low magic damage + DEX/Accuracy debuff
+	g_monster_spell_defs["SAND_BLIND"] = SkillDefinition{
+		"Sand Blind", SkillClass::ANY, SkillType::SPELL, 0, 1, SkillTarget::ENEMY,
+		0.0f, 0.0f, 0.5f, 5.0f,
+		true, StatusType::SPEED_DOWN, 5, 2, // Reusing SPEED_DOWN for DEX/Accuracy debuff flavor
+		false, true, false
+	};
+
+	// 15. WHIRLWIND (MINOTAUR) – STR/DEX mix attack
+	g_monster_spell_defs["WHIRLWIND"] = SkillDefinition{
+		"Whirlwind", SkillClass::ANY, SkillType::ABILITY, 0, 2, SkillTarget::ENEMY,
+		1.0f, 1.0f, 0.0f, 10.0f,
+		false, StatusType::NONE, 0, 0, false, false, false
+	};
+
+	// 16. BONE_SHIELD (SKELETON) – Self-Defense buff
+	g_monster_spell_defs["BONE_SHIELD"] = SkillDefinition{
+		"Bone Shield", SkillClass::ANY, SkillType::ABILITY, 0, 2, SkillTarget::SELF,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		true, StatusType::DEFENSE_UP, 20, 2, true, false, false
+	};
+
+	// 17. HEAVY_STOMP (GOLEM/OGRE) – Heavy damage, always crits (high flat damage, low scaling)
+	g_monster_spell_defs["HEAVY_STOMP"] = SkillDefinition{
+		"Heavy Stomp", SkillClass::ANY, SkillType::ABILITY, 0, 3, SkillTarget::ENEMY,
+		0.5f, 0.0f, 0.0f, 50.0f, // High fixed damage simulates always hitting hard
+		false, StatusType::NONE, 0, 0, false, false, false
+	};
+
+	// 18. GORE (BOAR/MINOTAUR) – STR attack + Bleed DoT
+	g_monster_spell_defs["GORE"] = SkillDefinition{
+		"Gore", SkillClass::ANY, SkillType::ABILITY, 0, 2, SkillTarget::ENEMY,
+		1.5f, 0.0f, 0.0f, 10.0f,
+		true, StatusType::BLEED, 8, 2, false, false, false
+	};
+
+	// 19. SHADOW_SNEAK (VOID_STALKER) – Self-DEX/Speed buff
+	g_monster_spell_defs["SHADOW_SNEAK"] = SkillDefinition{
+		"Shadow Sneak", SkillClass::ANY, SkillType::ABILITY, 0, 2, SkillTarget::SELF,
+		0.2f, 0.8f, 0.0f, 5.0f,
+		true, StatusType::SPEED_UP, 10, 2, true, false, false
+	};
+
+	// 20. BERSERK (BERSERKER/OGRE) – Massive STR buff, DEFENSE_DOWN debuff (Self)
+	g_monster_spell_defs["BERSERK"] = SkillDefinition{
+		"Berserk", SkillClass::ANY, SkillType::ABILITY, 0, 4, SkillTarget::SELF,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		true, StatusType::ATTACK_UP, 25, 3, // +25 STR
+		true, false, false // Note: Needs special combat logic to apply DEFENSE_DOWN alongside ATTACK_UP
+	};
+
+	// ====================================================================
+	// 21-30: HIGH TIER MAGICAL ATTACKS & CONTROLS
+	// ====================================================================
+
+	// 21. ICE_LANCE (FROST_GIANT) – High INT damage
+	g_monster_spell_defs["ICE_LANCE"] = SkillDefinition{
+		"Ice Lance", SkillClass::ANY, SkillType::SPELL, 0, 1, SkillTarget::ENEMY,
+		0.0f, 0.0f, 1.7f, 15.0f,
+		false, StatusType::NONE, 0, 0, false, true, false
+	};
+
+	// 22. VOID_BLAST (VOID_STALKER) – High INT damage
+	g_monster_spell_defs["VOID_BLAST"] = SkillDefinition{
+		"Void Blast", SkillClass::ANY, SkillType::SPELL, 0, 0, SkillTarget::ENEMY,
+		0.0f, 0.0f, 1.8f, 30.0f,
+		false, StatusType::NONE, 0, 0, false, true, false
+	};
+
+	// 23. LIFE_SIPHON (ABYSSAL_HORROR) – Damage + monster self-heals
+	g_monster_spell_defs["LIFE_SIPHON"] = SkillDefinition{
+		"Life Siphon", SkillClass::ANY, SkillType::SPELL, 0, 2, SkillTarget::ENEMY,
+		0.0f, 0.0f, 1.2f, 25.0f,
+		false, StatusType::NONE, 0, 0, false, true, false
+	};
+
+	// 24. SOUL_DRAIN (LICH_KING) – Damage + monster self-heals (Slightly stronger)
+	g_monster_spell_defs["SOUL_DRAIN"] = SkillDefinition{
+		"Soul Drain", SkillClass::ANY, SkillType::SPELL, 0, 3, SkillTarget::ENEMY,
+		0.0f, 0.0f, 1.3f, 20.0f,
+		false, StatusType::NONE, 0, 0, false, true, false
+	};
+
+	// 25. THUNDER_CLAP (STORM_TITAN) – Heavy Physical/Magic mix damage
+	g_monster_spell_defs["THUNDER_CLAP"] = SkillDefinition{
+		"Thunder Clap", SkillClass::ANY, SkillType::ABILITY, 0, 2, SkillTarget::ENEMY,
+		0.8f, 0.0f, 0.8f, 25.0f,
+		true, StatusType::STUN, 0, 1, false, false, false // Short Stun chance required in combat logic
+	};
+
+	// 26. CURSE_OF_WEAKNESS (NECRO) – Magic damage + STR/DEX debuff
+	g_monster_spell_defs["CURSE_OF_WEAKNESS"] = SkillDefinition{
+		"Curse of Weakness", SkillClass::ANY, SkillType::SPELL, 0, 3, SkillTarget::ENEMY,
+		0.0f, 0.0f, 0.7f, 10.0f,
+		true, StatusType::ATTACK_DOWN, 10, 2, // -10 STR/DEX (Magnitude is Attack loss)
+		false, true, false
+	};
+
+	// 27. HELLFIRE (ARCH_DEMON) – Area damage (INT) + massive Burn DoT
+	g_monster_spell_defs["HELLFIRE"] = SkillDefinition{
+		"Hellfire", SkillClass::ANY, SkillType::SPELL, 0, 4, SkillTarget::ENEMY,
+		0.0f, 0.0f, 2.0f, 50.0f,
+		true, StatusType::BURN, 20, 3, // Very heavy burn
+		false, true, false
+	};
+
+	// 28. DRAGON_FIRE (WYVERN) – High INT damage + heavy Burn DoT
+	g_monster_spell_defs["DRAGON_FIRE"] = SkillDefinition{
+		"Dragon Fire", SkillClass::ANY, SkillType::SPELL, 0, 2, SkillTarget::ENEMY,
+		0.0f, 0.0f, 1.6f, 40.0f,
+		true, StatusType::BURN, 15, 3,
+		false, true, false
+	};
+
+	// 29. ENERGIZE (DRUID) – Self Max Mana/Mana Regen buff
+	g_monster_spell_defs["ENERGIZE"] = SkillDefinition{
+		"Energize", SkillClass::ANY, SkillType::SPELL, 0, 3, SkillTarget::SELF,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		true, StatusType::MANA_UP, 50, 3, // Placeholder for Mana Regen/Max Mana
+		true, true, false
+	};
+
+	// 30. DEEP_FREEZE (FROST_GIANT) – INT Damage + chance for STUN
+	g_monster_spell_defs["DEEP_FREEZE"] = SkillDefinition{
+		"Deep Freeze", SkillClass::ANY, SkillType::SPELL, 0, 3, SkillTarget::ENEMY,
+		0.0f, 0.0f, 1.4f, 25.0f,
+		true, StatusType::STUN, 0, 1, // Short Stun chance required in combat logic
+		false, true, false
+	};
+
+	// ====================================================================
+	// 31-40: STATUS & CROWD CONTROL (Unique effects)
+	// ====================================================================
+
+	// 31. STICKY_SLIME (SLIME) – Low damage, applies a strong Speed Down
+	g_monster_spell_defs["STICKY_SLIME"] = SkillDefinition{
+		"Sticky Slime", SkillClass::ANY, SkillType::SPELL, 0, 1, SkillTarget::ENEMY,
+		0.0f, 0.0f, 0.5f, 5.0f,
+		true, StatusType::SPEED_DOWN, 10, 2, // -10 Speed
+		false, true, false
+	};
+
+	// 32. WEB_SHOT (SPIDER) – DEX damage + paralyzing Speed Down
+	g_monster_spell_defs["WEB_SHOT"] = SkillDefinition{
+		"Web Shot", SkillClass::ANY, SkillType::ABILITY, 0, 2, SkillTarget::ENEMY,
+		0.2f, 1.0f, 0.0f, 5.0f,
+		true, StatusType::SPEED_DOWN, 15, 2, // -15 Speed
+		false, false, false
+	};
+
+	// 33. BLOOD_LEECH (BLOOD_KNIGHT) – STR damage + monster self-heals (Slightly weaker LIFESTEAL)
+	g_monster_spell_defs["BLOOD_LEECH"] = SkillDefinition{
+		"Blood Leech", SkillClass::ANY, SkillType::ABILITY, 0, 2, SkillTarget::ENEMY,
+		1.2f, 0.0f, 0.0f, 15.0f,
+		false, StatusType::NONE, 0, 0, false, false, false
+	};
+
+	// 34. EARTHQUAKE (TITAN) – Heavy STR/DEFENSE damage, no scaling
+	g_monster_spell_defs["EARTHQUAKE"] = SkillDefinition{
+		"Earthquake", SkillClass::ANY, SkillType::ABILITY, 0, 4, SkillTarget::ENEMY,
+		1.0f, 0.0f, 0.0f, 60.0f,
+		false, StatusType::NONE, 0, 0, false, false, false
+	};
+
+	// 35. ARMOR_SHRED (CRAB/MINOTAUR) – Physical attack + strong DEFENSE_DOWN debuff
+	g_monster_spell_defs["ARMOR_SHRED"] = SkillDefinition{
+		"Armor Shred", SkillClass::ANY, SkillType::ABILITY, 0, 3, SkillTarget::ENEMY,
+		1.4f, 0.0f, 0.0f, 10.0f,
+		true, StatusType::DEFENSE_DOWN, 20, 2, // -20 Defense for 2 turns
+		false, false, false
+	};
+
+	// 36. MIND_FLAY (WIZARDS) – INT damage, minor INT debuff
+	g_monster_spell_defs["MIND_FLAY"] = SkillDefinition{
+		"Mind Flay", SkillClass::ANY, SkillType::SPELL, 0, 1, SkillTarget::ENEMY,
+		0.0f, 0.0f, 1.1f, 10.0f,
+		true, StatusType::MANA_DOWN, 5, 2, // Placeholder for INT down/Mana debuff
+		false, true, false
+	};
+
+	// 37. SUMMON_MINION (LICH_KING) – Non-combat skill, utility focus
+	g_monster_spell_defs["SUMMON_MINION"] = SkillDefinition{
+		"Summon Minion", SkillClass::ANY, SkillType::SPELL, 0, 4, SkillTarget::SELF,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		false, StatusType::NONE, 0, 0, true, true, false
+	};
+
+	// 38. ENRAGE (BOSS) – High Self-Attack/Speed buff, DEFENSE_DOWN
+	g_monster_spell_defs["ENRAGE"] = SkillDefinition{
+		"Enrage", SkillClass::ANY, SkillType::ABILITY, 0, 5, SkillTarget::SELF,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		true, StatusType::ATTACK_UP, 30, 4, // +30 Attack for 4 turns
+		true, false, false // Note: Needs multi-status logic (ATK_UP/DEF_DOWN) in handler
+	};
+
+	// 39. TERRIFY (VOID_STALKER) – No damage, but guarantees a STUN on failure to flee
+	g_monster_spell_defs["TERRIFY"] = SkillDefinition{
+		"Terrify", SkillClass::ANY, SkillType::SPELL, 0, 3, SkillTarget::ENEMY,
+		0.0f, 0.0f, 0.0f, 0.0f,
+		true, StatusType::STUN, 0, 1,
+		false, true, false // Requires combat logic to force a flee check/stun
+	};
+
+	// 40. SACRIFICIAL_BITE (HELLHOUND) – Damage + applies Burn to both self and player
+	g_monster_spell_defs["SACRIFICIAL_BITE"] = SkillDefinition{
+		"Sacrificial Bite", SkillClass::ANY, SkillType::ABILITY, 0, 2, SkillTarget::ENEMY,
+		1.5f, 0.0f, 0.0f, 20.0f,
+		true, StatusType::BURN, 5, 2, // Applies burn to player. Needs handler to apply burn to self.
+		false, false, false
+	};
+}
+
+// Maps monster type to the list of skill IDs they can use.
+const std::map<std::string, std::vector<std::string>> MONSTER_SKILL_LISTS = {
+	// Tier 0-1
+	{"SLIME", {"STICKY_SLIME"}},
+	{"GIANT_RAT", {"VENOM_SPIT"}},
+	{"GOBLIN_PEON", {"CRUSHING_BLOW"}},
+	{"WOLF", {"PREDATORY_STRIKE"}},
+	{"CAVE_CRAB", {"ARMOR_SHRED"}},
+
+	// Tier 2
+	{"SKELETON", {"BONE_SHIELD", "SHADOW_BOLT"}},
+	{"GIANT_SPIDER", {"WEB_SHOT", "VENOM_SPIT"}},
+	{"ORC_SCOUT", {"PREDATORY_STRIKE", "WAR_CRY"}},
+	{"KOBOLD", {"CRUSHING_BLOW"}},
+	{"SWAMP_THING", {"VILE_PLAGUE", "REGENERATE"}},
+	{"FOREST_SPRITE", {"REGENERATE", "STICKY_SLIME"}},
+
+	// Tier 3
+	{"GOBLIN_SHAMAN", {"SHADOW_BOLT", "VILE_PLAGUE", "MIND_FLAY"}},
+	{"DARK_WIZARD", {"SHADOW_BOLT", "MIND_FLAY"}},
+	{"UNDEAD_GUARD", {"BONE_SHIELD", "CRUSHING_BLOW"}},
+	{"GIANT_SCORPION", {"ARMOR_SHRED", "VENOM_SPIT"}},
+	{"HARPY", {"WING_FLAP", "SAND_BLIND"}},
+	{"TREANT", {"REGENERATE", "TAUNT"}},
+	{"BANDIT_ROGUE", {"CRIPPLING_STRIKE", "SHADOW_SNEAK"}},
+
+	// Tier 4
+	{"ORC_BRUTE", {"CRUSHING_BLOW", "SUNDER_ARMOR"}},
+	{"OGRE_WARRIOR", {"HEAVY_STOMP", "WAR_CRY"}},
+	{"ROCK_GOLEM", {"HEAVY_STOMP", "TAUNT"}},
+	{"LAVA_ELEMENTAL", {"LAVA_BURST", "REGENERATE"}},
+	{"GRIFFIN", {"WING_FLAP", "WHIRLWIND"}},
+	{"MINOTAUR", {"GORE", "ARMOR_SHRED"}},
+	{"NECROMANCER", {"SHADOW_BOLT", "CURSE_OF_WEAKNESS", "VILE_PLAGUE"}},
+	{"WYVERN", {"DRAGON_FIRE", "CRUSHING_BLOW"}},
+
+	// Tier 5/Boss
+	{"HELLHOUND_ALPHA", {"SACRIFICIAL_BITE", "BERSERK"}},
+	{"FROST_GIANT", {"ICE_LANCE", "DEEP_FREEZE"}},
+	{"BLOOD_KNIGHT", {"BLOOD_LEECH", "SUNDER_ARMOR"}},
+	{"VOID_STALKER", {"SHADOW_SNEAK", "VOID_BLAST", "TERRIFY"}},
+	{"STORM_TITAN", {"LIGHTNING_STRIKE", "THUNDER_CLAP", "EARTHQUAKE"}},
+
+	// Endgame Bosses
+	{"ABYSSAL_HORROR", {"LIFE_SIPHON", "VOID_BLAST", "ARMOR_SHRED"}},
+	{"ARCH_DEMON", {"HELLFIRE", "CURSE_OF_WEAKNESS", "WAR_CRY"}},
+	{"LICH_KING", {"VOID_BLAST", "SOUL_DRAIN", "SUMMON_MINION"}},
+	{"ANCIENT_DRAGON", {"DRAGON_FIRE", "EARTHQUAKE", "REGENERATE"}},
+};
 const std::unordered_map<std::string, SpawnPoint>& get_area_spawns()
 {
 	static const std::unordered_map<std::string, SpawnPoint> area_spawns{
 {"TOWN",         {18, 12}},
 {"FOREST",       {17, 2}},
 {"VOLCANO",      {4, 12}},
-{"OVERWORLD",    {16, 19}},
+{"OVERWORLD",    {26, 8}},
 {"CAVES",        {0, 0}},
 {"RUINS",        {9, 17}},
 {"SWAMP",        {25, 19}},
@@ -1058,6 +1421,7 @@ void initializeAreas() {
 		const std::vector<std::vector<int>>* grid;
 	};
 
+
 	std::vector<TempArea> areaTemplates = {
 		{"TOWN", "/town.png", &TOWN_GRID},
 		{"FOREST", "/forest.png", &FOREST_GRID},
@@ -1070,7 +1434,8 @@ void initializeAreas() {
 		{"CASTLEINSIDE", "/castleInside.png", &CASTLEINSIDE_GRID},
 		{"MOUNTAINS", "/mountains.png", &MOUNTAINS_GRID},
 		{"DESERT", "/desert.png", &DESERT_GRID},
-		
+		{"MARKET", "/market.png", &MARKET_GRID}
+
 	};
 
 
@@ -1123,7 +1488,7 @@ void initializeAreas() {
 		{global_monster_id_counter++, "ORC_BRUTE", 12, 3, 1, 2},
 		{global_monster_id_counter++, "BAT", 2, 17, 2, 4},
 		{global_monster_id_counter++, "OGRE_WARRIOR", 25, 8, 1, 1},
-		{global_monster_id_counter++, "ORC_SCOUT", 8, 10, 1, 3} 
+		{global_monster_id_counter++, "ORC_SCOUT", 8, 10, 1, 3}
 	};
 
 	// --- Adding monsters for the other zones ---
@@ -1198,7 +1563,7 @@ void initializeAreas() {
 
 	g_areas["CASTLEINSIDE"].monsters = {
 		{global_monster_id_counter++, "SKELETON", 7, 10, 2, 5},
-		{global_monster_id_counter++, "SKELETON", 23, 13, 2, 5},
+		{global_monster_id_counter++, "SKELETON", 27, 11, 2, 5},
 		{global_monster_id_counter++, "UNDEAD_GUARD", 7, 5, 2, 4},
 		{global_monster_id_counter++, "UNDEAD_GUARD", 35, 6, 2, 4},
 		{global_monster_id_counter++, "DARK_WIZARD", 18, 12, 1, 2},
@@ -1360,51 +1725,7 @@ const std::map<std::string, std::vector<std::vector<int>>> g_area_grids = {
 	{ "CASTLEINSIDE", CASTLEINSIDE_GRID},
 };
 
-// Monster Templates
-// Constructor: MonsterInstance(id, type, assetKey, health, def, speed, str, dex, int, lck, xp, L_Tier, D_Chance)
-//const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES = {
-//	{"SLIME", MonsterInstance(0, "SLIME", "SLM", 30, 5, 5, 5, 3, 1, 3, 10, 0, 50)},
-//	{"GOBLIN", MonsterInstance(0, "GOBLIN", "GB", 50, 8, 8, 8, 7, 3, 5, 15, 1, 25)},
-//	{"WOLF", MonsterInstance(0, "WOLF", "WLF", 40, 6, 12, 10, 12, 2, 5, 12, 0, 15)},
-//	{"BAT", MonsterInstance(0, "BAT", "BAT", 20, 4, 15, 4, 12, 1, 6, 8, -1, 0)},
-//	{"SKELETON", MonsterInstance(0, "SKELETON", "SKL", 60, 10, 6, 12, 8, 3, 2, 20, 1, 10)},
-//	{"GIANT_SPIDER", MonsterInstance(0, "GIANT_SPIDER", "SPDR", 70, 8, 10, 13, 10, 2, 5, 25, 1, 15)}, // <-- FIX
-//	{"ORC_BRUTE", MonsterInstance(0, "ORC_BRUTE", "ORC", 100, 12, 5, 18, 6, 2, 3, 40, 2, 5)},      // <-- FIX
-//
-//	// --- Easy Monsters ---
-//	{"GIANT_RAT", MonsterInstance(0, "GIANT_RAT", "RAT", 25, 4, 10, 6, 8, 1, 8, 9, 0, 20)},
-//	{"KOBOLD", MonsterInstance(0, "KOBOLD", "KBLD", 35, 6, 9, 7, 7, 2, 5, 11, 0, 25)},
-//	{"SWAMP_THING", MonsterInstance(0, "SWAMP_THING", "SWMP", 60, 5, 3, 9, 2, 1, 2, 12, 0, 30)},
-//	{"FOREST_SPRITE", MonsterInstance(0, "Forest Sprite", "SPRT", 15, 2, 18, 2, 15, 8, 10, 10, 0, 15)},
-//	{"CAVE_CRAB", MonsterInstance(0, "Cave Crab", "CRB", 40, 12, 5, 8, 5, 1, 3, 13, 0, 10)},
-//	{"GOBLIN_PEON", MonsterInstance(0, "Goblin Peon", "GBP", 40, 7, 7, 7, 6, 2, 4, 13, 0, 15)},
-//
-//	// --- Medium Monsters ---
-//{"GOBLIN_SHAMAN", MonsterInstance(0, "Goblin Shaman", "GBSH", 80, 10, 10, 7, 10, 18, 9, 45, 2, 10)},
-//{"ORC_SCOUT", MonsterInstance(0, "Orc Scout", "ORCS", 100, 12, 16, 16, 18, 5, 8, 50, 1, 15)},
-//{"UNDEAD_GUARD", MonsterInstance(0, "Undead Guard", "UDG", 130, 17, 6, 19, 8, 4, 3, 55, 1, 20)},
-//{"GIANT_SCORPION", MonsterInstance(0, "Giant Scorpion", "SCRP", 110, 14, 12, 18, 12, 4, 7, 60, 1, 15)},
-//{"HARPY", MonsterInstance(0, "Harpy", "HRPY", 90, 9, 20, 15, 21, 8, 10, 57, 1, 15)},
-//{"ROCK_GOLEM", MonsterInstance(0, "Rock Golem", "GLM", 180, 28, 4, 24, 5, 3, 4, 80, 2, 5)},
-//{"DARK_WIZARD", MonsterInstance(0, "Dark Wizard", "DKWZ", 100, 11, 12, 8, 12, 26, 9, 70, 2, 10)},
-//{"TREANT", MonsterInstance(0, "Treant", "TRNT", 210, 16, 5, 26, 6, 10, 6, 85, 2, 10)},
-//
-//// --- Low Hard Monsters (Medium Increase) ---
-//{"OGRE_WARRIOR", MonsterInstance(0, "Ogre Warrior", "OGRE", 320, 22, 6, 35, 8, 5, 5, 130, 2, 20)},
-//{"LAVA_ELEMENTAL", MonsterInstance(0, "Lava Elemental", "LAVA", 350, 19, 10, 25, 12, 23, 7, 145, 3, 25)},
-//{"GRIFFIN", MonsterInstance(0, "Griffin", "GRFN", 320, 20, 18, 30, 25, 10, 12, 190, 3, 10)},
-//{"MINOTAUR", MonsterInstance(0, "Minotaur", "MNTR", 390, 24, 8, 42, 10, 4, 6, 230, 3, 15)},
-//{"NECROMANCER", MonsterInstance(0, "Necromancer", "NECRO", 320, 18, 12, 12, 14, 35, 10, 200, 3, 15)},
-//{"WYVERN", MonsterInstance(0, "Wyvern", "WYV", 380, 22, 17, 38, 23, 12, 9, 260, 4, 20)},
-//
-//// - Med Harder Monsters (Harder Increase)
-//{"HELLHOUND_ALPHA", MonsterInstance(0, "Hellhound Alpha", "HHAL", 200, 18, 26, 32, 25, 12, 14, 195, 3, 10)},
-//{"FROST_GIANT", MonsterInstance(0, "Frost Giant", "FRGT", 290, 23, 12, 40, 12, 16, 10, 230, 3, 12)},
-//{"BLOOD_KNIGHT", MonsterInstance(0, "Blood Knight", "BLKT", 390, 25, 18, 37, 20, 18, 16, 255, 4, 10)},
-//{"VOID_STALKER", MonsterInstance(0, "Void Stalker", "VSTK", 180, 16, 28, 30, 28, 25, 18, 225, 3, 10)},
-//{"STORM_TITAN", MonsterInstance(0, "Storm Titan", "STTN", 400, 22, 20, 42, 18, 27, 14, 265, 4, 15)},
-//
-//};
+
 // Constructor: MonsterInstance(id, type, assetKey, health, def, speed, str, dex, int, lck, xp, L_Tier, D_Chance)
 const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES = {
 	// --- Core Early Monsters ---
@@ -1514,6 +1835,8 @@ const std::vector<std::string> MONSTER_KEYS = {
 	"LICH_KING",
 	"ANCIENT_DRAGON"
 };
+
+
 
 // List of keys for random monster generation
 //const std::vector<std::string> MONSTER_KEYS = {
@@ -4865,7 +5188,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		// --- Zone Transitions ---
 		// East edge back into TOWN west gate
 		{ "OVERWORLD_TO_TOWN",      InteractableType::ZONE_TRANSITION, {29, 8}, "TOWN" },
-		{ "OVERWORLD_TO_CAVES",      InteractableType::ZONE_TRANSITION, {29, 8}, "CAVES" },
+		{ "OVERWORLD_TO_CAVES",      InteractableType::ZONE_TRANSITION, {8, 4}, "CAVES" },
 		{ "OVERWORLD_TO_FOREST",    InteractableType::ZONE_TRANSITION, {25, 5},  "FOREST" },
 		{ "OVERWORLD_TO_MOUNTAINS", InteractableType::ZONE_TRANSITION, {26, 2},  "MOUNTAINS" },
 		{ "OVERWORLD_TO_RUINS",     InteractableType::ZONE_TRANSITION, {4,  13}, "RUINS" },
@@ -4873,6 +5196,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "OVERWORLD_TO_VOLCANO",   InteractableType::ZONE_TRANSITION, {8, 9}, "VOLCANO" },
 		{ "OVERWORLD_TO_CASTLEINSIDE",  InteractableType::ZONE_TRANSITION, {19, 8}, "CASTLEINSIDE" },
 		{ "OVERWORLD_TO_LAKE",    InteractableType::ZONE_TRANSITION, {13, 13}, "LAKE" },
+
 	}
 },
 {
@@ -4888,6 +5212,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 {
 	"FOREST", {
 		{ "FOREST_HUNTER", InteractableType::NPC, {5, 15}, "HUNTER_FOREST_DIALOGUE" },
+		/*{ "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" },*/
 		{ "OAK_TREE_FOREST", InteractableType::RESOURCE_NODE, {30, 17},   "OAK_TREE" },
 		{ "OAK_TREE_FOREST2", InteractableType::RESOURCE_NODE, {29, 15},   "OAK_TREE" },
 		{ "OAK_TREE_FOREST3", InteractableType::RESOURCE_NODE, {4, 18},   "OAK_TREE" },
@@ -5174,6 +5499,7 @@ PlayerStats getStartingStats(PlayerClass playerClass) {
 
 // Create a monster instance from a template
 std::optional<MonsterInstance> create_monster(int id, const std::string& type) {
+	// Relying on extern const std::map<std::string, std::vector<std::string>> MONSTER_SKILL_LISTS;
 
 	// This lambda now returns a MonsterInstance directly
 	auto make_monster = [&](const std::string& t) -> MonsterInstance {
@@ -5181,6 +5507,12 @@ std::optional<MonsterInstance> create_monster(int id, const std::string& type) {
 		MonsterInstance monster = base;             // Copy template
 		monster.id = id;
 
+		// --- NEW: Look up and assign monster skills ---
+		auto skill_it = MONSTER_SKILL_LISTS.find(t);
+		if (skill_it != MONSTER_SKILL_LISTS.end()) {
+			monster.skills = skill_it->second; // Assign the monster's defined skills
+		}
+		// ------------------------------------------
 
 		auto assetIt = MONSTER_ASSETS.find(t);
 		monster.assetKey = (assetIt != MONSTER_ASSETS.end()) ? assetIt->second : "UNKNOWN_ASSET";
@@ -5209,7 +5541,6 @@ std::optional<MonsterInstance> create_monster(int id, const std::string& type) {
 	}
 
 	// As a last resort, return an empty optional.
-	// This completely fixes the "no default constructor" error.
 	std::cerr << "CRITICAL: No monster templates defined! Returning empty optional." << std::endl;
 	return std::nullopt;
 }

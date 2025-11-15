@@ -47,10 +47,14 @@ enum class StatusType {
 	BURN,
 	BLEED,
 	DEFENSE_UP,
+	DEFENSE_DOWN,
 	ATTACK_UP,
+	ATTACK_DOWN,
 	SPEED_UP,
 	SPEED_DOWN,
-	STUN
+	STUN,
+	MANA_UP,
+	MANA_DOWN
 };
 
 struct StatusEffect {
@@ -128,6 +132,7 @@ struct MonsterInstance {
 	int lootTier;
 	int dropChance; //imma make use of these as 0-100 representing percentage chance to drop loot from mobs i think
 	std::vector<StatusEffect> activeStatusEffects;
+	std::vector<std::string> skills;
 	MonsterInstance(int id, std::string type, std::string assetKey, int h, int def, int spd, int str, int dex, int intl, int lck, int xp, int lTier, int dChance)
 		: id(id), type(type), assetKey(assetKey), health(h), maxHealth(h),
 		defense(def), speed(spd), xpReward(xp),

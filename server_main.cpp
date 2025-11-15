@@ -192,6 +192,7 @@ int main()
 		// --- Game Systems Initialization ---
 		initializeAreas();
 		initialize_skill_definitions();
+		initialize_monster_spell_definitions();
 		initialize_item_prices();
 		initialize_suffix_pools();
 		initialize_random_effect_pool();

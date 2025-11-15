@@ -56,6 +56,7 @@ extern const std::map<std::string, std::vector<DialogueLine>> g_dialogues;
 extern const std::map<std::string, std::string> MONSTER_ASSETS;
 extern const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES;
 extern const std::vector<std::string> MONSTER_KEYS;
+
 extern int global_monster_id_counter;
 //we're just mapping items to a sell price (which will be whatever tier of gear theyre in)
 extern std::map<std::string, int> g_item_buy_prices;
@@ -146,7 +147,8 @@ struct CraftingRecipe {
 // Global Registries
 extern std::map<std::string, ResourceDefinition> g_resource_defs;
 extern std::map<std::string, CraftingRecipe> g_crafting_recipes;
-
+extern std::unordered_map<std::string, SkillDefinition> g_skill_defs;
+extern std::unordered_map<std::string, SkillDefinition> g_monster_spell_defs;
 // Declaration only – no initializer here
 const std::unordered_map<std::string, SpawnPoint>& get_area_spawns();
 // Global registry of all skills by name (e.g. "Ignite", "BloodStrike")
@@ -168,6 +170,7 @@ extern std::atomic<int> g_session_id_counter;
 void initialize_item_prices();
 void initialize_item_id_counter(DatabaseManager& db_manager);
 void initialize_suffix_pools();
+void initialize_monster_spell_definitions();
 void initialize_random_effect_pool();
 void initializeAreas();
 

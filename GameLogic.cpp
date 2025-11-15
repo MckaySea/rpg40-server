@@ -54,6 +54,7 @@ ClassCritTuning getCritTuning(PlayerClass cls) {
 	}
 }
 
+
 // Scales attack power by defense in a soft way (no “brick wall”)
 int damage_after_defense(float attackPower, int defense) {
 	if (attackPower <= 0.0f) return 1;
@@ -63,7 +64,53 @@ int damage_after_defense(float attackPower, int defense) {
 	if (raw < 1.0f) raw = 1.0f;
 	return static_cast<int>(std::round(raw));
 }
+float dodge_chance_for_player(const PlayerStats& stats, PlayerClass cls) {
+	// Base dodge chance (e.g., 5%)
+	float dodge = 0.05f;
 
+	// Scaling factors (can be tuned per class, but applying globally for now)
+	static const float DEX_SCALE = 0.0020f; // +0.2% per DEX
+	static const float SPEED_SCALE = 0.0015f; // +0.15% per SPEED
+	static const float LUCK_SCALE = 0.0010f; // +0.1% per LUCK
+
+	dodge += stats.dexterity * DEX_SCALE
+		+ stats.speed * SPEED_SCALE
+		+ stats.luck * LUCK_SCALE;
+
+	// Cap the dodge chance so it's not guaranteed (e.g., 30%)
+	static const float GLOBAL_DODGE_CAP = 0.20f;
+
+	if (cls == PlayerClass::ROGUE) {
+		// Rogues get a slight bonus to emphasize their agility
+		dodge += 0.05f;
+	}
+
+	if (dodge > GLOBAL_DODGE_CAP) dodge = GLOBAL_DODGE_CAP;
+	if (dodge < 0.0f) dodge = 0.0f;
+
+	return dodge; // Returns a float between 0.0 and 0.3 (0% to 30%)
+}
+float magic_resistance_for_player(const PlayerStats& stats) {
+	// Base resistance (e.g., 5%)
+	float resistance = 0.05f;
+
+	// Scaling factors
+	static const float INTELLECT_SCALE = 0.0020f; // +0.2% per INT (Main source)
+	static const float LUCK_SCALE = 0.0010f;    // +0.1% per LUCK
+	static const float DEFENSE_SCALE = 0.0005f;  // +0.05% per DEF (Minor utility)
+
+	resistance += stats.intellect * INTELLECT_SCALE
+		+ stats.luck * LUCK_SCALE
+		+ stats.defense * DEFENSE_SCALE; // Added Defense contribution
+
+	// Cap the maximum reduction (e.g., 50%)
+	static const float GLOBAL_RESIST_CAP = 0.50f;
+
+	if (resistance > GLOBAL_RESIST_CAP) resistance = GLOBAL_RESIST_CAP;
+	if (resistance < 0.0f) resistance = 0.0f;
+
+	return resistance; // Returns a float between 0.0 and 0.5 (0% to 50% reduction)
+}
 // Crit chance depends on class + DEX + LUCK
 float crit_chance_for_player(const PlayerStats& stats, PlayerClass cls) {
 	ClassCritTuning t = getCritTuning(cls);
@@ -409,6 +456,7 @@ PlayerStats AsyncSession::getCalculatedStats() {
 		player.skills.spells.end()
 	);
 
+	// Lambda to apply stat modifications from items
 	auto applyEffectAsStat = [&](const ItemEffect& effect) {
 		if (effect.type == "GRANT_STAT") {
 			auto itStat = effect.params.find("stat");
@@ -419,7 +467,8 @@ PlayerStats AsyncSession::getCalculatedStats() {
 			}
 		}
 		};
-	// Iterate over all equipment slots
+
+	// --- 1. Apply Stats from Equipment and Item Effects ---
 	for (const auto& slotPair : player.equipment.slots) {
 		if (slotPair.second.has_value()) { // if an item is equipped
 			uint64_t instanceId = slotPair.second.value();
@@ -459,7 +508,50 @@ PlayerStats AsyncSession::getCalculatedStats() {
 		}
 	}
 
+	// --- 2. Apply Active Status Effects (Buffs/Debuffs) ---
+	for (const auto& eff : player.activeStatusEffects) {
+		if (eff.remainingTurns > 0) {
+			switch (eff.type) {
+				// ATTACK_UP/DOWN modifies combat-related core stats (STR/DEX)
+			case StatusType::ATTACK_UP: {
+				finalStats.strength += eff.magnitude;
+				finalStats.dexterity += eff.magnitude;
+				break;
+			}
+			case StatusType::ATTACK_DOWN: {
+				finalStats.strength -= eff.magnitude;
+				finalStats.dexterity -= eff.magnitude;
+				break;
+			}
+										// DEFENSE_DOWN decreases defense (DEF_UP is handled in combat loop for defense doubling)
+			case StatusType::DEFENSE_DOWN: {
+				finalStats.defense -= eff.magnitude;
+				break;
+			}
+			case StatusType::SPEED_UP: {
+				finalStats.speed += eff.magnitude;
+				break;
+			}
+			case StatusType::SPEED_DOWN: {
+				finalStats.speed -= eff.magnitude;
+				break;
+			}
+									   // MANA_UP/DOWN are primarily handled during the combat tick, but can affect max mana/regen here if needed.
+									   // Assuming magnitude applies to mana pool or regen over time (leaving base stats unchanged here).
+			default:
+				break;
+			}
+		}
+	}
 
+	// --- 3. Safety Clamp Final Stats ---
+	finalStats.strength = std::max(0, finalStats.strength);
+	finalStats.dexterity = std::max(0, finalStats.dexterity);
+	finalStats.intellect = std::max(0, finalStats.intellect);
+	finalStats.defense = std::max(0, finalStats.defense);
+	finalStats.speed = std::max(0, finalStats.speed);
+
+	// Max Health/Mana must be clamped
 	if (finalStats.health > finalStats.maxHealth) {
 		finalStats.health = finalStats.maxHealth;
 	}
@@ -2933,613 +3025,806 @@ void AsyncSession::handle_message(const string& message)
 	}
 
 	   else if (message.rfind("COMBAT_ACTION:", 0) == 0) {
-		if (!player.isInCombat || !player.currentOpponent) { send("SERVER:ERROR:You are not in combat."); }
-		else {
-			PlayerStats finalStats = getCalculatedStats();
-			int extraDefFromBuffs = 0;
-			bool monsterStunnedThisTurn = false;
-			auto apply_statuses_to_player = [&]() {
-				int totalDefBuff = 0;
-				int totalDot = 0;
+		if (!player.isInCombat || !player.currentOpponent) {
+			send("SERVER:ERROR:You are not in combat.");
+			return; // Return early
+		}
 
-				// shorthand reference to the vector of effects
-				auto& effects = player.activeStatusEffects;
+		// --- LOGIC MOVED HERE ---
 
-				for (auto it = effects.begin(); it != effects.end(); ) {
-					StatusEffect& eff = *it;
+		int extraDefFromBuffs = 0;
+		bool monsterStunnedThisTurn = false;
 
-					switch (eff.type) {
-					case StatusType::BURN:
-					case StatusType::BLEED: {
-						int dmg = eff.magnitude;
-						if (eff.type == StatusType::BURN) {
-							dmg += finalStats.intellect / 20;
-						}
-						else { // BLEED
-							dmg += finalStats.dexterity / 25;
-						}
-						if (dmg < 1) dmg = 1;
+		// This lambda replaces the logic you removed from getCalculatedStats
+		auto apply_statuses_to_player_and_get_stats = [&]() -> PlayerStats {
+			// 1. Get base stats + equipment stats
+			PlayerStats stats = getCalculatedStats();
 
-						totalDot += dmg;
-						player.stats.health = std::max(1, player.stats.health - dmg);
-						break;
-					}
-					case StatusType::DEFENSE_UP: {
-						totalDefBuff += eff.magnitude;
-						break;
-					}
-					default:
-						break;
-					}
+			int totalDefBuff = 0;
+			int totalDot = 0;
 
-					eff.remainingTurns--;
-					if (eff.remainingTurns <= 0) {
-						it = effects.erase(it);
-					}
-					else {
-						++it;
-					}
+			// 2. Iterate the list ONCE
+			auto& effects = player.activeStatusEffects;
+			for (auto it = effects.begin(); it != effects.end(); ) {
+				StatusEffect& eff = *it;
+
+				// 3. Apply all buffs/debuffs/DoTs in one place
+				switch (eff.type) {
+				case StatusType::BURN:
+				case StatusType::BLEED: {
+					int dmg = eff.magnitude;
+					if (eff.type == StatusType::BURN) { dmg += stats.intellect / 20; }
+					else { dmg += stats.dexterity / 25; }
+					if (dmg < 1) dmg = 1;
+					totalDot += dmg;
+					player.stats.health = std::max(1, player.stats.health - dmg);
+					break;
+				}
+				case StatusType::DEFENSE_UP: {
+					totalDefBuff += eff.magnitude;
+					break;
+				}
+				case StatusType::ATTACK_UP: {
+					stats.strength += eff.magnitude;
+					stats.dexterity += eff.magnitude;
+					break;
+				}
+				case StatusType::ATTACK_DOWN: {
+					stats.strength -= eff.magnitude;
+					stats.dexterity -= eff.magnitude;
+					break;
+				}
+				case StatusType::DEFENSE_DOWN: {
+					stats.defense -= eff.magnitude;
+					break;
+				}
+				case StatusType::SPEED_UP: {
+					stats.speed += eff.magnitude;
+					break;
+				}
+				case StatusType::SPEED_DOWN: {
+					stats.speed -= eff.magnitude;
+					break;
+				}
+				case StatusType::MANA_UP: {
+					player.stats.mana = std::min(stats.maxMana, player.stats.mana + eff.magnitude);
+					break;
+				}
+				case StatusType::MANA_DOWN: {
+					player.stats.mana = std::max(0, player.stats.mana - eff.magnitude);
+					break;
+				}
+				default:
+					break;
 				}
 
-				if (totalDot > 0) {
-					send(
-						"SERVER:COMBAT_LOG:You suffer " + std::to_string(totalDot) +
-						" damage from ongoing effects!"
-					);
-					send_player_stats();
+				// 4. Tick down duration and erase if expired
+				eff.remainingTurns--;
+				if (eff.remainingTurns <= 0) {
+					it = effects.erase(it); // Safe to erase here
+				}
+				else {
+					++it;
+				}
+			}
+
+			if (totalDot > 0) {
+				send("SERVER:COMBAT_LOG:You suffer " + std::to_string(totalDot) +
+					" damage from ongoing effects!");
+				send_player_stats(); // Now safe, getCalculatedStats() doesn't loop
+			}
+
+			extraDefFromBuffs = totalDefBuff;
+
+			// 5. Clamp stats and return them
+			stats.strength = std::max(0, stats.strength);
+			stats.dexterity = std::max(0, stats.dexterity);
+			stats.defense = std::max(0, stats.defense);
+			stats.speed = std::max(0, stats.speed);
+
+			return stats;
+			};
+
+		// This lambda for the monster is mostly unchanged and safe
+		auto apply_statuses_to_monster = [&]() {
+			if (!player.currentOpponent) return;
+			int totalDot = 0;
+			auto& effects = player.currentOpponent->activeStatusEffects;
+
+			for (auto it = effects.begin(); it != effects.end(); ) {
+				StatusEffect& eff = *it;
+				switch (eff.type) {
+				case StatusType::BURN:
+				case StatusType::BLEED: {
+					int dmg = eff.magnitude;
+					if (dmg < 1) dmg = 1;
+					totalDot += dmg;
+					player.currentOpponent->health =
+						std::max(1, player.currentOpponent->health - dmg);
+					break;
+				}
+				case StatusType::STUN: {
+					monsterStunnedThisTurn = true;
+					break;
+				}
+				default:
+					break;
+				}
+				eff.remainingTurns--;
+				if (eff.remainingTurns <= 0) {
+					it = effects.erase(it);
+				}
+				else {
+					++it;
+				}
+			}
+			if (totalDot > 0) {
+				send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
+					" suffers " + std::to_string(totalDot) + " damage!");
+				std::string update = "SERVER:COMBAT_UPDATE:" + std::to_string(player.currentOpponent->health);
+				send(update);
+			}
+			};
+
+		// --- START OF COMBAT TURN ---
+		// This is the variable you will use for all combat math this turn:
+		PlayerStats finalStats = apply_statuses_to_player_and_get_stats();
+
+		apply_statuses_to_monster(); // Apply monster DoTs/Stuns
+
+		// --- (Rest of your combat logic begins here) ---
+		string action_command = message.substr(14);
+		string action_type; string action_param;
+		size_t colon_pos = action_command.find(':');
+		if (colon_pos != string::npos) { action_type = action_command.substr(0, colon_pos); action_param = action_command.substr(colon_pos + 1); }
+		else { action_type = action_command; }
+
+		int player_damage = 0; int mana_cost = 0; bool fled = false;
+		if (action_type == "ATTACK") {
+			float attackPower = attack_power_for_player(finalStats, player.currentClass);
+			int base_damage = damage_after_defense(attackPower, player.currentOpponent->defense);
+
+			float variance = 0.85f + ((float)(rand() % 31) / 100.0f); // 0.85–1.15
+			int dmg = std::max(1, (int)(base_damage * variance));
+
+			float crit_chance = crit_chance_for_player(finalStats, player.currentClass);
+			if (((float)rand() / RAND_MAX) < crit_chance) {
+				ClassCritTuning t = getCritTuning(player.currentClass);
+				dmg = (int)std::round(dmg * t.critMultiplier);
+				send("SERVER:COMBAT_LOG:A critical hit!");
+			}
+
+			player_damage = dmg; // then use your existing code that subtracts HP and logs
+			std::string log_msg =
+				"SERVER:COMBAT_LOG:You attack the " + player.currentOpponent->type +
+				" for " + std::to_string(player_damage) + " damage!";
+			send(log_msg);
+		}
+		else if (action_type == "SPELL") {
+			std::string spellName = action_param;
+
+			// Look up the spell definition
+			auto itSkill = g_skill_defs.find(spellName);
+			if (itSkill == g_skill_defs.end() || itSkill->second.type != SkillType::SPELL) {
+				send("SERVER:COMBAT_LOG:Unknown spell: " + spellName);
+				return;
+			}
+			const SkillDefinition& spell = itSkill->second;
+
+			// Make sure the player actually knows this spell
+			bool knows_spell = false;
+			for (const auto& s : player.temporary_spells_list) {
+				if (s == spellName) {
+					knows_spell = true;
+					break;
+				}
+			}
+			if (!knows_spell) {
+				send("SERVER:COMBAT_LOG:You don't know that spell!");
+				return;
+			}
+
+			// Class requirement check
+			SkillClass playerSkillClass = SkillClass::ANY;
+			switch (player.currentClass) {
+			case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
+			case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
+			case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
+			default:                   playerSkillClass = SkillClass::ANY;     break;
+			}
+
+			if (spell.requiredClass != SkillClass::ANY &&
+				spell.requiredClass != playerSkillClass) {
+				send("SERVER:COMBAT_LOG:You cannot cast that spell with your class.");
+				return;
+			}
+
+			// Mana check
+			if (player.stats.mana < spell.manaCost) {
+				send(
+					"SERVER:COMBAT_LOG:Not enough mana to cast " + spellName +
+					"! (Needs " + std::to_string(spell.manaCost) + ")"
+				);
+				return;
+			}
+
+			player.stats.mana -= spell.manaCost;
+
+			bool targetIsSelf = (spell.target == SkillTarget::SELF);
+
+			// Compute spell power using stat scales
+			float scaledAttack =
+				finalStats.strength * spell.strScale +
+				finalStats.dexterity * spell.dexScale +
+				finalStats.intellect * spell.intScale +
+				spell.flatDamage;
+
+			int base_damage = 0;
+			float variance = 1.0f;
+
+			if (!targetIsSelf) {
+				// Magic partially ignores defense instead of fully ignoring it
+				int targetDefense = player.currentOpponent->defense;
+				if (spell.isMagic) {
+					// 40% defense penetration: spells feel good vs tanky enemies
+					targetDefense = static_cast<int>(std::round(targetDefense * 0.4f));
 				}
 
-				extraDefFromBuffs = totalDefBuff;
-				};
+				base_damage = damage_after_defense(scaledAttack, targetDefense);
 
-			auto apply_statuses_to_monster = [&]() {
-				if (!player.currentOpponent) return;
+				// Tight-ish variance for consistency (0.9–1.1)
+				variance = 0.9f + (static_cast<float>(rand() % 21) / 100.0f);
 
-				int totalDot = 0;
-				auto& effects = player.currentOpponent->activeStatusEffects;
+				int dmg = std::max(1, static_cast<int>(std::round(base_damage * variance)));
 
-				for (auto it = effects.begin(); it != effects.end(); ) {
-					StatusEffect& eff = *it;
-
-					switch (eff.type) {
-					case StatusType::BURN:
-					case StatusType::BLEED: {
-						int dmg = eff.magnitude;
-						if (dmg < 1) dmg = 1;
-
-						totalDot += dmg;
-						player.currentOpponent->health =
-							std::max(1, player.currentOpponent->health - dmg);
-						break;
-					}
-					case StatusType::STUN: {
-						// Monster will skip its attack this turn
-						monsterStunnedThisTurn = true;
-						break;
-					}
-					default:
-						break;
-					}
-
-					eff.remainingTurns--;
-					if (eff.remainingTurns <= 0) {
-						it = effects.erase(it);
-					}
-					else {
-						++it;
-					}
-				}
-
-				if (totalDot > 0) {
-					send(
-						"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
-						" suffers " + std::to_string(totalDot) +
-						" damage from ongoing effects!"
-					);
-					std::string update =
-						"SERVER:COMBAT_UPDATE:" + std::to_string(player.currentOpponent->health);
-					send(update);
-				}
-				};
-
-			// Tick statuses at the start of every player action
-			apply_statuses_to_player();
-			apply_statuses_to_monster();
-
-
-
-			string action_command = message.substr(14);
-			string action_type; string action_param;
-			size_t colon_pos = action_command.find(':');
-			if (colon_pos != string::npos) { action_type = action_command.substr(0, colon_pos); action_param = action_command.substr(colon_pos + 1); }
-			else { action_type = action_command; }
-
-			int player_damage = 0; int mana_cost = 0; bool fled = false;
-			if (action_type == "ATTACK") {
-				float attackPower = attack_power_for_player(finalStats, player.currentClass);
-				int base_damage = damage_after_defense(attackPower, player.currentOpponent->defense);
-
-				float variance = 0.85f + ((float)(rand() % 31) / 100.0f); // 0.85–1.15
-				int dmg = std::max(1, (int)(base_damage * variance));
-
-				float crit_chance = crit_chance_for_player(finalStats, player.currentClass);
-				if (((float)rand() / RAND_MAX) < crit_chance) {
+				// Spells can crit too (fun!)
+				float critChance = crit_chance_for_player(finalStats, player.currentClass);
+				if (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) < critChance) {
 					ClassCritTuning t = getCritTuning(player.currentClass);
-					dmg = (int)std::round(dmg * t.critMultiplier);
-					send("SERVER:COMBAT_LOG:A critical hit!");
+					dmg = static_cast<int>(std::round(dmg * t.critMultiplier));
+					send("SERVER:COMBAT_LOG:Your " + spellName + " critically hits!");
 				}
 
-				player_damage = dmg; // then use your existing code that subtracts HP and logs
+				player_damage = dmg;
+
 				std::string log_msg =
-					"SERVER:COMBAT_LOG:You attack the " + player.currentOpponent->type +
+					"SERVER:COMBAT_LOG:You cast " + spellName +
 					" for " + std::to_string(player_damage) + " damage!";
 				send(log_msg);
 			}
-			else if (action_type == "SPELL") {
-				std::string spellName = action_param;
-
-				// Look up the spell definition
-				auto itSkill = g_skill_defs.find(spellName);
-				if (itSkill == g_skill_defs.end() || itSkill->second.type != SkillType::SPELL) {
-					send("SERVER:COMBAT_LOG:Unknown spell: " + spellName);
-					return;
-				}
-				const SkillDefinition& spell = itSkill->second;
-
-				// Make sure the player actually knows this spell
-				bool knows_spell = false;
-				for (const auto& s : player.temporary_spells_list) {
-					if (s == spellName) {
-						knows_spell = true;
-						break;
-					}
-				}
-				if (!knows_spell) {
-					send("SERVER:COMBAT_LOG:You don't know that spell!");
-					return;
-				}
-
-				// Class requirement check
-				SkillClass playerSkillClass = SkillClass::ANY;
-				switch (player.currentClass) {
-				case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
-				case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
-				case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
-				default:                   playerSkillClass = SkillClass::ANY;     break;
-				}
-
-				if (spell.requiredClass != SkillClass::ANY &&
-					spell.requiredClass != playerSkillClass) {
-					send("SERVER:COMBAT_LOG:You cannot cast that spell with your class.");
-					return;
-				}
-
-				// Mana check
-				if (player.stats.mana < spell.manaCost) {
-					send(
-						"SERVER:COMBAT_LOG:Not enough mana to cast " + spellName +
-						"! (Needs " + std::to_string(spell.manaCost) + ")"
-					);
-					return;
-				}
-
-				player.stats.mana -= spell.manaCost;
-
-				bool targetIsSelf = (spell.target == SkillTarget::SELF);
-
-				// Compute spell power using stat scales
-				float scaledAttack =
-					finalStats.strength * spell.strScale +
-					finalStats.dexterity * spell.dexScale +
-					finalStats.intellect * spell.intScale +
-					spell.flatDamage;
-
-				int base_damage = 0;
-				float variance = 1.0f;
-
-				if (!targetIsSelf) {
-					// Magic partially ignores defense instead of fully ignoring it
-					int targetDefense = player.currentOpponent->defense;
-					if (spell.isMagic) {
-						// 40% defense penetration: spells feel good vs tanky enemies
-						targetDefense = static_cast<int>(std::round(targetDefense * 0.4f));
-					}
-
-					base_damage = damage_after_defense(scaledAttack, targetDefense);
-
-					// Tight-ish variance for consistency (0.9–1.1)
-					variance = 0.9f + (static_cast<float>(rand() % 21) / 100.0f);
-
-					int dmg = std::max(1, static_cast<int>(std::round(base_damage * variance)));
-
-					// Spells can crit too (fun!)
-					float critChance = crit_chance_for_player(finalStats, player.currentClass);
-					if (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) < critChance) {
-						ClassCritTuning t = getCritTuning(player.currentClass);
-						dmg = static_cast<int>(std::round(dmg * t.critMultiplier));
-						send("SERVER:COMBAT_LOG:Your " + spellName + " critically hits!");
-					}
-
-					player_damage = dmg;
-
-					std::string log_msg =
-						"SERVER:COMBAT_LOG:You cast " + spellName +
-						" for " + std::to_string(player_damage) + " damage!";
-					send(log_msg);
-				}
-				else {
-					// Self-target spells (none for wizard yet, but future-proof)
-					player_damage = 0;
-					send("SERVER:COMBAT_LOG:You cast " + spellName + " on yourself.");
-				}
-
-				// Apply status effects from the spell definition
-				if (spell.appliesStatus) {
-					bool applyStatus = true;
-
-					StatusEffect eff;
-					eff.type = spell.statusType;
-					eff.magnitude = spell.statusMagnitude;
-					eff.remainingTurns = spell.statusDuration;
-					eff.appliedByPlayer = true;
-
-					// Special behavior: Lightning stun is chance-based
-					if (spellName == "Lightning" && spell.statusType == StatusType::STUN) {
-						int baseChance = 20;                   // 20% base
-						int fromLuck = finalStats.luck / 2;  // +0.5% per LUCK
-						int finalChance = baseChance + fromLuck;
-						if (finalChance > 70) finalChance = 70;
-						if (finalChance < 20) finalChance = 20;
-
-						int roll = rand() % 100;
-						if (roll >= finalChance) {
-							applyStatus = false;
-							send("SERVER:COMBAT_LOG:The lightning crackles, but fails to stun.");
-						}
-					}
-
-					// Fireball burn scales a bit with INT
-					if (spellName == "Fireball" && spell.statusType == StatusType::BURN) {
-						eff.magnitude += std::max(1, finalStats.intellect / 10);
-					}
-
-					if (applyStatus) {
-						if (targetIsSelf) {
-							player.activeStatusEffects.push_back(eff);
-						}
-						else {
-							player.currentOpponent->activeStatusEffects.push_back(eff);
-						}
-
-						std::string statusMsg;
-						switch (spell.statusType) {
-						case StatusType::BURN:
-							statusMsg = targetIsSelf
-								? "You are burning!"
-								: "The " + player.currentOpponent->type + " is set ablaze!";
-							break;
-						case StatusType::STUN:
-							statusMsg = targetIsSelf
-								? "You are stunned!"
-								: "The " + player.currentOpponent->type + " is stunned!";
-							break;
-						default:
-							statusMsg = targetIsSelf
-								? "You are affected by a status effect."
-								: "The " + player.currentOpponent->type + " is affected by a status effect.";
-							break;
-						}
-
-						send("SERVER:COMBAT_LOG:" + statusMsg);
-					}
-				}
+			else {
+				// Self-target spells (none for wizard yet, but future-proof)
+				player_damage = 0;
+				send("SERVER:COMBAT_LOG:You cast " + spellName + " on yourself.");
 			}
 
-			else if (action_type == "SKILL") {
-				std::string skillName = action_param;
+			// Apply status effects from the spell definition
+			if (spell.appliesStatus) {
+				bool applyStatus = true;
 
-				// Look up the skill in the global registry
-				auto itSkill = g_skill_defs.find(skillName);
-				if (itSkill == g_skill_defs.end()) {
-					send("SERVER:COMBAT_LOG:Unknown skill: " + skillName);
-					return;
-				}
+				StatusEffect eff;
+				eff.type = spell.statusType;
+				eff.magnitude = spell.statusMagnitude;
+				eff.remainingTurns = spell.statusDuration;
+				eff.appliedByPlayer = true;
 
-				const SkillDefinition& skill = itSkill->second;
+				// Special behavior: Lightning stun is chance-based
+				if (spellName == "Lightning" && spell.statusType == StatusType::STUN) {
+					int baseChance = 20;                   // 20% base
+					int fromLuck = finalStats.luck / 2;  // +0.5% per LUCK
+					int finalChance = baseChance + fromLuck;
+					if (finalChance > 70) finalChance = 70;
+					if (finalChance < 20) finalChance = 20;
 
-				// Optional: require that the player actually "knows" this skill
-				bool knows_skill = false;
-				for (const auto& s : player.temporary_spells_list) {
-					if (s == skillName) {
-						knows_skill = true;
-						break;
+					int roll = rand() % 100;
+					if (roll >= finalChance) {
+						applyStatus = false;
+						send("SERVER:COMBAT_LOG:The lightning crackles, but fails to stun.");
 					}
 				}
-				if (!knows_skill) {
-					send("SERVER:COMBAT_LOG:You don't know that skill!");
-					return;
+
+				// Fireball burn scales a bit with INT
+				if (spellName == "Fireball" && spell.statusType == StatusType::BURN) {
+					eff.magnitude += std::max(1, finalStats.intellect / 10);
 				}
 
-				// Check class match
-				SkillClass playerSkillClass = SkillClass::ANY;
-				switch (player.currentClass) {
-				case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
-				case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
-				case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
-				default:                   playerSkillClass = SkillClass::ANY;     break;
-				}
-
-				if (skill.requiredClass != SkillClass::ANY &&
-					skill.requiredClass != playerSkillClass) {
-					send("SERVER:COMBAT_LOG:You cannot use that skill with your class.");
-					return;
-				}
-
-				// Check mana cost
-				if (player.stats.mana < skill.manaCost) {
-					send("SERVER:COMBAT_LOG:Not enough mana to use " + skillName + "!");
-					return;
-				}
-
-				player.stats.mana -= skill.manaCost;
-
-				bool targetIsSelf = (skill.target == SkillTarget::SELF);
-
-				// Compute skill-based attack power using player stats and skill scales
-				float scaledAttack =
-					finalStats.strength * skill.strScale +
-					finalStats.dexterity * skill.dexScale +
-					finalStats.intellect * skill.intScale +
-					skill.flatDamage;
-
-				int base_damage = 0;
-
-				if (!targetIsSelf) {
-					// Offensive skill at the opponent
-					int targetDefense = player.currentOpponent->defense;
-					base_damage = damage_after_defense(scaledAttack, targetDefense);
-
-					float variance = 0.9f + ((float)(rand() % 21) / 100.0f); // 0.9–1.1
-					int dmg = std::max(1, (int)std::round(base_damage * variance));
-
-					// Let skills crit like basic attacks
-					float critChance = crit_chance_for_player(finalStats, player.currentClass);
-					if (((float)rand() / RAND_MAX) < critChance) {
-						ClassCritTuning t = getCritTuning(player.currentClass);
-						dmg = (int)std::round(dmg * t.critMultiplier);
-						send("SERVER:COMBAT_LOG:A critical " + skillName + "!");
-					}
-
-					player_damage = dmg;
-
-					std::string log_msg =
-						"SERVER:COMBAT_LOG:You use " + skillName + " on the " +
-						player.currentOpponent->type + " for " +
-						std::to_string(player_damage) + " damage!";
-					send(log_msg);
-				}
-				else {
-					// Defensive / self-target skill (e.g., ShieldWall)
-					player_damage = 0;
-					std::string log_msg =
-						"SERVER:COMBAT_LOG:You use " + skillName + " on yourself.";
-					send(log_msg);
-				}
-
-				// Apply status effect if the skill has one
-				if (skill.appliesStatus) {
-					StatusEffect eff;
-					eff.type = skill.statusType;
-					eff.magnitude = skill.statusMagnitude;
-					eff.appliedByPlayer = true;
-
-					// Base duration from the skill definition
-					int baseDuration = skill.statusDuration;
-					int bonusTurns = 0;
-
-					// Small stat-based chance to extend duration by +1 turn
-					switch (skill.statusType) {
-					case StatusType::BURN: {
-						// Wizards with higher INT get better burns
-						int chance = std::min(50, finalStats.intellect); // 0–50%
-						if ((rand() % 100) < chance) {
-							bonusTurns = 1;
-						}
-						break;
-					}
-					case StatusType::BLEED: {
-						// Rogues with higher DEX get better bleeds
-						int chance = std::min(50, finalStats.dexterity); // 0–50%
-						if ((rand() % 100) < chance) {
-							bonusTurns = 1;
-						}
-						break;
-					}
-					case StatusType::DEFENSE_UP: {
-						// Warriors with higher LUCK might keep their shield up longer
-						int chance = std::min(40, finalStats.luck); // up to 40%
-						if ((rand() % 100) < chance) {
-							bonusTurns = 1;
-						}
-						break;
-					}
-					default:
-						// other status types: no bonus for now
-						break;
-					}
-
-					eff.remainingTurns = baseDuration + bonusTurns;
-					if (eff.remainingTurns < 1) eff.remainingTurns = 1;
-
+				if (applyStatus) {
 					if (targetIsSelf) {
 						player.activeStatusEffects.push_back(eff);
 					}
 					else {
 						player.currentOpponent->activeStatusEffects.push_back(eff);
 					}
-					if (!targetIsSelf &&
-						(skill.statusType == StatusType::BURN || skill.statusType == StatusType::BLEED)) {
-						apply_statuses_to_monster();
-					}
 
-					if (bonusTurns > 0) {
-						send(
-							"SERVER:COMBAT_LOG:The effects of " + skillName +
-							" linger longer than usual!"
-						);
-					}
-
-					// Flavor log about the effect itself
 					std::string statusMsg;
-					switch (skill.statusType) {
-					case StatusType::BURN:       statusMsg = "burns";                break;
-					case StatusType::BLEED:      statusMsg = "makes bleed";          break;
-					case StatusType::DEFENSE_UP: statusMsg = "bolsters the defense of"; break;
-					default:                     statusMsg = "affects";              break;
+					switch (spell.statusType) {
+					case StatusType::BURN:
+						statusMsg = targetIsSelf
+							? "You are burning!"
+							: "The " + player.currentOpponent->type + " is set ablaze!";
+						break;
+					case StatusType::STUN:
+						statusMsg = targetIsSelf
+							? "You are stunned!"
+							: "The " + player.currentOpponent->type + " is stunned!";
+						break;
+					default:
+						statusMsg = targetIsSelf
+							? "You are affected by a status effect."
+							: "The " + player.currentOpponent->type + " is affected by a status effect.";
+						break;
 					}
 
-					if (targetIsSelf) {
-						send(
-							"SERVER:COMBAT_LOG:Your " + skillName + " " + statusMsg + " you."
-						);
+					send("SERVER:COMBAT_LOG:" + statusMsg);
+				}
+			}
+		}
+
+		else if (action_type == "SKILL") {
+			std::string skillName = action_param;
+
+			// Look up the skill in the global registry
+			auto itSkill = g_skill_defs.find(skillName);
+			if (itSkill == g_skill_defs.end()) {
+				send("SERVER:COMBAT_LOG:Unknown skill: " + skillName);
+				return;
+			}
+
+			const SkillDefinition& skill = itSkill->second;
+
+			// Optional: require that the player actually "knows" this skill
+			bool knows_skill = false;
+			for (const auto& s : player.temporary_spells_list) {
+				if (s == skillName) {
+					knows_skill = true;
+					break;
+				}
+			}
+			if (!knows_skill) {
+				send("SERVER:COMBAT_LOG:You don't know that skill!");
+				return;
+			}
+
+			// Check class match
+			SkillClass playerSkillClass = SkillClass::ANY;
+			switch (player.currentClass) {
+			case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
+			case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
+			case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
+			default:                   playerSkillClass = SkillClass::ANY;     break;
+			}
+
+			if (skill.requiredClass != SkillClass::ANY &&
+				skill.requiredClass != playerSkillClass) {
+				send("SERVER:COMBAT_LOG:You cannot use that skill with your class.");
+				return;
+			}
+
+			// Check mana cost
+			if (player.stats.mana < skill.manaCost) {
+				send("SERVER:COMBAT_LOG:Not enough mana to use " + skillName + "!");
+				return;
+			}
+
+			player.stats.mana -= skill.manaCost;
+
+			bool targetIsSelf = (skill.target == SkillTarget::SELF);
+
+			// Compute skill-based attack power using player stats and skill scales
+			float scaledAttack =
+				finalStats.strength * skill.strScale +
+				finalStats.dexterity * skill.dexScale +
+				finalStats.intellect * skill.intScale +
+				skill.flatDamage;
+
+			int base_damage = 0;
+
+			if (!targetIsSelf) {
+				// Offensive skill at the opponent
+				int targetDefense = player.currentOpponent->defense;
+				base_damage = damage_after_defense(scaledAttack, targetDefense);
+
+				float variance = 0.9f + ((float)(rand() % 21) / 100.0f); // 0.9–1.1
+				int dmg = std::max(1, (int)std::round(base_damage * variance));
+
+				// Let skills crit like basic attacks
+				float critChance = crit_chance_for_player(finalStats, player.currentClass);
+				if (((float)rand() / RAND_MAX) < critChance) {
+					ClassCritTuning t = getCritTuning(player.currentClass);
+					dmg = (int)std::round(dmg * t.critMultiplier);
+					send("SERVER:COMBAT_LOG:A critical " + skillName + "!");
+				}
+
+				player_damage = dmg;
+
+				std::string log_msg =
+					"SERVER:COMBAT_LOG:You use " + skillName + " on the " +
+					player.currentOpponent->type + " for " +
+					std::to_string(player_damage) + " damage!";
+				send(log_msg);
+			}
+			else {
+				// Defensive / self-target skill (e.g., ShieldWall)
+				player_damage = 0;
+				std::string log_msg =
+					"SERVER:COMBAT_LOG:You use " + skillName + " on yourself.";
+				send(log_msg);
+			}
+
+			// Apply status effect if the skill has one
+			if (skill.appliesStatus) {
+				StatusEffect eff;
+				eff.type = skill.statusType;
+				eff.magnitude = skill.statusMagnitude;
+				eff.appliedByPlayer = true;
+
+				// Base duration from the skill definition
+				int baseDuration = skill.statusDuration;
+				int bonusTurns = 0;
+
+				// Small stat-based chance to extend duration by +1 turn
+				switch (skill.statusType) {
+				case StatusType::BURN: {
+					// Wizards with higher INT get better burns
+					int chance = std::min(50, finalStats.intellect); // 0–50%
+					if ((rand() % 100) < chance) {
+						bonusTurns = 1;
+					}
+					break;
+				}
+				case StatusType::BLEED: {
+					// Rogues with higher DEX get better bleeds
+					int chance = std::min(50, finalStats.dexterity); // 0–50%
+					if ((rand() % 100) < chance) {
+						bonusTurns = 1;
+					}
+					break;
+				}
+				case StatusType::DEFENSE_UP: {
+					// Warriors with higher LUCK might keep their shield up longer
+					int chance = std::min(40, finalStats.luck); // up to 40%
+					if ((rand() % 100) < chance) {
+						bonusTurns = 1;
+					}
+					break;
+				}
+				default:
+					// other status types: no bonus for now
+					break;
+				}
+
+				eff.remainingTurns = baseDuration + bonusTurns;
+				if (eff.remainingTurns < 1) eff.remainingTurns = 1;
+
+				if (targetIsSelf) {
+					player.activeStatusEffects.push_back(eff);
+				}
+				else {
+					player.currentOpponent->activeStatusEffects.push_back(eff);
+				}
+				if (!targetIsSelf &&
+					(skill.statusType == StatusType::BURN || skill.statusType == StatusType::BLEED)) {
+					apply_statuses_to_monster();
+				}
+
+				if (bonusTurns > 0) {
+					send(
+						"SERVER:COMBAT_LOG:The effects of " + skillName +
+						" linger longer than usual!"
+					);
+				}
+
+				// Flavor log about the effect itself
+				std::string statusMsg;
+				switch (skill.statusType) {
+				case StatusType::BURN:       statusMsg = "burns";                break;
+				case StatusType::BLEED:      statusMsg = "makes bleed";          break;
+				case StatusType::DEFENSE_UP: statusMsg = "bolsters the defense of"; break;
+				default:                     statusMsg = "affects";              break;
+				}
+
+				if (targetIsSelf) {
+					send(
+						"SERVER:COMBAT_LOG:Your " + skillName + " " + statusMsg + " you."
+					);
+				}
+				else {
+					send(
+						"SERVER:COMBAT_LOG:Your " + skillName + " " + statusMsg +
+						" the " + player.currentOpponent->type + "."
+					);
+				}
+			}
+		}
+		else if (action_type == "DEFEND") {
+			player.isDefending = true;
+			send("SERVER:COMBAT_LOG:You brace for the next attack.");
+		}
+
+		else if (action_type == "FLEE") {
+			// FIX: Use -> access and std::max/min
+			float flee_chance = 0.5f + ((float)finalStats.speed - (float)player.currentOpponent->speed) * 0.05f + ((float)finalStats.luck * 0.01f);
+			flee_chance = std::max(0.1f, std::min(0.9f, flee_chance));
+			if (((float)rand() / RAND_MAX) < flee_chance) { fled = true; }
+			else { send("SERVER:COMBAT_LOG:You failed to flee!"); }
+		}
+
+		if (fled) {
+			// FIX: Store string
+			std::string log_msg = "SERVER:COMBAT_LOG:You successfully fled from the " + player.currentOpponent->type + "!";
+			send(log_msg);
+			player.isInCombat = false; player.currentOpponent.reset();
+			send("SERVER:COMBAT_VICTORY:Fled");
+			SyncPlayerMonsters(player);
+			send_current_monsters_list(); return;
+		}
+
+		// FIX: Use -> access
+		if (player_damage > 0) { player.currentOpponent->health -= player_damage; }
+		send_player_stats();
+		// FIX: Store string
+		std::string combat_update = "SERVER:COMBAT_UPDATE:" + to_string(player.currentOpponent->health);
+		send(combat_update);
+
+		// FIX: Use -> access
+		if (player.currentOpponent->health <= 0) {
+			std::string log_msg_1 = "SERVER:COMBAT_LOG:You defeated the " + player.currentOpponent->type + "!";
+			send(log_msg_1);
+
+			int xp_gain = player.currentOpponent->xpReward;
+			std::string log_msg_2 = "SERVER:STATUS:Gained " + to_string(xp_gain) + " XP.";
+			send(log_msg_2);
+
+			player.stats.experience += xp_gain;
+			int lootTier = player.currentOpponent->lootTier;
+
+			if (lootTier != -1) {
+				// 1) Base drop chance defined per monster (0–100)
+				int baseDropChance = player.currentOpponent->dropChance;
+
+				// Example: 0 luck = 1.0x, 10 luck ≈ 1.3x, 25 luck ≈ 1.5x, 50 luck ≈ 1.7x
+				double luckMultiplier = 1.0 + (std::sqrt(static_cast<double>(player.stats.luck)) / 15.0);
+				if (luckMultiplier > 1.8) {
+					luckMultiplier = 1.8;
+				}
+
+				// Tier 1 = 1.0, Tier 2 ≈ 0.85, Tier 3 ≈ 0.70, Tier 4 ≈ 0.55, Tier 5 ≈ 0.40 (min)
+				int tierIndex = std::max(0, lootTier - 1);
+				double tierModifier = 1.0 - (tierIndex * 0.15);
+				if (tierModifier < 0.4) {
+					tierModifier = 0.4;
+				}
+
+				// 4) Final chance
+				double finalDropChance = baseDropChance * luckMultiplier * tierModifier;
+
+				// Clamp between 5% and 75% so it never feels impossible or guaranteed
+				if (finalDropChance < 5.0) finalDropChance = 5.0;
+				if (finalDropChance > 75.0) finalDropChance = 75.0;
+
+				// 5) Roll 0–99
+				int roll = rand() % 100;
+
+				std::cout << "[DEBUG] Drop roll: " << roll
+					<< " | Chance: " << finalDropChance
+					<< "% | Luck: " << player.stats.luck
+					<< " | Tier: " << lootTier << std::endl;
+
+				if (roll < finalDropChance) {
+					// 6) Build a candidate list of items for this tier
+					std::vector<std::string> possibleItems;
+					for (const auto& [itemId, def] : itemDatabase) {
+						if (def.item_tier == lootTier) {
+							possibleItems.push_back(itemId);
+						}
+					}
+
+					if (!possibleItems.empty()) {
+						int itemIndex = rand() % static_cast<int>(possibleItems.size());
+						std::string itemId = possibleItems[itemIndex];
+
+						addItemToInventory(itemId, 1);
+
+						const ItemDefinition& def = itemDatabase.at(itemId);
+						std::string log_msg_3 =
+							"SERVER:STATUS:The " + player.currentOpponent->type +
+							" dropped: " + def.name + "!";
+						send(log_msg_3);
+
+						std::cout << "[LOOT DEBUG] roll=" << roll
+							<< " finalDropChance=" << finalDropChance
+							<< " possibleItems=" << possibleItems.size()
+							<< " item=" << itemId
+							<< std::endl;
 					}
 					else {
-						send(
-							"SERVER:COMBAT_LOG:Your " + skillName + " " + statusMsg +
-							" the " + player.currentOpponent->type + "."
-						);
+						std::cout << "[LOOT DEBUG] No items defined for tier "
+							<< lootTier << std::endl;
 					}
 				}
 			}
-			else if (action_type == "DEFEND") {
-				player.isDefending = true;
-				send("SERVER:COMBAT_LOG:You brace for the next attack.");
-			}
 
-			else if (action_type == "FLEE") {
-				// FIX: Use -> access and std::max/min
-				float flee_chance = 0.5f + ((float)finalStats.speed - (float)player.currentOpponent->speed) * 0.05f + ((float)finalStats.luck * 0.01f);
-				flee_chance = std::max(0.1f, std::min(0.9f, flee_chance));
-				if (((float)rand() / RAND_MAX) < flee_chance) { fled = true; }
-				else { send("SERVER:COMBAT_LOG:You failed to flee!"); }
-			}
-
-			if (fled) {
-				// FIX: Store string
-				std::string log_msg = "SERVER:COMBAT_LOG:You successfully fled from the " + player.currentOpponent->type + "!";
-				send(log_msg);
-				player.isInCombat = false; player.currentOpponent.reset();
-				send("SERVER:COMBAT_VICTORY:Fled");
-				SyncPlayerMonsters(player);
-				send_current_monsters_list(); return;
-			}
-
-			// FIX: Use -> access
-			if (player_damage > 0) { player.currentOpponent->health -= player_damage; }
+			send("SERVER:COMBAT_VICTORY:Defeated");
+			player.isInCombat = false;
+			player.currentOpponent.reset();
+			check_for_level_up();
 			send_player_stats();
-			// FIX: Store string
-			std::string combat_update = "SERVER:COMBAT_UPDATE:" + to_string(player.currentOpponent->health);
-			send(combat_update);
+			send_current_monsters_list();
+			return;
+		}
 
-			// FIX: Use -> access
-			if (player.currentOpponent->health <= 0) {
-				std::string log_msg_1 = "SERVER:COMBAT_LOG:You defeated the " + player.currentOpponent->type + "!";
-				send(log_msg_1);
+		// --- Start of Monster Turn ---
 
-				int xp_gain = player.currentOpponent->xpReward;
-				std::string log_msg_2 = "SERVER:STATUS:Gained " + to_string(xp_gain) + " XP.";
-				send(log_msg_2);
+		if (monsterStunnedThisTurn) {
+			send(
+				"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
+				" is stunned and cannot act!"
+			);
+			send("SERVER:COMBAT_TURN:Your turn.");
+			return;
+		}
 
-				player.stats.experience += xp_gain;
-				int lootTier = player.currentOpponent->lootTier;
+		// --- NEW: DODGE CHECK ---
+		float dodge_chance = dodge_chance_for_player(finalStats, player.currentClass);
+		if (((float)rand() / RAND_MAX) < dodge_chance) {
+			// The player dodged the attack!
+			player.isDefending = false; // Reset defend state
+			send("SERVER:COMBAT_LOG:You swiftly dodged the " + player.currentOpponent->type + "'s attack!");
+			send("SERVER:COMBAT_TURN:Your turn.");
+			return;
+		}
+		// --- END DODGE CHECK ---
 
-				if (lootTier != -1) {
-					// 1) Base drop chance defined per monster (0–100)
-					int baseDropChance = player.currentOpponent->dropChance;
+		int monster_damage = 0;
+		std::string action_log;
+		int healingDone = 0; // Tracks self-healing/lifesteal amount
 
+		// --- MONSTER ACTION LOGIC: Attack vs. Spell/Ability ---
+		bool usedSkill = false;
 
-					//    Example: 0 luck = 1.0x, 10 luck ≈ 1.3x, 25 luck ≈ 1.5x, 50 luck ≈ 1.7x
-					double luckMultiplier = 1.0 + (std::sqrt(static_cast<double>(player.stats.luck)) / 15.0);
-					if (luckMultiplier > 1.8) {
-						luckMultiplier = 1.8;
-					}
+		// Calculate a spell chance based on Intellect dominance
+		int primary_physical_stat = std::max(player.currentOpponent->strength, player.currentOpponent->dexterity);
+		int magic_stat = player.currentOpponent->intellect;
+		float int_diff = (float)magic_stat - (float)primary_physical_stat;
 
+		// Base chance for a non-physical monster is 30%. Add 2% per point of Int lead.
+		int spellChance = 30 + static_cast<int>(int_diff * 2.0f);
+		spellChance = std::min(70, spellChance);
+		spellChance = std::max(30, spellChance); // Min 30% if it has skills
 
-					//    Tier 1 = 1.0, Tier 2 ≈ 0.85, Tier 3 ≈ 0.70, Tier 4 ≈ 0.55, Tier 5 ≈ 0.40 (min)
-					int tierIndex = std::max(0, lootTier - 1);
-					double tierModifier = 1.0 - (tierIndex * 0.15);
-					if (tierModifier < 0.4) {
-						tierModifier = 0.4;
-					}
+		// Decide between skill and attack (skill attempt only; fallback handled below)
+		if (!player.currentOpponent->skills.empty() && (rand() % 100 < spellChance)) {
 
-					// 4) Final chance
-					double finalDropChance = baseDropChance * luckMultiplier * tierModifier;
+			// --- MONSTER ATTEMPTS SKILL ---
 
-					// Clamp between 5% and 75% so it never feels impossible or guaranteed
-					if (finalDropChance < 5.0) finalDropChance = 5.0;
-					if (finalDropChance > 75.0) finalDropChance = 75.0;
+			// Pick a random skill from the monster's list
+			int skillIndex = rand() % player.currentOpponent->skills.size();
+			std::string skillName = player.currentOpponent->skills[skillIndex];
 
-					// 5) Roll 0–99
-					int roll = rand() % 100;
+			// --- [START] CRASH FIX ---
+			const SkillDefinition* skill_ptr = nullptr; // Use a pointer
+			bool skill_found = false;
 
-					std::cout << "[DEBUG] Drop roll: " << roll
-						<< " | Chance: " << finalDropChance
-						<< "% | Luck: " << player.stats.luck
-						<< " | Tier: " << lootTier << std::endl;
+			// 1. LOOKUP: Check Monster Spell Map first
+			auto itMonsterSkill = g_monster_spell_defs.find(skillName);
+			if (itMonsterSkill != g_monster_spell_defs.end()) {
+				skill_ptr = &itMonsterSkill->second;
+				skill_found = true;
+			}
+			// 2. Fallback: Check Player Spell Map
+			else {
+				auto itPlayerSkill = g_skill_defs.find(skillName);
+				if (itPlayerSkill != g_skill_defs.end()) {
+					skill_ptr = &itPlayerSkill->second;
+					skill_found = true;
+				}
+			}
 
-					if (roll < finalDropChance) {
-						// 6) Build a candidate list of items for this tier
-						std::vector<std::string> possibleItems;
-						for (const auto& [itemId, def] : itemDatabase) {
-							if (def.item_tier == lootTier) {
-								possibleItems.push_back(itemId);
+			// 3. THE REAL FIX: Check the boolean flag, not a mixed-up iterator
+			if (skill_found && skill_ptr != nullptr) {
+				const SkillDefinition& skill = *skill_ptr; // Dereference the pointer
+				// --- [END] CRASH FIX ---
+
+				bool targetIsSelf = (skill.target == SkillTarget::SELF);
+
+				// --- VALIDATION AND ACTION ---
+
+				if (skill.target == SkillTarget::ENEMY || targetIsSelf) {
+					usedSkill = true;
+
+					// --- A. OFFENSIVE SKILLS (TARGET ENEMY) ---
+					if (skill.target == SkillTarget::ENEMY) {
+
+						float scaledAttack =
+							player.currentOpponent->strength * skill.strScale +
+							player.currentOpponent->dexterity * skill.dexScale +
+							player.currentOpponent->intellect * skill.intScale +
+							skill.flatDamage;
+
+						int base_damage = static_cast<int>(std::round(scaledAttack));
+
+						// Magic Resistance Check
+						if (skill.isMagic) {
+							float resistance_multiplier = 1.0f - magic_resistance_for_player(finalStats);
+							base_damage = static_cast<int>(std::round(base_damage * resistance_multiplier));
+
+							if (resistance_multiplier < 1.0f) {
+								send("SERVER:COMBAT_LOG:You resist some of the " + skillName + "'s magic!");
 							}
 						}
 
-						if (!possibleItems.empty()) {
-							int itemIndex = rand() % static_cast<int>(possibleItems.size());
-							std::string itemId = possibleItems[itemIndex];
+						float variance = 0.9f + ((float)(rand() % 21) / 100.0f); // 0.9–1.1
+						monster_damage = std::max(1, (int)std::round(base_damage * variance));
 
-							addItemToInventory(itemId, 1);
+						action_log = "The " + player.currentOpponent->type + " uses " + skillName +
+							" for " + std::to_string(monster_damage) + " damage!";
 
-							const ItemDefinition& def = itemDatabase.at(itemId);
-							std::string log_msg_3 =
-								"SERVER:STATUS:The " + player.currentOpponent->type +
-								" dropped: " + def.name + "!";
-							send(log_msg_3);
-
-							std::cout << "[LOOT DEBUG] roll=" << roll
-								<< " finalDropChance=" << finalDropChance
-								<< " possibleItems=" << possibleItems.size()
-								<< " item=" << itemId
-								<< std::endl;
-						}
-						else {
-							std::cout << "[LOOT DEBUG] No items defined for tier "
-								<< lootTier << std::endl;
+						// Lifesteal/Self-Heal from Damage Dealt
+						if (skillName == "BLOOD_LEECH" || skillName == "SOUL_DRAIN" || skillName == "LIFE_SIPHON") {
+							healingDone += (int)std::round(monster_damage * 0.5f);
 						}
 					}
+
+					// --- B. DEFENSIVE/SELF SKILLS (TARGET SELF) ---
+					else if (targetIsSelf) {
+						action_log = "The " + player.currentOpponent->type + " uses " + skillName + " on itself.";
+
+						// Direct Healing Logic (REGENERATE)
+						if (skillName == "REGENERATE") {
+							healingDone += std::abs((int)std::round(skill.flatDamage + (player.currentOpponent->intellect * skill.intScale)));
+						}
+
+						// Special Berserk/Sacrificial Logic (Dual effect, applies debuff to self)
+						if (skillName == "BERSERK") {
+							// BERSERK applies ATK_UP via status below. Manually apply DEF_DOWN to monster.
+							StatusEffect defDown;
+							defDown.type = StatusType::DEFENSE_DOWN;
+							defDown.magnitude = 5; // Example: -5 Def
+							defDown.remainingTurns = skill.statusDuration;
+							player.currentOpponent->activeStatusEffects.push_back(defDown);
+						}
+						if (skillName == "SACRIFICIAL_BITE") {
+							// SACRIFICIAL_BITE deals damage to player above, but requires a self-burn.
+							StatusEffect selfBurn;
+							selfBurn.type = StatusType::BURN;
+							selfBurn.magnitude = 5;
+							selfBurn.remainingTurns = 2;
+							player.currentOpponent->activeStatusEffects.push_back(selfBurn);
+							send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " burns itself with dark energy!");
+						}
+						// Note: SUMMON_MINION/TERRIFY require complex handler logic not implemented here.
+					}
+
+					// --- C. APPLY STATUS EFFECTS (BOTH TARGETS) ---
+					if (skill.appliesStatus) {
+						StatusEffect eff;
+						eff.type = skill.statusType;
+						eff.magnitude = skill.statusMagnitude;
+						eff.remainingTurns = skill.statusDuration;
+						eff.appliedByPlayer = false;
+
+						if (skill.target == SkillTarget::ENEMY) {
+							player.activeStatusEffects.push_back(eff);
+							send("SERVER:COMBAT_LOG:You are afflicted by " + skillName + "!");
+						}
+						else if (skill.target == SkillTarget::SELF) {
+							// Buffs/Debuffs on monster
+							player.currentOpponent->activeStatusEffects.push_back(eff);
+							send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " is affected by " + skillName + "!");
+						}
+					}
+
 				}
-
-				send("SERVER:COMBAT_VICTORY:Defeated");
-				player.isInCombat = false;
-				player.currentOpponent.reset();
-				check_for_level_up();
-				send_player_stats();
-				send_current_monsters_list();
-				return;
+				else {
+					// Unusable skill (e.g., targets SELF but has no self-effect, or invalid skill definition)
+					usedSkill = false;
+				}
 			}
-			if (monsterStunnedThisTurn) {
-				send(
-					"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
-					" is stunned and cannot act!"
-				);
-				send("SERVER:COMBAT_TURN:Your turn.");
-				return;
-			}
-			int monster_damage = 0;
+		}
 
-			// include DEF_UP buff if you added extraDefFromBuffs above
+		// --- If skill failed or if it was ignored, execute BASIC ATTACK ---
+		if (!usedSkill) {
+
 			int player_defense = finalStats.defense + extraDefFromBuffs;
 
 			if (player.isDefending) {
@@ -3547,49 +3832,63 @@ void AsyncSession::handle_message(const string& message)
 				player.isDefending = false;
 			}
 
-			// Use shared monster helpers
+			// Use shared monster helpers (Basic Attack Logic)
 			float monsterAttackPower = attack_power_for_monster(*player.currentOpponent);
 			int base_monster_damage = damage_after_defense(monsterAttackPower, player_defense);
 
-			float monster_variance = 0.85f + ((float)(rand() % 31) / 100.0f); // 0.85–1.15
+			float monster_variance = 0.85f + ((float)(rand() % 31) / 100.0f);
 			monster_damage = std::max(1, (int)std::round(base_monster_damage * monster_variance));
 
 			float monster_crit_chance = crit_chance_for_monster(*player.currentOpponent);
 			if (((float)rand() / RAND_MAX) < monster_crit_chance) {
 				monster_damage = (int)std::round(monster_damage * 1.6f);
-				std::string log_msg =
-					"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
-					" lands a critical hit!";
-				send(log_msg);
+				action_log = "The " + player.currentOpponent->type + " lands a critical hit!";
+				send("SERVER:COMBAT_LOG:" + action_log);
 			}
 
-			player.stats.health -= monster_damage;
-			std::string log_msg_attack =
-				"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
-				" attacks you for " + std::to_string(monster_damage) + " damage!";
-			send(log_msg_attack);
-			send_player_stats();
-			if (player.stats.health <= 0) {
-				player.stats.health = 0;
-				send("SERVER:COMBAT_DEFEAT:You have been defeated!");
-				player.isInCombat = false; player.currentOpponent.reset();
-				player.currentArea = "TOWN"; player.currentMonsters.clear();
-				player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
-				player.posX = 26; player.posY = 12; player.currentPath.clear();
-				broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
-				{ lock_guard<mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
-
-				send("SERVER:AREA_CHANGED:TOWN");
-				send_area_map_data(player.currentArea);
-				SyncPlayerMonsters(player);
-				send_current_monsters_list();
-				send_available_areas();
-				send_player_stats();
-				return;
-			}
-			send("SERVER:COMBAT_TURN:Your turn.");
+			action_log = "The " + player.currentOpponent->type + " attacks you for " + std::to_string(monster_damage) + " damage!";
 		}
+		// --- END MONSTER ACTION LOGIC ---
+
+		// --- Apply Damage to Player ---
+		player.stats.health -= monster_damage;
+		send("SERVER:COMBAT_LOG:" + action_log);
+
+		// --- Apply Monster Healing (after damage calculation) ---
+		if (healingDone > 0) {
+			player.currentOpponent->health =
+				std::min(player.currentOpponent->maxHealth, player.currentOpponent->health + healingDone);
+			send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " heals for " + std::to_string(healingDone) + " health!");
+			std::string update = "SERVER:COMBAT_UPDATE:" + std::to_string(player.currentOpponent->health);
+			send(update);
+		}
+
+		send_player_stats();
+
+		// --- Check for Player Defeat ---
+		if (player.stats.health <= 0) {
+			player.stats.health = 0;
+			send("SERVER:COMBAT_DEFEAT:You have been defeated!");
+			player.isInCombat = false; player.currentOpponent.reset();
+			player.currentArea = "TOWN"; player.currentMonsters.clear();
+			player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
+			player.posX = 26; player.posY = 12; player.currentPath.clear();
+			broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
+			{ lock_guard<mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
+
+			send("SERVER:AREA_CHANGED:TOWN");
+			send_area_map_data(player.currentArea);
+			SyncPlayerMonsters(player);
+			send_current_monsters_list();
+			send_available_areas();
+			send_player_stats();
+			return;
+		}
+
+		send("SERVER:COMBAT_TURN:Your turn.");
 	}
+
+
 	   else if (message.rfind("GIVE_XP:", 0) == 0) {
 		if (!player.isFullyInitialized) { send("SERVER:ERROR:Complete character creation first."); }
 		else if (player.isInCombat) { send("SERVER:ERROR:Cannot gain XP in combat."); }
