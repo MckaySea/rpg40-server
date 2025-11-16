@@ -5641,11 +5641,16 @@ namespace { // Use anonymous namespace to keep these helpers file-local
 	}
 
 	/**
-	 * @brief Calculates the Chebyshev distance heuristic for A*.
+	 * @brief Calculates the Chebyshev distance heuristic for A*.    nevermind i did octile, the choosing diagnoal path constantly looked unnautral af
 	 */
 	int calculate_heuristic(Point a, Point b) {
-		// Use Chebyshev distance (max of x or y)
-		return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
+		int dx = std::abs(a.x - b.x);
+		int dy = std::abs(a.y - b.y);
+		const int D = 10;
+		const int D2 = 14;
+
+		// Octile distance heuristic (admissible for 8-direction movement)
+		return D * (dx + dy) + (D2 - 2 * D) * std::min(dx, dy);
 	}
 
 } // end anonymous namespace
@@ -5667,8 +5672,8 @@ std::deque<Point> A_Star_Search(Point start, Point end, const std::vector<std::v
 	open_list.push(*start_node);
 	node_storage.push_back(std::move(start_node));
 
-	const int D = 1; // Cost for 4-directional movement
-	const int D2 = 1; // Cost for diagonal movement (set to 1 for Chebyshev)
+	const int D = 10; // Cost for 4-directional movement
+	const int D2 = 14; // Cost for diagonal movement (set to 1 for Chebyshev)
 
 	// 8 directions (4 cardinal, 4 diagonal)
 	int dx[] = { 0,  0, 1, -1, 1,  1, -1, -1 };

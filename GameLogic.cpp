@@ -1526,6 +1526,94 @@ void AsyncSession::send_inventory_and_equipment() {
 	payload["inventory"] = inventory;
 	payload["equipment"] = equipment;
 
+	{
+		// Get a reference to the session's local broadcast_data_
+		auto& broadcastData = getBroadcastData();
+
+		// Populate core data
+		broadcastData.userId = player.userId;
+		broadcastData.playerName = player.playerName;
+		broadcastData.currentArea = player.currentArea;
+		broadcastData.posX = player.posX;
+		broadcastData.posY = player.posY;
+		broadcastData.playerClass = player.currentClass;
+
+		// --- START VERBOSE EQUIPMENT UPDATE ---
+
+		// Slot 1: Weapon
+		if (player.equipment.slots.count(EquipSlot::Weapon) && player.equipment.slots.at(EquipSlot::Weapon).has_value()) {
+			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Weapon).value();
+			if (player.inventory.count(instanceId)) {
+				broadcastData.weaponItemId = player.inventory.at(instanceId).itemId;
+			}
+			else {
+				broadcastData.weaponItemId = "";
+			}
+		}
+		else {
+			broadcastData.weaponItemId = "";
+		}
+
+		// Slot 2: Hat
+		if (player.equipment.slots.count(EquipSlot::Hat) && player.equipment.slots.at(EquipSlot::Hat).has_value()) {
+			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Hat).value();
+			if (player.inventory.count(instanceId)) {
+				broadcastData.hatItemId = player.inventory.at(instanceId).itemId;
+			}
+			else {
+				broadcastData.hatItemId = "";
+			}
+		}
+		else {
+			broadcastData.hatItemId = "";
+		}
+
+		// Slot 3: Top
+		if (player.equipment.slots.count(EquipSlot::Top) && player.equipment.slots.at(EquipSlot::Top).has_value()) {
+			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Top).value();
+			if (player.inventory.count(instanceId)) {
+				broadcastData.torsoItemId = player.inventory.at(instanceId).itemId;
+			}
+			else {
+				broadcastData.torsoItemId = "";
+			}
+		}
+		else {
+			broadcastData.torsoItemId = "";
+		}
+
+		// Slot 4: Bottom
+		if (player.equipment.slots.count(EquipSlot::Bottom) && player.equipment.slots.at(EquipSlot::Bottom).has_value()) {
+			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Bottom).value();
+			if (player.inventory.count(instanceId)) {
+				broadcastData.legsItemId = player.inventory.at(instanceId).itemId;
+			}
+			else {
+				broadcastData.legsItemId = "";
+			}
+		}
+		else {
+			broadcastData.legsItemId = "";
+		}
+
+		// Slot 5: Boots
+		if (player.equipment.slots.count(EquipSlot::Boots) && player.equipment.slots.at(EquipSlot::Boots).has_value()) {
+			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Boots).value();
+			if (player.inventory.count(instanceId)) {
+				broadcastData.bootsItemId = player.inventory.at(instanceId).itemId;
+			}
+			else {
+				broadcastData.bootsItemId = "";
+			}
+		}
+		else {
+			broadcastData.bootsItemId = "";
+		}
+
+
+		std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+		g_player_registry[player.userId] = broadcastData;
+	}
 	// --- Send to client ---
 	std::string msg = "SERVER:INVENTORY_UPDATE:" + payload.dump();
 	send(msg);
@@ -2073,6 +2161,32 @@ void AsyncSession::load_character(int accountId) {
 		broadcast_data_.currentArea = player.currentArea;
 		broadcast_data_.posX = player.posX;
 		broadcast_data_.posY = player.posY;
+
+
+		auto getItemId = [&](const std::optional<uint64_t>& optId) -> std::string {
+			if (optId.has_value() && player.inventory.count(optId.value())) {
+				return player.inventory.at(optId.value()).itemId;
+			}
+			return "";
+			};
+
+		// We must populate the broadcast data with equipment IDs *on load*
+		broadcast_data_.weaponItemId = player.equipment.slots.count(EquipSlot::Weapon) ?
+			getItemId(player.equipment.slots.at(EquipSlot::Weapon)) : "";
+
+		broadcast_data_.hatItemId = player.equipment.slots.count(EquipSlot::Hat) ?
+			getItemId(player.equipment.slots.at(EquipSlot::Hat)) : "";
+
+		broadcast_data_.torsoItemId = player.equipment.slots.count(EquipSlot::Top) ?
+			getItemId(player.equipment.slots.at(EquipSlot::Top)) : "";
+
+		broadcast_data_.legsItemId = player.equipment.slots.count(EquipSlot::Bottom) ?
+			getItemId(player.equipment.slots.at(EquipSlot::Bottom)) : "";
+
+		broadcast_data_.bootsItemId = player.equipment.slots.count(EquipSlot::Boots) ?
+			getItemId(player.equipment.slots.at(EquipSlot::Boots)) : "";
+		// --- END ADDED LOGIC ---
+
 		{
 			lock_guard<mutex> lock(g_player_registry_mutex);
 			g_player_registry[player.userId] = broadcast_data_;
@@ -2951,7 +3065,9 @@ void AsyncSession::handle_message(const string& message)
 					player.isFullyInitialized = true;
 					player.hasSpentInitialPoints = true;
 					send("SERVER:CHARACTER_COMPLETE:Character creation complete! You can now explore.");
-					send_available_areas();
+					send_inventory_and_equipment(); // 1. Syncs your session data to the global registry
+					handle_message("GO_TO:" + player.currentArea); // 2. Triggers the area change to broadcast you
+
 				}
 				else if (player.availableSkillPoints > 0) { send("SERVER:PROMPT:You have " + to_string(player.availableSkillPoints) + " skill points remaining."); }
 				else { send("SERVER:STATUS:All skill points spent."); }
@@ -3068,7 +3184,49 @@ void AsyncSession::handle_message(const string& message)
 		SyncPlayerMonsters(player);
 		send_current_monsters_list();
 		send_player_stats();
+
+		std::vector<std::shared_ptr<AsyncSession>> sessions_in_area;
+		{
+			std::lock_guard<std::mutex> lock(g_session_registry_mutex);
+			for (auto const& pair : g_session_registry) {
+				if (pair.first == player.userId) continue; // Skip yourself
+
+				if (auto session = pair.second.lock()) {
+					if (session->getPlayerState().currentArea == player.currentArea) {
+						sessions_in_area.push_back(session);
+					}
+				}
+			}
+		}
+
+		// 2. Build a "player list" message containing only you
+		std::ostringstream oss;
+		oss << "SERVER:PLAYERS_IN_AREA:[";
+		oss << "{\"id\":" << nlohmann::json(broadcast_data.userId).dump()
+			<< ",\"name\":" << nlohmann::json(broadcast_data.playerName).dump()
+			<< ",\"class\":" << static_cast<int>(broadcast_data.playerClass)
+			<< ",\"x\":" << broadcast_data.posX
+			<< ",\"y\":" << broadcast_data.posY
+			<< ",\"action\":" << nlohmann::json(broadcast_data.currentAction).dump()
+			<< ",\"weaponItemId\":" << nlohmann::json(broadcast_data.weaponItemId).dump()
+			<< ",\"hatItemId\":" << nlohmann::json(broadcast_data.hatItemId).dump()
+			<< ",\"torsoItemId\":" << nlohmann::json(broadcast_data.torsoItemId).dump()
+			<< ",\"legsItemId\":" << nlohmann::json(broadcast_data.legsItemId).dump()
+			<< ",\"bootsItemId\":" << nlohmann::json(broadcast_data.bootsItemId).dump()
+			<< "}";
+		oss << "]";
+
+		// 3. Create a shared_ptr to the message
+		auto shared_spawn_msg = std::make_shared<std::string>(oss.str());
+
+		// 4. Send this "you have spawned" message to all other players
+		for (auto& session : sessions_in_area) {
+			net::dispatch(session->ws_.get_executor(), [session, shared_spawn_msg]() {
+				session->send(*shared_spawn_msg);
+				});
+		}
 	}
+
 
 	   else if (message.rfind("MOVE_TO:", 0) == 0) {
 		if (player.isTrading) {
@@ -4557,6 +4715,13 @@ void AsyncSession::handle_message(const string& message)
 				<< ",\"x\":" << data.posX
 				<< ",\"y\":" << data.posY
 				<< ",\"action\":" << nlohmann::json(data.currentAction).dump()
+				<< ",\"weaponItemId\":" << nlohmann::json(data.weaponItemId).dump()
+				<< ",\"hatItemId\":" << nlohmann::json(data.hatItemId).dump()
+				<< ",\"torsoItemId\":" << nlohmann::json(data.torsoItemId).dump()
+				<< ",\"legsItemId\":" << nlohmann::json(data.legsItemId).dump()
+				<< ",\"bootsItemId\":" << nlohmann::json(data.bootsItemId).dump()
+
+
 				<< "}";
 			first_player = false;
 		}
