@@ -512,6 +512,7 @@ void AsyncSession::process_movement()
 		g_player_registry[player.userId] = broadcast;
 	}
 
+
 	// Send updated stats (position etc.)
 	send_player_stats();
 }
@@ -1410,218 +1411,408 @@ void AsyncSession::send_player_stats() {
 	send(stats_message);
 }
 void AsyncSession::send_inventory_and_equipment() {
+
 	PlayerState& player = getPlayerState();
+
 	auto& ws = getWebSocket();
 
+
 	using json = nlohmann::json;
+
 	json payload;
+
 	json inventory = json::array();
+
 	json equipment = json::object();
 
+
 	// --- Collect equipped item instance IDs ---
+
 	std::set<uint64_t> equipped_item_ids;
+
 	for (const auto& slot_pair : player.equipment.slots) {
+
 		if (slot_pair.second.has_value()) {
+
 			equipped_item_ids.insert(slot_pair.second.value());
+
 		}
+
 	}
+
 
 	// --- Build inventory JSON array ---
+
 	for (const auto& [instanceId, instance] : player.inventory) {
+
 		if (equipped_item_ids.count(instance.instanceId))
+
 			continue; // skip equipped items in the inventory list
 
+
 		const ItemDefinition& def = instance.getDefinition();
+
 		int sellPrice = calculateItemSellPrice(instance, def);
+
 		// --- Find suffix (e.g. " of Flames") ---
+
 		std::string suffix;
+
 		for (const auto& effect : instance.customEffects) {
+
 			if (effect.type == "SUFFIX" && effect.params.count("value")) {
+
 				suffix = " " + effect.params.at("value");
+
 				break;
+
 			}
+
 		}
+
 
 		// --- Build JSON for custom effects ---
+
 		json effects_json = json::array();
+
 		for (const auto& eff : instance.customEffects) {
+
 			json eff_json;
+
 			eff_json["type"] = eff.type;
+
 			eff_json["params"] = eff.params;
+
 			effects_json.push_back(eff_json);
+
 		}
+
 
 		// --- Add inventory item entry ---
+
 		json item_json = {
+
 			{"instanceId", instance.instanceId},
+
 			{"itemId", instance.itemId},
+
 			{"name", def.name + suffix},
+
 			{"desc", def.description},
+
 			{"imagePath", def.imagePath},
+
 			{"quantity", instance.quantity},
+
 			{"slot", static_cast<int>(def.equipSlot)},
+
 			{"baseStats", def.stats},
+
 			{"customStats", instance.customStats},
+
 			{"customEffects", effects_json},
+
 			{"sellPrice", sellPrice}
+
 		};
 
+
 		inventory.push_back(item_json);
+
 	}
+
 
 	// --- Build equipment JSON (full objects, not just IDs) ---
+
 	for (const auto& [slot, optId] : player.equipment.slots) {
+
 		int slotInt = static_cast<int>(slot);
 
+
 		if (optId.has_value()) {
+
 			uint64_t instanceId = optId.value();
 
+
 			if (player.inventory.count(instanceId)) {
+
 				const ItemInstance& instance = player.inventory.at(instanceId);
+
 				const ItemDefinition& def = instance.getDefinition();
 
+
 				// --- Find suffix ---
+
 				std::string suffix;
+
 				for (const auto& eff : instance.customEffects) {
+
 					if (eff.type == "SUFFIX" && eff.params.count("value")) {
+
 						suffix = " " + eff.params.at("value");
+
 						break;
+
 					}
+
 				}
+
 
 				// --- Build JSON for custom effects ---
+
 				json effects_json = json::array();
+
 				for (const auto& eff : instance.customEffects) {
+
 					json eff_json;
+
 					eff_json["type"] = eff.type;
+
 					eff_json["params"] = eff.params;
+
 					effects_json.push_back(eff_json);
+
 				}
+
 				int sellPrice = calculateItemSellPrice(instance, def);
+
 				// --- Add full equipment object ---
+
 				equipment[std::to_string(slotInt)] = {
+
 					{"instanceId", instance.instanceId},
+
 					{"itemId", instance.itemId},
+
 					{"name", def.name + suffix},
+
 					{"desc", def.description},
+
 					{"imagePath", def.imagePath},
+
 					{"quantity", instance.quantity},
+
 					{"slot", slotInt},
+
 					{"baseStats", def.stats},
+
 					{"customStats", instance.customStats},
+
 					{"customEffects", effects_json},
+
 					{"sellPrice", sellPrice}
+
 				};
+
 			}
+
 			else {
+
 				equipment[std::to_string(slotInt)] = nullptr;
+
 			}
+
 		}
+
 		else {
+
 			equipment[std::to_string(slotInt)] = nullptr;
+
 		}
+
 	}
 
+
 	// --- Combine payload ---
+
 	payload["inventory"] = inventory;
+
 	payload["equipment"] = equipment;
 
+
 	{
+
 		// Get a reference to the session's local broadcast_data_
+
 		auto& broadcastData = getBroadcastData();
 
+
 		// Populate core data
+
 		broadcastData.userId = player.userId;
+
 		broadcastData.playerName = player.playerName;
+
 		broadcastData.currentArea = player.currentArea;
+
 		broadcastData.posX = player.posX;
+
 		broadcastData.posY = player.posY;
+
 		broadcastData.playerClass = player.currentClass;
+
 
 		// --- START VERBOSE EQUIPMENT UPDATE ---
 
+
 		// Slot 1: Weapon
+
 		if (player.equipment.slots.count(EquipSlot::Weapon) && player.equipment.slots.at(EquipSlot::Weapon).has_value()) {
+
 			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Weapon).value();
+
 			if (player.inventory.count(instanceId)) {
+
 				broadcastData.weaponItemId = player.inventory.at(instanceId).itemId;
+
 			}
+
 			else {
+
 				broadcastData.weaponItemId = "";
+
 			}
+
 		}
+
 		else {
+
 			broadcastData.weaponItemId = "";
+
 		}
+
 
 		// Slot 2: Hat
+
 		if (player.equipment.slots.count(EquipSlot::Hat) && player.equipment.slots.at(EquipSlot::Hat).has_value()) {
+
 			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Hat).value();
+
 			if (player.inventory.count(instanceId)) {
+
 				broadcastData.hatItemId = player.inventory.at(instanceId).itemId;
+
 			}
+
 			else {
+
 				broadcastData.hatItemId = "";
+
 			}
+
 		}
+
 		else {
+
 			broadcastData.hatItemId = "";
+
 		}
+
 
 		// Slot 3: Top
+
 		if (player.equipment.slots.count(EquipSlot::Top) && player.equipment.slots.at(EquipSlot::Top).has_value()) {
+
 			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Top).value();
+
 			if (player.inventory.count(instanceId)) {
+
 				broadcastData.torsoItemId = player.inventory.at(instanceId).itemId;
+
 			}
+
 			else {
+
 				broadcastData.torsoItemId = "";
+
 			}
+
 		}
+
 		else {
+
 			broadcastData.torsoItemId = "";
+
 		}
+
 
 		// Slot 4: Bottom
+
 		if (player.equipment.slots.count(EquipSlot::Bottom) && player.equipment.slots.at(EquipSlot::Bottom).has_value()) {
+
 			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Bottom).value();
+
 			if (player.inventory.count(instanceId)) {
+
 				broadcastData.legsItemId = player.inventory.at(instanceId).itemId;
+
 			}
+
 			else {
+
 				broadcastData.legsItemId = "";
+
 			}
-		}
-		else {
-			broadcastData.legsItemId = "";
+
 		}
 
-		// Slot 5: Boots
-		if (player.equipment.slots.count(EquipSlot::Boots) && player.equipment.slots.at(EquipSlot::Boots).has_value()) {
-			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Boots).value();
-			if (player.inventory.count(instanceId)) {
-				broadcastData.bootsItemId = player.inventory.at(instanceId).itemId;
-			}
-			else {
-				broadcastData.bootsItemId = "";
-			}
-		}
 		else {
-			broadcastData.bootsItemId = "";
+
+			broadcastData.legsItemId = "";
+
 		}
+
+
+		// Slot 5: Boots
+
+		if (player.equipment.slots.count(EquipSlot::Boots) && player.equipment.slots.at(EquipSlot::Boots).has_value()) {
+
+			uint64_t instanceId = player.equipment.slots.at(EquipSlot::Boots).value();
+
+			if (player.inventory.count(instanceId)) {
+
+				broadcastData.bootsItemId = player.inventory.at(instanceId).itemId;
+
+			}
+
+			else {
+
+				broadcastData.bootsItemId = "";
+
+			}
+
+		}
+
+		else {
+
+			broadcastData.bootsItemId = "";
+
+		}
+
 
 
 		std::lock_guard<std::mutex> lock(g_player_registry_mutex);
+
 		g_player_registry[player.userId] = broadcastData;
+
 	}
+
+
 	// --- Send to client ---
+
 	std::string msg = "SERVER:INVENTORY_UPDATE:" + payload.dump();
+
 	send(msg);
 
+
 	std::cout << "[DEBUG] Sent inventory + equipment update: "
+
 		<< "Inventory=" << player.inventory.size()
+
 		<< " Equipped=" << player.equipment.slots.size()
+
 		<< std::endl;
+
 }
 
 
