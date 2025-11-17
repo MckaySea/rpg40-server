@@ -17,6 +17,7 @@
 #include "GameData.hpp"
 #include <cassert>
 #include <unordered_map> 
+#include <chrono>
 // Forward-declare the session class to avoid circular includes
 class AsyncSession;
 
@@ -203,3 +204,9 @@ PlayerStats getStartingStats(PlayerClass playerClass);
  */
 std::optional<MonsterInstance> create_monster(int id, const std::string& type);
 
+Point find_random_spawn_point(const AreaData& area);
+
+void broadcast_monster_despawn(const std::string& areaName, int spawn_id, const std::string& exclude_user_id);
+
+void broadcast_monster_list(const std::string& areaName); // <-- ADD THIS
+void respawn_monster_immediately(const std::string& areaName, int spawn_id);

@@ -1793,6 +1793,36 @@ const std::unordered_map<std::string, SpawnPoint>& get_area_spawns()
 	};
 	return area_spawns;
 }
+
+Point find_random_spawn_point(const AreaData& area) {
+	const std::vector<std::vector<int>>* gridPtr = area.grid;
+
+	if (!gridPtr) {
+		// No grid, just return a random point
+		return { rand() % GRID_COLS, rand() % GRID_ROWS };
+	}
+
+	int x, y;
+	int attempts = 0;
+	const int max_attempts = 100; // Prevent infinite loop
+
+	do {
+		x = rand() % GRID_COLS;
+		y = rand() % GRID_ROWS;
+		attempts++;
+
+		if (y >= 0 && y < static_cast<int>(gridPtr->size()) &&
+			x >= 0 && x < static_cast<int>((*gridPtr)[y].size()) &&
+			(*gridPtr)[y][x] == 0) // 0 is walkable
+		{
+			return { x, y };
+		}
+
+	} while (attempts < max_attempts);
+
+	// Fallback: return 0,0 if a spot couldn't be found
+	return { 0, 0 };
+}
 void initializeAreas() {
 	std::cout << "[Init] Starting scalable area initialization..." << std::endl;
 
@@ -1825,18 +1855,27 @@ void initializeAreas() {
 
 	//  Step 2: Populate base data
 	for (const auto& base : areaTemplates) {
-		AreaData area;
+
+		// 1. Create the AreaData object *in-place* inside the map
+		//    This avoids all copying and moving.
+		auto [it, inserted] = g_areas.try_emplace(base.name);
+
+		// 2. Get a reference to the new object that is *already in the map*
+		AreaData& area = it->second;
+
+		// 3. Populate the in-map object directly
 		area.name = base.name;
 		area.backgroundImage = base.bg;
 		area.grid = base.grid;
 
 		// attach interactables automatically
-		auto it = g_interactable_objects.find(base.name);
-		if (it != g_interactable_objects.end()) {
-			area.interactables = it->second;
+		auto interact_it = g_interactable_objects.find(base.name);
+		if (interact_it != g_interactable_objects.end()) {
+			area.interactables = interact_it->second;
 		}
 
-		g_areas[base.name] = area;
+
+		// g_areas[base.name] = area; 
 	}
 
 	//  Step 3: Add zone transitions (bi-directional example)
@@ -1854,7 +1893,7 @@ void initializeAreas() {
 		{global_monster_id_counter++, "WOLF", 20, 12, 1, 3},
 		{global_monster_id_counter++, "WOLF", 2, 13, 1, 3},
 		{global_monster_id_counter++, "GOBLIN_PEON", 5, 5, 1, 3},
-		{global_monster_id_counter++, "GOBLIN_PEON", 28, 6, 1, 3},
+		{global_monster_id_counter++, "GOBLIN_PEON", 15, 12, 1, 3},
 		{global_monster_id_counter++, "FOREST_SPRITE", 10, 15, 2, 5},
 		{global_monster_id_counter++, "FOREST_SPRITE", 17, 3, 2, 5},
 		{global_monster_id_counter++, "GIANT_SPIDER", 25, 18, 1, 1}, // <-- Fixed: space
@@ -1998,11 +2037,35 @@ void initializeAreas() {
 
 	//  Step 7: Validate monsters exist in template
 	for (auto& [name, area] : g_areas) {
-		for (const auto& m : area.monsters) {
-			if (MONSTER_TEMPLATES.find(m.name) == MONSTER_TEMPLATES.end()) {
+
+		// Clear any old state (important for hot-reloads, if you add them)
+		area.live_monsters.clear();
+
+		for (const auto& m_spawn : area.monsters) {
+			auto templateIt = MONSTER_TEMPLATES.find(m_spawn.name);
+			if (templateIt == MONSTER_TEMPLATES.end()) {
 				std::cerr << "[Warning] Area '" << name
-					<< "' references undefined monster type '" << m.name << "'\n";
+					<< "' references undefined monster type '" << m_spawn.name << "'\n";
+				continue;
 			}
+
+			// --- This is the new logic ---
+			LiveMonster lm;
+			lm.spawn_id = m_spawn.id; // Use the ID from the spawn template
+			lm.monster_type = m_spawn.name;
+			lm.asset_key = templateIt->second.assetKey;
+			lm.is_alive = true;
+			lm.respawn_time = std::chrono::steady_clock::time_point::max();
+
+
+			// Store the original spawn point from the template
+			lm.original_spawn_point = { m_spawn.x, m_spawn.y };
+			// The *current* position is the original position on first spawn
+			lm.position = lm.original_spawn_point;
+
+
+			// Add it to the area's global "live monster" list
+			area.live_monsters[lm.spawn_id] = lm;
 		}
 	}
 
