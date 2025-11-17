@@ -47,10 +47,14 @@ enum class StatusType {
 	BURN,
 	BLEED,
 	DEFENSE_UP,
+	DEFENSE_DOWN,
 	ATTACK_UP,
+	ATTACK_DOWN,
 	SPEED_UP,
 	SPEED_DOWN,
-	STUN
+	STUN,
+	MANA_UP,
+	MANA_DOWN
 };
 
 struct StatusEffect {
@@ -60,6 +64,16 @@ struct StatusEffect {
 	bool appliedByPlayer = false;
 };
 
+struct TradeSession {
+	std::string playerAId;
+	std::string playerBId;
+	std::map<uint64_t, int> offerAItems; // Item instance IDs and quantities
+	int offerAGold = 0;
+	bool confirmA = false;
+	std::map<uint64_t, int> offerBItems; // Items offered by B
+	int offerBGold = 0;
+	bool confirmB = false;
+};
 /**
  * @struct PlayerBroadcastData
  * @brief A lightweight struct containing only the data needed
@@ -72,6 +86,12 @@ struct PlayerBroadcastData {
 	std::string currentArea = "TOWN";
 	int posX = 0;
 	int posY = 0;
+	std::string currentAction = "";
+	std::string weaponItemId;
+	std::string hatItemId;
+	std::string torsoItemId;
+	std::string legsItemId;
+	std::string bootsItemId;
 };
 
 //i removed attack to make more interesting encounters based on different stats and make some fights harder! Added int,dex,str,luck
@@ -127,6 +147,7 @@ struct MonsterInstance {
 	int lootTier;
 	int dropChance; //imma make use of these as 0-100 representing percentage chance to drop loot from mobs i think
 	std::vector<StatusEffect> activeStatusEffects;
+	std::vector<std::string> skills;
 	MonsterInstance(int id, std::string type, std::string assetKey, int h, int def, int spd, int str, int dex, int intl, int lck, int xp, int lTier, int dChance)
 		: id(id), type(type), assetKey(assetKey), health(h), maxHealth(h),
 		defense(def), speed(spd), xpReward(xp),
@@ -159,7 +180,8 @@ enum class InteractableType {
 	ZONE_TRANSITION,
 	QUEST_ITEM,
 	SHOP,
-	RESOURCE_NODE
+	RESOURCE_NODE,
+	CRAFTING_STATION
 };
 
 //definin what we can interact with come back and look at this or ask me (McKay for help with creeating new ones)
@@ -192,15 +214,14 @@ struct PlayerState {
 	std::string playerName = "";
 	std::string currentArea = "TOWN";
 
-	int posX = 0;
-	int posY = 0;
+	int posX = 18;
+	int posY = 12;
 
 	// List of monsters available to fight in the current area
 	std::vector<MonsterState> currentMonsters;
 
 	// Stats and progression
 	PlayerStats stats;
-
 	// --- MODIFIED: Replaced old 'spells' vector ---
 	// Holds data loaded from the DB (learned spells, life skills)
 	PlayerSkills skills;
@@ -233,4 +254,6 @@ struct PlayerState {
 	bool isGathering = false;
 	std::string gatheringResourceNode; // The key, e.g., "OAK_TREE"
 	std::chrono::steady_clock::time_point lastGatherTime;
+	bool isTrading = false;
+	std::string tradePartnerId;
 };

@@ -17,6 +17,7 @@
 #include "GameData.hpp"
 #include <cassert>
 #include <unordered_map> 
+#include <chrono>
 // Forward-declare the session class to avoid circular includes
 class AsyncSession;
 
@@ -56,6 +57,7 @@ extern const std::map<std::string, std::vector<DialogueLine>> g_dialogues;
 extern const std::map<std::string, std::string> MONSTER_ASSETS;
 extern const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES;
 extern const std::vector<std::string> MONSTER_KEYS;
+int calculateItemSellPrice(const ItemInstance& instance, const ItemDefinition& def);
 extern int global_monster_id_counter;
 //we're just mapping items to a sell price (which will be whatever tier of gear theyre in)
 extern std::map<std::string, int> g_item_buy_prices;
@@ -65,7 +67,8 @@ extern std::mutex g_player_registry_mutex;
 
 extern std::map<std::string, std::weak_ptr<AsyncSession>> g_session_registry;
 extern std::mutex g_session_registry_mutex;
-
+extern std::map<std::string, std::shared_ptr<TradeSession>> g_active_trades;
+extern std::mutex g_active_trades_mutex;
 // --- NEW: Definition for a rollable effect ---
 // This struct links a cosmetic suffix pool (e.g., "FIRE_EFFECT")
 // to a tangible gameplay mechanic (e.g., +5 strength) and a rarity.
@@ -146,7 +149,8 @@ struct CraftingRecipe {
 // Global Registries
 extern std::map<std::string, ResourceDefinition> g_resource_defs;
 extern std::map<std::string, CraftingRecipe> g_crafting_recipes;
-
+extern std::unordered_map<std::string, SkillDefinition> g_skill_defs;
+extern std::unordered_map<std::string, SkillDefinition> g_monster_spell_defs;
 // Declaration only – no initializer here
 const std::unordered_map<std::string, SpawnPoint>& get_area_spawns();
 // Global registry of all skills by name (e.g. "Ignite", "BloodStrike")
@@ -155,6 +159,9 @@ extern std::unordered_map<std::string, SkillDefinition> g_skill_defs;
 // Initializes all skills. Call this during server startup.
 void initialize_skill_definitions();
 
+
+std::shared_ptr<AsyncSession> get_session_by_id(const std::string& userId);
+void cleanup_trade_session(std::string playerAId, std::string playerBId);
 // --- END NEW ---
 //maps a shop id to a list of item ids it sells for the shops imma make alterable later on so we can have different shops sell different stuff
 extern const std::map<std::string, std::vector<std::string>> g_shops;
@@ -168,6 +175,7 @@ extern std::atomic<int> g_session_id_counter;
 void initialize_item_prices();
 void initialize_item_id_counter(DatabaseManager& db_manager);
 void initialize_suffix_pools();
+void initialize_monster_spell_definitions();
 void initialize_random_effect_pool();
 void initializeAreas();
 
@@ -196,3 +204,9 @@ PlayerStats getStartingStats(PlayerClass playerClass);
  */
 std::optional<MonsterInstance> create_monster(int id, const std::string& type);
 
+Point find_random_spawn_point(const AreaData& area);
+
+void broadcast_monster_despawn(const std::string& areaName, int spawn_id, const std::string& exclude_user_id);
+
+void broadcast_monster_list(const std::string& areaName); // <-- ADD THIS
+void respawn_monster_immediately(const std::string& areaName, int spawn_id);
