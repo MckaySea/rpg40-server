@@ -86,7 +86,12 @@ struct PlayerBroadcastData {
 	std::string currentArea = "TOWN";
 	int posX = 0;
 	int posY = 0;
-	std::string currentAction = ""; // e.g. "MINING", "FISHING", "WOODCUTTING"
+	std::string currentAction = "";
+	std::string weaponItemId;
+	std::string hatItemId;
+	std::string torsoItemId;
+	std::string legsItemId;
+	std::string bootsItemId;
 };
 
 //i removed attack to make more interesting encounters based on different stats and make some fights harder! Added int,dex,str,luck
@@ -209,8 +214,8 @@ struct PlayerState {
 	std::string playerName = "";
 	std::string currentArea = "TOWN";
 
-	int posX = 0;
-	int posY = 0;
+	int posX = 18;
+	int posY = 12;
 
 	// List of monsters available to fight in the current area
 	std::vector<MonsterState> currentMonsters;

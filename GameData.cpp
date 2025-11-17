@@ -435,7 +435,7 @@ const std::vector<std::vector<int>> RUINS_GRID = {
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,1,0,0,0,0,0}, // 16
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 17
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0}, // 18
-	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0}, // 19
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0}, // 19a
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 20
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 21
 };
@@ -466,28 +466,28 @@ const std::vector<std::vector<int>> FOREST_GRID = {
 };
 const std::vector<std::vector<int>> CAVES_GRID = {
 	//       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 0
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 1
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 2
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 3
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 4
-			{0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0}, // 5 
-			{0,0,0,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 6
-			{0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0}, // 7
-			{0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0}, // 8
-			{0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0}, // 9
-			{0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0}, // 10
-			{0,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0}, // 11
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 12 
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 13 
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 14 
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 15 
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 16
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 17
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 18
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 19
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 20
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}  // 21
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 0
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 1
+	{0,0,0,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0}, // 2
+	{0,0,0,1,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0}, // 3
+	{0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,1,0,0,0,0,0,0,0,0}, // 4
+	{0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0}, // 5
+	{0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0}, // 6
+	{0,0,0,1,0,0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0}, // 7
+	{0,0,0,1,1,1,0,0,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0}, // 8
+	{0,0,0,1,1,1,1,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0}, // 9
+	{0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0}, // 10
+	{0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0}, // 11
+	{0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0}, // 12
+	{0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0}, // 13
+	{0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0}, // 14
+	{0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0}, // 15
+	{0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0}, // 16
+	{0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 17
+	{0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 18
+	{0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 19
+	{0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 20
+	{0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 21
 };
 const std::vector<std::vector<int>> DESERT_GRID = {
 	//       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
@@ -828,6 +828,332 @@ void initialize_skill_definitions() {
 		true,                       // isDefensive
 		false,                      // isMagic
 		true                        // autoGranted for warriors
+	};
+	// -------------------------------------------------
+	// WARRIOR ABILITIES (Learnable)
+	// -------------------------------------------------
+
+	// Sunder Armor – STR hit + DEFENSE_DOWN (Inspired by SUNDER_ARMOR)
+	g_skill_defs["Sunder Armor"] = SkillDefinition{
+		"Sunder Armor",
+		SkillClass::WARRIOR,
+		SkillType::ABILITY,
+		15, // manaCost
+		3,  // cooldownTurns
+		SkillTarget::ENEMY,
+
+		1.4f, 0.0f, 0.0f, 10.0f,  // STR, DEX, INT, flatDamage
+
+		true,                     // appliesStatus
+		StatusType::DEFENSE_DOWN,
+		10, // -10 defense
+		3,  // 3 turns
+
+		false, // isDefensive
+		false, // isMagic
+		false  // autoGranted
+	};
+
+	// Pummel – STR hit + STUN (Inspired by Lightning)
+	g_skill_defs["Pummel"] = SkillDefinition{
+		"Pummel",
+		SkillClass::WARRIOR,
+		SkillType::ABILITY,
+		20, // manaCost
+		4,  // cooldownTurns
+		SkillTarget::ENEMY,
+
+		1.0f, 0.0f, 0.0f, 5.0f, // STR, DEX, INT, flatDamage
+
+		true,                   // appliesStatus
+		StatusType::STUN,
+		0, // magnitude unused
+		1, // 1 turn stun
+
+		false, // isDefensive
+		false, // isMagic
+		false  // autoGranted
+	};
+
+	// Enrage – Self ATTACK_UP buff (Inspired by WAR_CRY)
+	g_skill_defs["Enrage"] = SkillDefinition{
+		"Enrage",
+		SkillClass::WARRIOR,
+		SkillType::ABILITY,
+		15, // manaCost
+		5,  // cooldownTurns
+		SkillTarget::SELF,
+
+		0.0f, 0.0f, 0.0f, 0.0f, // No damage
+
+		true,                    // appliesStatus
+		StatusType::ATTACK_UP,
+		15, // +15 STR/Attack
+		3,  // 3 turns
+
+		true,  // isDefensive
+		false, // isMagic
+		false  // autoGranted
+	};
+
+	// Whirlwind – Hits target with STR/DEX scaling (Inspired by WHIRLWIND)
+	g_skill_defs["Whirlwind"] = SkillDefinition{
+		"Whirlwind",
+		SkillClass::WARRIOR,
+		SkillType::ABILITY,
+		25, // manaCost
+		3,  // cooldownTurns
+		SkillTarget::ENEMY,
+
+		1.0f, 0.8f, 0.0f, 5.0f, // Good STR, some DEX scaling
+
+		false,                 // appliesStatus
+		StatusType::NONE,
+		0,
+		0,
+
+		false, // isDefensive
+		false, // isMagic
+		false  // autoGranted
+	};
+
+	// Second Wind – Small self-heal (Inspired by REGENERATE)
+	g_skill_defs["Second Wind"] = SkillDefinition{
+		"Second Wind",
+		SkillClass::WARRIOR,
+		SkillType::ABILITY,
+		10, // manaCost
+		6,  // cooldownTurns
+		SkillTarget::SELF,
+
+		-0.5f, 0.0f, 0.0f, -20.0f, // Heals for flat 20 + 50% of STR
+
+		false,                    // appliesStatus
+		StatusType::NONE,
+		0,
+		0,
+
+		true,  // isDefensive
+		false, // isMagic
+		false  // autoGranted
+	};
+
+	// -------------------------------------------------
+	// ROGUE ABILITIES (Learnable)
+	// -------------------------------------------------
+
+	// Venomous Shank – Low damage, high 'Poison' DoT (Inspired by VENOM_SPIT)
+	g_skill_defs["Venomous Shank"] = SkillDefinition{
+		"Venomous Shank",
+		SkillClass::ROGUE,
+		SkillType::ABILITY,
+		15, // manaCost
+		3,  // cooldownTurns
+		SkillTarget::ENEMY,
+
+		0.0f, 0.8f, 0.0f, 3.0f, // Low initial damage
+
+		true,                   // appliesStatus
+		StatusType::BLEED,      // Re-using BLEED as 'Poison'
+		8,  // 8 damage per turn
+		3,  // 3 turns
+
+		false, // isDefensive
+		false, // isMagic
+		false  // autoGranted
+	};
+
+	// Crippling Strike – DEX hit + DEFENSE_DOWN (Inspired by CRIPPLING_STRIKE)
+	g_skill_defs["Crippling Strike"] = SkillDefinition{
+		"Crippling Strike",
+		SkillClass::ROGUE,
+		SkillType::ABILITY,
+		15, // manaCost
+		3,  // cooldownTurns
+		SkillTarget::ENEMY,
+
+		0.0f, 1.2f, 0.0f, 5.0f, // Good DEX scaling
+
+		true,                     // appliesStatus
+		StatusType::DEFENSE_DOWN,
+		10, // -10 defense
+		2,  // 2 turns
+
+		false, // isDefensive
+		false, // isMagic
+		false  // autoGranted
+	};
+
+	// Evasion – Self DEFENSE_UP buff (Inspired by BONE_SHIELD)
+	g_skill_defs["Evasion"] = SkillDefinition{
+		"Evasion",
+		SkillClass::ROGUE,
+		SkillType::ABILITY,
+		10, // manaCost
+		5,  // cooldownTurns
+		SkillTarget::SELF,
+
+		0.0f, 0.0f, 0.0f, 0.0f, // No damage
+
+		true,                    // appliesStatus
+		StatusType::DEFENSE_UP,
+		20, // +20 Defense (flavored as dodge)
+		2,  // 2 turns
+
+		true,  // isDefensive
+		false, // isMagic
+		false  // autoGranted
+	};
+
+	// Gouge – DEX hit + STUN
+	g_skill_defs["Gouge"] = SkillDefinition{
+		"Gouge",
+		SkillClass::ROGUE,
+		SkillType::ABILITY,
+		20, // manaCost
+		4,  // cooldownTurns
+		SkillTarget::ENEMY,
+
+		0.0f, 1.0f, 0.0f, 5.0f, // Standard DEX damage
+
+		true,                   // appliesStatus
+		StatusType::STUN,
+		0, // magnitude unused
+		1, // 1 turn stun
+
+		false, // isDefensive
+		false, // isMagic
+		false  // autoGranted
+	};
+
+	// Backstab – High-cost, high-CD, high-damage DEX nuke
+	g_skill_defs["Backstab"] = SkillDefinition{
+		"Backstab",
+		SkillClass::ROGUE,
+		SkillType::ABILITY,
+		30, // manaCost
+		5,  // cooldownTurns
+		SkillTarget::ENEMY,
+
+		0.0f, 2.0f, 0.0f, 20.0f, // Very high DEX scaling and flat damage
+
+		false,                  // appliesStatus
+		StatusType::NONE,
+		0,
+		0,
+
+		false, // isDefensive
+		false, // isMagic
+		false  // autoGranted
+	};
+
+	// -------------------------------------------------
+	// WIZARD SPELLS (Learnable)
+	// -------------------------------------------------
+
+	// Frost Nova – INT damage + SPEED_DOWN (Inspired by FREEZING_TOUCH)
+	g_skill_defs["Frost Nova"] = SkillDefinition{
+		"Frost Nova",
+		SkillClass::WIZARD,
+		SkillType::SPELL,
+		15, // manaCost
+		3,  // cooldownTurns
+		SkillTarget::ENEMY,
+
+		0.0f, 0.0f, 1.0f, 5.0f, // Standard INT damage
+
+		true,                    // appliesStatus
+		StatusType::SPEED_DOWN,
+		10, // -10 Speed
+		2,  // 2 turns
+
+		false, // isDefensive
+		true,  // isMagic
+		false  // autoGranted
+	};
+
+	// Arcane Intellect – Self ATTACK_UP buff (Inspired by WAR_CRY)
+	g_skill_defs["Arcane Intellect"] = SkillDefinition{
+		"Arcane Intellect",
+		SkillClass::WIZARD,
+		SkillType::SPELL,
+		20, // manaCost
+		5,  // cooldownTurns
+		SkillTarget::SELF,
+
+		0.0f, 0.0f, 0.0f, 0.0f, // No damage
+
+		true,                    // appliesStatus
+		StatusType::ATTACK_UP,   // We'll assume this buffs magic attack (INT)
+		15, // +15 INT/Attack
+		3,  // 3 turns
+
+		true,  // isDefensive
+		true,  // isMagic
+		false  // autoGranted
+	};
+
+	// Lesser Heal – Self-heal (Inspired by REGENERATE)
+	g_skill_defs["Lesser Heal"] = SkillDefinition{
+		"Lesser Heal",
+		SkillClass::WIZARD,
+		SkillType::SPELL,
+		15, // manaCost
+		3,  // cooldownTurns
+		SkillTarget::SELF,
+
+		0.0f, 0.0f, -1.0f, -25.0f, // Heals for 25 + 100% of INT
+
+		false,                    // appliesStatus
+		StatusType::NONE,
+		0,
+		0,
+
+		true,  // isDefensive
+		true,  // isMagic
+		false  // autoGranted
+	};
+
+	// Mana Shield – Self DEFENSE_UP buff (Inspired by TAUNT/BONE_SHIELD)
+	g_skill_defs["Mana Shield"] = SkillDefinition{
+		"Mana Shield",
+		SkillClass::WIZARD,
+		SkillType::SPELL,
+		10, // manaCost
+		5,  // cooldownTurns
+		SkillTarget::SELF,
+
+		0.0f, 0.0f, 0.0f, 0.0f, // No damage
+
+		true,                    // appliesStatus
+		StatusType::DEFENSE_UP,
+		25, // +25 defense
+		2,  // 2 turns
+
+		true,  // isDefensive
+		true,  // isMagic
+		false  // autoGranted
+	};
+
+	// Pyroblast – High-cost, high-CD, massive INT nuke + BURN (Inspired by LAVA_BURST)
+	g_skill_defs["Pyroblast"] = SkillDefinition{
+		"Pyroblast",
+		SkillClass::WIZARD,
+		SkillType::SPELL,
+		40, // manaCost
+		6,  // cooldownTurns
+		SkillTarget::ENEMY,
+
+		0.0f, 0.0f, 2.2f, 30.0f, // Huge scaling and flat damage
+
+		true,                    // appliesStatus
+		StatusType::BURN,
+		10, // 10 burn per turn
+		3,  // 3 turns
+
+		false, // isDefensive
+		true,  // isMagic
+		false  // autoGranted
 	};
 }
 std::unordered_map<std::string, SkillDefinition> g_monster_spell_defs;
@@ -1200,7 +1526,7 @@ const std::unordered_map<std::string, SpawnPoint>& get_area_spawns()
 {"FOREST",       {17, 2}},
 {"VOLCANO",      {4, 12}},
 {"OVERWORLD",    {26, 8}},
-{"CAVES",        {0, 0}},
+{"CAVES",        {28, 6}},
 {"RUINS",        {9, 17}},
 {"SWAMP",        {25, 19}},
 {"LAKE",         {12, 19}},
@@ -1210,6 +1536,36 @@ const std::unordered_map<std::string, SpawnPoint>& get_area_spawns()
 {"MARKET",       {0, 0}}
 	};
 	return area_spawns;
+}
+
+Point find_random_spawn_point(const AreaData& area) {
+	const std::vector<std::vector<int>>* gridPtr = area.grid;
+
+	if (!gridPtr) {
+		// No grid, just return a random point
+		return { rand() % GRID_COLS, rand() % GRID_ROWS };
+	}
+
+	int x, y;
+	int attempts = 0;
+	const int max_attempts = 100; // Prevent infinite loop
+
+	do {
+		x = rand() % GRID_COLS;
+		y = rand() % GRID_ROWS;
+		attempts++;
+
+		if (y >= 0 && y < static_cast<int>(gridPtr->size()) &&
+			x >= 0 && x < static_cast<int>((*gridPtr)[y].size()) &&
+			(*gridPtr)[y][x] == 0) // 0 is walkable
+		{
+			return { x, y };
+		}
+
+	} while (attempts < max_attempts);
+
+	// Fallback: return 0,0 if a spot couldn't be found
+	return { 0, 0 };
 }
 void initializeAreas() {
 	std::cout << "[Init] Starting scalable area initialization..." << std::endl;
@@ -1243,18 +1599,27 @@ void initializeAreas() {
 
 	//  Step 2: Populate base data
 	for (const auto& base : areaTemplates) {
-		AreaData area;
+
+		// 1. Create the AreaData object *in-place* inside the map
+		//    This avoids all copying and moving.
+		auto [it, inserted] = g_areas.try_emplace(base.name);
+
+		// 2. Get a reference to the new object that is *already in the map*
+		AreaData& area = it->second;
+
+		// 3. Populate the in-map object directly
 		area.name = base.name;
 		area.backgroundImage = base.bg;
 		area.grid = base.grid;
 
 		// attach interactables automatically
-		auto it = g_interactable_objects.find(base.name);
-		if (it != g_interactable_objects.end()) {
-			area.interactables = it->second;
+		auto interact_it = g_interactable_objects.find(base.name);
+		if (interact_it != g_interactable_objects.end()) {
+			area.interactables = interact_it->second;
 		}
 
-		g_areas[base.name] = area;
+
+		// g_areas[base.name] = area; 
 	}
 
 	//  Step 3: Add zone transitions (bi-directional example)
@@ -1272,7 +1637,7 @@ void initializeAreas() {
 		{global_monster_id_counter++, "WOLF", 20, 12, 1, 3},
 		{global_monster_id_counter++, "WOLF", 2, 13, 1, 3},
 		{global_monster_id_counter++, "GOBLIN_PEON", 5, 5, 1, 3},
-		{global_monster_id_counter++, "GOBLIN_PEON", 28, 6, 1, 3},
+		{global_monster_id_counter++, "GOBLIN_PEON", 15, 12, 1, 3},
 		{global_monster_id_counter++, "FOREST_SPRITE", 10, 15, 2, 5},
 		{global_monster_id_counter++, "FOREST_SPRITE", 17, 3, 2, 5},
 		{global_monster_id_counter++, "GIANT_SPIDER", 25, 18, 1, 1}, // <-- Fixed: space
@@ -1288,7 +1653,7 @@ void initializeAreas() {
 		{global_monster_id_counter++, "ORC_SCOUT", 22, 16, 1, 3},       // <-- Added
 		{global_monster_id_counter++, "ORC_BRUTE", 12, 3, 1, 2},
 		{global_monster_id_counter++, "BAT", 2, 17, 2, 4},
-		{global_monster_id_counter++, "OGRE_WARRIOR", 25, 8, 1, 1},
+		{global_monster_id_counter++, "ARCH_DEMON", 24, 4, 1, 1},
 		{global_monster_id_counter++, "ORC_SCOUT", 8, 10, 1, 3}
 	};
 
@@ -1416,11 +1781,35 @@ void initializeAreas() {
 
 	//  Step 7: Validate monsters exist in template
 	for (auto& [name, area] : g_areas) {
-		for (const auto& m : area.monsters) {
-			if (MONSTER_TEMPLATES.find(m.name) == MONSTER_TEMPLATES.end()) {
+
+		// Clear any old state (important for hot-reloads, if you add them)
+		area.live_monsters.clear();
+
+		for (const auto& m_spawn : area.monsters) {
+			auto templateIt = MONSTER_TEMPLATES.find(m_spawn.name);
+			if (templateIt == MONSTER_TEMPLATES.end()) {
 				std::cerr << "[Warning] Area '" << name
-					<< "' references undefined monster type '" << m.name << "'\n";
+					<< "' references undefined monster type '" << m_spawn.name << "'\n";
+				continue;
 			}
+
+			// --- This is the new logic ---
+			LiveMonster lm;
+			lm.spawn_id = m_spawn.id; // Use the ID from the spawn template
+			lm.monster_type = m_spawn.name;
+			lm.asset_key = templateIt->second.assetKey;
+			lm.is_alive = true;
+			lm.respawn_time = std::chrono::steady_clock::time_point::max();
+
+
+			// Store the original spawn point from the template
+			lm.original_spawn_point = { m_spawn.x, m_spawn.y };
+			// The *current* position is the original position on first spawn
+			lm.position = lm.original_spawn_point;
+
+
+			// Add it to the area's global "live monster" list
+			area.live_monsters[lm.spawn_id] = lm;
 		}
 	}
 
@@ -1577,8 +1966,8 @@ const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES = {
 	{"HELLHOUND_ALPHA", MonsterInstance(0, "Hellhound Alpha", "HHAL", 200, 18, 26, 32, 25, 12, 14, 195, 4, 18)},
 	{"FROST_GIANT", MonsterInstance(0, "Frost Giant", "FRGT", 290, 23, 12, 40, 12, 16, 10, 230, 4, 17)},
 	{"BLOOD_KNIGHT", MonsterInstance(0, "Blood Knight", "BLKT", 390, 25, 18, 37, 20, 18, 16, 255, 5, 15)},
-	{"VOID_STALKER", MonsterInstance(0, "Void Stalker", "VSTK", 180, 16, 28, 30, 28, 25, 18, 225, 5, 16)},
-	{"STORM_TITAN", MonsterInstance(0, "Storm Titan", "STTN", 400, 22, 20, 42, 18, 27, 14, 265, 5, 15)},
+	{"VOID_STALKER", MonsterInstance(0, "Void Stalker", "VSTK", 300, 16, 28, 30, 28, 25, 18, 225, 5, 16)},
+	{"STORM_TITAN", MonsterInstance(0, "Storm Titan", "STTN", 400, 22, 20, 42, 18, 27, 14, 265, 6, 15)},
 
 	// --- New High / Endgame Monsters ---
 	{"ABYSSAL_HORROR", MonsterInstance(0, "Abyssal Horror", "ABHR", 360, 20, 16, 34, 18, 24, 16, 280, 5, 13)},
@@ -1880,6 +2269,171 @@ std::map<std::string, ItemDefinition> itemDatabase;
 
 void initialize_item_database() {
 	ItemDefinition def;
+
+	def = {};
+	def.id = "BOOK_SUNDER_ARMOR";
+	def.name = "Skill Book: Sunder Armor";
+	def.description = "A rare tome. Use to permanently learn the 'Sunder Armor' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Sunder Armor"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_PUMMEL";
+	def.name = "Skill Book: Pummel";
+	def.description = "A rare tome. Use to permanently learn the 'Pummel' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Pummel"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_ENRAGE";
+	def.name = "Skill Book: Enrage";
+	def.description = "A rare tome. Use to permanently learn the 'Enrage' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Enrage"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_WHIRLWIND";
+	def.name = "Skill Book: Whirlwind";
+	def.description = "A rare tome. Use to permanently learn the 'Whirlwind' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Whirlwind"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_SECOND_WIND";
+	def.name = "Skill Book: Second Wind";
+	def.description = "A rare tome. Use to permanently learn the 'Second Wind' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Second Wind"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_VENOMOUS_SHANK";
+	def.name = "Skill Book: Venomous Shank";
+	def.description = "A rare tome. Use to permanently learn the 'Venomous Shank' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Venomous Shank"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_CRIPPLING_STRIKE";
+	def.name = "Skill Book: Crippling Strike";
+	def.description = "A rare tome. Use to permanently learn the 'Crippling Strike' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Crippling Strike"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_EVASION";
+	def.name = "Skill Book: Evasion";
+	def.description = "A rare tome. Use to permanently learn the 'Evasion' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Evasion"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_GOUGE";
+	def.name = "Skill Book: Gouge";
+	def.description = "A rare tome. Use to permanently learn the 'Gouge' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Gouge"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_BACKSTAB";
+	def.name = "Skill Book: Backstab";
+	def.description = "A rare tome. Use to permanently learn the 'Backstab' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Backstab"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_FROST_NOVA";
+	def.name = "Skill Book: Frost Nova";
+	def.description = "A rare tome. Use to permanently learn the 'Frost Nova' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Frost Nova"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_ARCANE_INTELLECT";
+	def.name = "Skill Book: Arcane Intellect";
+	def.description = "A rare tome. Use to permanently learn the 'Arcane Intellect' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Arcane Intellect"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_LESSER_HEAL";
+	def.name = "Skill Book: Lesser Heal";
+	def.description = "A rare tome. Use to permanently learn the 'Lesser Heal' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Lesser Heal"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_MANA_SHIELD";
+	def.name = "Skill Book: Mana Shield";
+	def.description = "A rare tome. Use to permanently learn the 'Mana Shield' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Mana Shield"}}} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "BOOK_PYROBLAST";
+	def.name = "Skill Book: Pyroblast";
+	def.description = "A rare tome. Use to permanently learn the 'Pyroblast' ability.";
+	def.imagePath = "SKILL_BOOK";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 70;
+	def.effects = { ItemEffect{"USE", {{"action", "GRANT_SKILL"}, {"skill_id", "Pyroblast"}}} };
+	itemDatabase[def.id] = def;
 
 	def = {};
 	def.id = "HERBS";
@@ -5189,7 +5743,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "CAVE_MITHRIL_1",    InteractableType::RESOURCE_NODE, {25,  8}, "MITHRIL_VEIN" },
 
 		// --- Zone Transitions ---
-		{ "CAVES_TO_TOWN", InteractableType::ZONE_TRANSITION, {20, 21}, "TOWN" }
+		{ "CAVES_TO_TOWN", InteractableType::ZONE_TRANSITION, {23, 19}, "OVERWORLD" }
 	}
 },
 {
@@ -5385,11 +5939,16 @@ namespace { // Use anonymous namespace to keep these helpers file-local
 	}
 
 	/**
-	 * @brief Calculates the Chebyshev distance heuristic for A*.
+	 * @brief Calculates the Chebyshev distance heuristic for A*.    nevermind i did octile, the choosing diagnoal path constantly looked unnautral af
 	 */
 	int calculate_heuristic(Point a, Point b) {
-		// Use Chebyshev distance (max of x or y)
-		return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
+		int dx = std::abs(a.x - b.x);
+		int dy = std::abs(a.y - b.y);
+		const int D = 10;
+		const int D2 = 14;
+
+		// Octile distance heuristic (admissible for 8-direction movement)
+		return D * (dx + dy) + (D2 - 2 * D) * std::min(dx, dy);
 	}
 
 } // end anonymous namespace
@@ -5411,8 +5970,8 @@ std::deque<Point> A_Star_Search(Point start, Point end, const std::vector<std::v
 	open_list.push(*start_node);
 	node_storage.push_back(std::move(start_node));
 
-	const int D = 1; // Cost for 4-directional movement
-	const int D2 = 1; // Cost for diagonal movement (set to 1 for Chebyshev)
+	const int D = 10; // Cost for 4-directional movement
+	const int D2 = 14; // Cost for diagonal movement (set to 1 for Chebyshev)
 
 	// 8 directions (4 cardinal, 4 diagonal)
 	int dx[] = { 0,  0, 1, -1, 1,  1, -1, -1 };
@@ -5633,6 +6192,8 @@ void initialize_item_prices() {
 	g_item_buy_prices["MONSTER_CLAW"] = 800;
 	g_item_buy_prices["MONSTER_ESSENCE"] = 1500;
 	g_item_buy_prices["GLISTENING_SCALE"] = 400;
+	g_item_buy_prices["BLOODWOOD_SAP"] = 1200;
+	g_item_buy_prices["DEEP_CRYSTAL"] = 1200;
 	g_item_buy_prices["SHARK_TOOTH"] = 900;
 
 	// --- Shop Equipment (Retained from previous manual pricing) ---

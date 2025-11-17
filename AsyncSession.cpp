@@ -1,7 +1,6 @@
 #include "AsyncSession.hpp"
 #include "GameData.hpp"
 #include <iostream>
-
 /**
  * @brief Constructs the session, moving the socket into the WebSocket stream.
  */
@@ -243,6 +242,13 @@ void AsyncSession::do_move_tick(beast::error_code ec)
  */
 void AsyncSession::on_session_end()
 {
+	if (player_.isInCombat && player_.currentOpponent.has_value()) {
+		std::cout << "[" << client_address_ << "] Player disconnected during combat. Respawning monster ID "
+			<< player_.currentOpponent->id << " in area " << player_.currentArea << std::endl;
+
+		// Use the global helper to respawn the monster immediately
+		respawn_monster_immediately(player_.currentArea, player_.currentOpponent->id);
+	}
 	if (player_.isTrading && !player_.tradePartnerId.empty()) {
 		std::string partnerId = player_.tradePartnerId;
 		std::string myId = player_.userId;

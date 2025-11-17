@@ -16,11 +16,12 @@
 #include <vector>
 #include <chrono>
 #include <sodium.h>
-#include "ThreadPool.hpp" // <-- ADD THIS
+#include "ThreadPool.hpp" 
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
 using namespace std::chrono_literals;
-
+Point find_random_spawn_point(const AreaData& area);
+void broadcast_monster_spawn(const std::string& areaName, const LiveMonster& monster);
 // ==========================================
 // Listener Class
 // ==========================================f
@@ -164,7 +165,69 @@ void run_batch_save_timer(net::steady_timer& timer, int interval_seconds)
 			run_batch_save_timer(timer, interval_seconds);
 		});
 }
+void run_monster_tick_timer(net::steady_timer& timer, int interval_ms)
+{
+	timer.expires_after(std::chrono::milliseconds(interval_ms));
 
+	timer.async_wait([&timer, interval_ms](const boost::system::error_code& ec)
+		{
+			if (ec)
+			{
+				if (ec != net::error::operation_aborted)
+					std::cerr << "[MONSTER TICK TIMER ERROR] " << ec.message() << std::endl;
+				return;
+			}
+
+			auto now = std::chrono::steady_clock::now();
+
+			// --- MODIFICATION ---
+			// We only need to know *which* areas had spawns, not the monsters themselves
+			std::set<std::string> areas_to_update;
+			// --- END MODIFICATION ---
+
+			// Iterate over all game areas
+			for (auto& area_pair : g_areas)
+			{
+				AreaData& area = area_pair.second;
+				if (area.live_monsters.empty()) continue; // Skip areas with no monsters
+
+				// Lock this specific area's monster list
+				std::lock_guard<std::mutex> lock(area.monster_mutex);
+				bool monster_respawned_in_this_area = false; // Flag
+
+				for (auto& monster_pair : area.live_monsters)
+				{
+					LiveMonster& lm = monster_pair.second;
+
+					// Check if it's dead AND its respawn time has passed
+					if (!lm.is_alive && now >= lm.respawn_time)
+					{
+						// --- Respawn it! ---
+						lm.is_alive = true;
+						lm.respawn_time = std::chrono::steady_clock::time_point::max();
+						lm.position = lm.original_spawn_point;
+
+						monster_respawned_in_this_area = true;
+					}
+				}
+
+				if (monster_respawned_in_this_area) {
+					areas_to_update.insert(area.name);
+				}
+			} // All mutexes are released here
+
+			// --- MODIFICATION ---
+			// Now, broadcast the full list for each area that had a change
+			for (const std::string& areaName : areas_to_update)
+			{
+				broadcast_monster_list(areaName);
+			}
+			// --- END MODIFICATION ---
+
+			// Re-arm the timer
+			run_monster_tick_timer(timer, interval_ms);
+		});
+}
 // ==========================================
 // Main Entry Point
 // ==========================================
@@ -177,8 +240,10 @@ int main()
 	const unsigned short port = 8080;
 	net::io_context ioc;
 	net::steady_timer save_timer(ioc);
+	net::steady_timer monster_tick_timer(ioc);
 	auto db_pool = std::make_shared<ThreadPool>(4);
 	auto save_pool = std::make_shared<ThreadPool>(1);
+
 	try {
 		// --- Database Initialization ---
 		auto db_manager = std::make_shared<DatabaseManager>(connection_string);
@@ -207,7 +272,7 @@ int main()
 		// --- Batch Auto-Save ---
 		const int SAVE_INTERVAL_SECONDS = 360; // every 6 minutes
 		run_batch_save_timer(save_timer, SAVE_INTERVAL_SECONDS);
-
+		run_monster_tick_timer(monster_tick_timer, 1000);
 		std::cout << "Server is listening on port " << port << "...\n";
 		std::cout << "Type 'exit' or 'shutdown' to stop the server.\n";
 

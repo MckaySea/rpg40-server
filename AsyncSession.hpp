@@ -70,6 +70,7 @@ private:
 	void load_character(int accountId);
 	void on_run();
 	void do_read();
+	void broadcast_disconnect();
 	void do_async_write();
 	void on_read(beast::error_code ec, std::size_t bytes_transferred);
 	void on_write(beast::error_code ec, std::size_t bytes_transferred);
