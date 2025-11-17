@@ -719,7 +719,7 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 	{
      "ANGEL_OVERWORLD_GUIDE",
     {
-			{ "Heavenly Guide", "Hello Starborn, you can acess all parts of the map here. Look for the glowing green squares", "HEAVENLY GUIDE"  },
+			{ "Heavenly Guide", "Hello Starborn, you can access all parts of the map here. Look for the glowing green squares", "HEAVENLY GUIDE"  },
 			{ "Heavenly Guide", "Start your journey in the Forest, proceed to the swamps, journey through Vorath's desert and Mountains. Explore the Caves and dive into the Volacno", "HEAVENLY GUIDE"  },
 			{ "Heavenly Guide", "Overcoming adversary means you start small. Gain confidence by defeating weaker monsters and then chase your destiny Starborn", "HEAVENLY GUIDE" }
         }
@@ -744,7 +744,7 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 	{
 	   "EXPLORER_FOREST_DIALOGUE",
         {
-            {"Explorer", "Man this place sure is creepy huh?", "HUNTER"},
+            {"Explorer", "Man this place sure is creepy huh?", "Explorer"},
             {"Explorer", "Tell ya what, I've been trying to deal with some monsters around here. Could use the help", "EXPLORER"}, //SIDE QUEST (FOREST): FEELING BLOBBY: KILL 5 SLIMES
             {"Explorer", "Woah your really strong. I also need help dealing with some spiders. They freak me out", "EXPLORER"}, //SIDE QUEST (FOREST): ARACHNAPHOBIA: KILL 5 GIANT SPIDERS
             {"Explorer", "The sun is going down. Better be careful, the forest only gets deadlier at night", "EXPLORER"} //SIDE QUEST (FOREST): FULL MOON: KILL 3 WOLVES
@@ -754,7 +754,7 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 	{
 		"WITCH_DIALOGUE",
 		{	
-			{"Witch", "Come closer, I want to see your face", "WITCH_DIALOGUE" },
+			{"Witch", "Come closer, I want to see your face", "WITCH" },
 			{"Witch", "You seek to become strong. I will make an elixir for you, but I need some ingredients", "WITCH" }, //QUEST MYSTERIOUS ELIXIR: SLIME PEARLS: KILL 5 SLIMES
 			{"Witch", "Good, I now require some orc tusks. Fetch them for me", "WITCH" }, //QUEST MYSTERIOUS ELIXIR PART 2: FRESH TEETH: KILL 3 ORCS
 			{"Witch", "The last thing I require for this potion is the blood of a swamp monster. Cthulu's spawn prowls nearby. Fecth me his blood", "WITCH" } //QUEST MYSTERIOUS ELIXIR BOSS FIGHT: CTHULU: KILL THE SWAMP MONSTER
@@ -773,6 +773,34 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 		
         }
     },
+//Volcano mobs (written with AI)	
+	{
+    "ASH_SPIRIT_DIALOGUE",
+    {
+        {"Ash_Spirit", "wooooooo wow I have not seen a human down in forever.", "Ash_Spirit"}, 
+        {"Ash_Spirit", "I am an ash spirit, weeeeeeeee! We guide souls, but you do not seem to be dead.", "Ash_Spirit"},
+ 		{"Ash_Spirit", "The Volcano hides one of the biggest mysteries in Vorath. There are many precious gems here that hold immense wealth. Back then, warriors were sent to collect them. Few ever came back alive", "Ash_Spirit"},
+		{"Ash_Spirit", "Careful of the Demon lord, he is one of the hardest bosses to defeat. This volcano is his domain.", "Ash_Spirit"}
+    }
+},
+{
+    "SHAOLIN_DIALOGUE",
+    {
+        {"Shaolin", "Conquering the mind is more important than conquering the fist. Real strength comes from within.", "Shaolin"},
+        {"Shaolin", "To achieve strength, your heart, mind, body, and soul must act as one. Keep on fighting for what you believe in.", "Shaolin"},
+        {"Shaolin", "Do not turn away from fear. Only the weak deny their fear.", "Shaolin"}
+    }
+},
+{
+    "DUNE_WALKER_DIALOGUE",
+    {
+        {"Dune_Walker", "An outsider... the desert gods are not merciful to outsiders.", "Dune_Walker"},
+        {"Dune_Walker", "The storms that plague these lands are not for the weak, turn back while you can.", "Dune_Walker"},
+        {"Dune_Walker", "Tread carefully, as only the gods can guide you in these lands.", "Dune_Walker"}
+    }
+},
+
+
 	// add more here :D
 };
 
@@ -3342,8 +3370,8 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 {
 	"OVERWORLD", {
 		// --- NPCs ---
-		{ "ANGEL_OVERWORLD_GUIDE",InteractableType::NPC, {4, 13}, "ANGEL_GUIDE_DIALOGUE" },
-        { "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" },
+		{ "ANGEL_OVERWORLD_GUIDE",InteractableType::NPC, {24, 19}, "ANGEL_GUIDE_DIALOGUE" },
+    /*    { "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" }, */
 		{ "OVERWORLD_PROSPECTOR", InteractableType::NPC, {19, 2},  "PROSPECTOR_MTN_DIALOGUE" },
 		{ "OVERWORLD_NOMAD",      InteractableType::NPC, {34, 20}, "NOMAD_DESERT_DIALOGUE" },
 
@@ -3408,6 +3436,8 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 },
 {
 	"VOLCANO", {
+		// --- NPC ---
+		{"ASH_SPIRIT_DIALOGUE", InteractableType::NPC, {5,16}, "ASH_SPIRIT_DIALOGUE"}
 		// --- Zone Transitions ---
 		{ "VOLCANO_TO_DESERT",    InteractableType::ZONE_TRANSITION, {0,  10}, "DESERT" },
 		{ "VOLCANO_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {20, 21}, "OVERWORLD" }
@@ -3415,6 +3445,8 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 },
 {
 	"DESERT", {
+		// --- NPC ---
+		{"DUNE_WALKER_DIALOGUE", InteractableType::NPC, {4,13}, "DUNE_WALKER_DIALOGUE" }
 		// --- Zone Transitions ---
 		{ "DESERT_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0,  10}, "OVERWORLD" },
 		{ "DESERT_TO_VOLCANO",   InteractableType::ZONE_TRANSITION, {39, 10}, "VOLCANO" }
@@ -3423,18 +3455,20 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 {
 	"SWAMP", {
 		   // --- NPC ---
-        {"WITCH_SWAMP_DIALOGUE", InteractableType::NPC, {12, 10}, "WITCH_DIALOGUE" },
+        {"WITCH_SWAMP_DIALOGUE", InteractableType::NPC, {12, 10}, "WITCH_DIALOGUE" }
 		// --- Zone Transitions ---
 		{ "SWAMP_TO_FOREST2", InteractableType::ZONE_TRANSITION, {0, 10}, "FOREST2" }
 	}
 },
 {
 	"MOUNTAINS", {
+		// --- NPC ---
+		{"SHAOLIN_DIALGOUE", InteractableType::NPC, {10,18}, "SHAOLIN_DIALOGUE"}
 		// --- Zone Transitions ---
 		{ "MOUNTAINS_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {20, 21}, "OVERWORLD" },
 		{ "CAVE_COPPER_2", InteractableType::RESOURCE_NODE, {12, 8},   "COPPER_VEIN" },
 		{ "CAVE_COPPER_3", InteractableType::RESOURCE_NODE, {27, 11},   "COPPER_VEIN" },
-		{ "CAVE_COPPER_4", InteractableType::RESOURCE_NODE, {14, 15},   "COPPER_VEIN" },
+		0{ "CAVE_COPPER_4", InteractableType::RESOURCE_NODE, {14, 15},   "COPPER_VEIN" },
 	}
 },
 {
