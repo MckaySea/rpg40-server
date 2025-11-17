@@ -220,11 +220,11 @@ Area 6 (Volcano)
 - Player "Woah what are you?"
 - ash wisp "Im an ash spirit, weeeeeeeee, are you here to beat the big bad dragon?"
 - Player "Dra-gon *gulp*"
-- ash wisp "uh oh, I don't like that confidence, you know what theres a bunch of other meanies in here too"
+- ash wisp "The Volcano hides one of the biggest mysteries in Vorath. There are many precious gems here that hold immense wealth. Back then, warriors were sent to collect them. Few ever came back alive"
 
 NEW QUEST: THATS ONE HOT DOG- KILL THE LAVA HOUNDS (_ OUT OF 6 KILLED)
 - Player "Ok that wasn't too bad, all the dogs have been deep fried"
-- ash wisp - "ooooohhhhh wow your not that bad at combat yourself. You still lack confidence. We gotta build make you mentally stronger"
+- ash wisp - "Careful of the Demon lord, he is one of the hardest bosses to defeat. This volcano is his domain"
 - Player "I'm willing to do what it takes, how can I get stronger ash wisp?"
 - ash wisp "heheeehee thats the Spirit! Monsters are scary, but don't worry, I've guided each adventurer for over 1000 years, but you seem to special"
 - Player "I have to do whatever it takes to defeat the Architect!"
