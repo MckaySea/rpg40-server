@@ -775,7 +775,6 @@ void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quan
 
 	const ItemDefinition& def = itemDatabase.at(itemId);
 
-	// 1. Handle Stackables (Potions, Ingots) - usually no effects
 	if (def.stackable) {
 		for (auto& pair : player.inventory) {
 			ItemInstance& instance = pair.second;
@@ -787,51 +786,54 @@ void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quan
 		}
 	}
 
-	// 2. Handle Non-Stackables (Weapons, Armor) - Apply Boosts!
 	int numInstancesToAdd = def.stackable ? 1 : quantity;
 	int qtyPerInstance = def.stackable ? quantity : 1;
+
+	uint64_t startingInstanceId = 0;
+
+	if (numInstancesToAdd > 0) {
+		try {
+			pqxx::connection C = db_manager_->get_connection();
+			pqxx::nontransaction N(C);
+
+			startingInstanceId = N.exec("SELECT nextval('item_instance_id_seq')").one_row()[0].as<uint64_t>();
+
+			if (numInstancesToAdd > 1) {
+				N.exec("SELECT setval('item_instance_id_seq', currval('item_instance_id_seq') + "
+					+ std::to_string(numInstancesToAdd - 1) + ")");
+			}
+
+		}
+		catch (const std::exception& e) {
+			std::cerr << "CRITICAL: Could not batch fetch item instance IDs: " << e.what() << std::endl;
+			send("SERVER:ERROR:Could not create item. Please try again.");
+			return;
+		}
+	}
+	else {
+		return;
+	}
+
+	uint64_t currentInstanceId = startingInstanceId;
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
 
 	for (int i = 0; i < numInstancesToAdd; ++i) {
 
-		//  GET ID FROM DATABASE SEQUENCE now
-
-		// uint64_t newInstanceId = g_item_instance_id_counter++;
-// --- FIX: GET ID FROM DATABASE SEQUENCE ---
-		uint64_t newInstanceId;
-		try {
-			pqxx::connection C = db_manager_->get_connection();
-			pqxx::nontransaction N(C);
-			// --- THIS IS THE CORRECTED LINE ---
-			newInstanceId = N.exec("SELECT nextval('item_instance_id_seq')").one_row()[0].as<uint64_t>();
-		}
-		catch (const std::exception& e) {
-			std::cerr << "CRITICAL: Could not fetch new item instance ID: " << e.what() << std::endl;
-			send("SERVER:ERROR:Could not create item. Please try again.");
-			return; // Stop here, we failed to get an ID
-		}
-
+		uint64_t newInstanceId = currentInstanceId;
+		currentInstanceId++;
 
 		ItemInstance newInstance = { newInstanceId, itemId, qtyPerInstance, {}, {} };
 
-		// --- BOOSTING LOGIC ---
-		// (Your existing boosting logic goes here, no changes needed)
-		// ...
 		bool canHaveEffects = (def.equipSlot != EquipSlot::None) || (def.item_tier > 0);
 
 		if (canHaveEffects && !g_random_effect_pool.empty()) {
 			std::uniform_int_distribution<> percentRoll(1, 100);
-
-			// Base chance (20%) + The Booster Bonus (e.g. +50%)
-			int totalChance = 20 + bonusEffectChance;
-
-			// Cap at 100% to prevent weirdness
+			int totalChance = 5 + bonusEffectChance;
 			if (totalChance > 100) totalChance = 100;
 
 			if (percentRoll(gen) <= totalChance) {
-				// --- SUCCESS! Pick an effect ---
 				int item_tier = std::max(1, def.item_tier);
 				std::vector<const RandomEffectDefinition*> available_effects;
 				int total_weight = 0;
@@ -857,10 +859,8 @@ void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quan
 					}
 
 					if (chosen) {
-						// Apply the gameplay effect
 						newInstance.customEffects.push_back(chosen->gameplay_effect);
 
-						// Apply the name suffix
 						try {
 							const auto& suffix_pool = g_effect_suffix_pools.at(chosen->effect_key);
 							if (!suffix_pool.empty()) {
@@ -876,7 +876,6 @@ void AsyncSession::addCraftedItemToInventory(const std::string& itemId, int quan
 				}
 			}
 		}
-
 
 		player.inventory[newInstanceId] = newInstance;
 	}
@@ -1068,188 +1067,126 @@ void AsyncSession::useItem(uint64_t itemInstanceId) {
 	ItemInstance& instance = player.inventory.at(itemInstanceId);
 	const ItemDefinition& def = instance.getDefinition();
 
+	// 1. Check if item is equippable (cannot be "used")
 	if (def.equipSlot != EquipSlot::None) {
 		send("SERVER:ERROR:This item cannot be 'used'. Try equipping it.");
 		return;
 	}
 
+	// 2. Check if item has any "USE" effects
+	if (def.effects.empty()) {
+		send("SERVER:STATUS:That item has no use.");
+		return;
+	}
+
 	bool itemUsed = false;
-	string effectMsg = "";
+	std::string effectMsg = ""; // We will build this message
 	PlayerStats finalStats = getCalculatedStats(); // Get stats *once*
 
-	// --- Potion Logic ---
-	if (instance.itemId == "SMALL_HEALTH_POTION") {
-		int healAmount = 50;
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "LARGE_HEALTH_POTION") {
-		int healAmount = 250; // <-- This is the potion value
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "SMALL_MANA_POTION") {
-		int manaAmount = 50;
-		if (player.stats.mana < finalStats.maxMana) {
-			player.stats.mana = min(finalStats.maxMana, player.stats.mana + manaAmount);
-			itemUsed = true;
-			effectMsg = "You restore " + to_string(manaAmount) + " mana.";
-		}
-		else {
-			effectMsg = "Your mana is already full.";
-		}
-	}
+	// 3. Process all effects on the item
+	for (const auto& effect : def.effects) {
+		if (effect.type != "USE") continue; // Skip non-use effects (like GRANT_STAT)
 
-	// --- UPDATED FOOD LOGIC ---
-	else if (instance.itemId == "COOKED_FISH") {
-		int healAmount = 15; // <-- New Value
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You eat the Cooked Fish and restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "COOKED_TROUT") {
-		int healAmount = 40; // <-- New Value
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You eat the Cooked Trout and restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "COOKED_SHARK") {
-		int healAmount = 80; // <-- New Value
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You eat the Cooked Shark and restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "COOKED_ANGLER") {
-		int healAmount = 150; // <-- New Value
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You eat the Cooked Anglerfish and restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "COOKED_LEVIATHAN") {
-		int healAmount = 220; // <-- New Value
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You eat the Cooked Leviathan and restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "FISH_STEW") {
-		int healAmount = 30; // <-- New Value
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You eat the Fish Stew and restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "SAVORY_TROUT") {
-		int healAmount = 70; // <-- New Value
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You eat the Savory Trout and restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "SHARK_FEAST") {
-		int healAmount = 120; // <-- New Value
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You eat the Shark Feast and restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "DEEP_SEA_FEAST") {
-		int healAmount = 300; // <-- New Value
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			itemUsed = true;
-			effectMsg = "You eat the Deep Sea Feast and restore " + to_string(healAmount) + " health.";
-		}
-		else {
-			effectMsg = "Your health is already full.";
-		}
-	}
-	else if (instance.itemId == "ABYSSAL_PLATTER") {
-		int healAmount = 500; // <-- New Value
-		int manaAmount = 200; // <-- New Value
-		bool healed = false;
-		bool manaed = false;
+		auto params = effect.params; // Get a copy of the params map
+		std::string action = params.count("action") ? params["action"] : "";
 
-		if (player.stats.health < finalStats.maxHealth) {
-			player.stats.health = min(finalStats.maxHealth, player.stats.health + healAmount);
-			healed = true;
-		}
-		if (player.stats.mana < finalStats.maxMana) {
-			player.stats.mana = min(finalStats.maxMana, player.stats.mana + manaAmount);
-			manaed = true;
+		// --- Handle RESTORE_HEALTH (Potions/Food) ---
+		if (action == "RESTORE_HEALTH") {
+			try {
+				int healAmount = std::stoi(params["amount"]);
+				if (player.stats.health < finalStats.maxHealth) {
+					player.stats.health = std::min(finalStats.maxHealth, player.stats.health + healAmount);
+					itemUsed = true;
+					effectMsg += "You restore " + std::to_string(healAmount) + " health. ";
+				}
+				else if (effectMsg.empty()) { // Only show if no other effect happened
+					effectMsg = "Your health is already full. ";
+				}
+			}
+			catch (...) { /* bad data */ }
 		}
 
-		if (healed || manaed) {
-			itemUsed = true;
-			effectMsg = "You consume the Abyssal Platter. You restore " + to_string(healAmount) + " health and " + to_string(manaAmount) + " mana.";
+		// --- Handle RESTORE_MANA (Potions/Food) ---
+		else if (action == "RESTORE_MANA") {
+			try {
+				int manaAmount = std::stoi(params["amount"]);
+				if (player.stats.mana < finalStats.maxMana) {
+					player.stats.mana = std::min(finalStats.maxMana, player.stats.mana + manaAmount);
+					itemUsed = true;
+					effectMsg += "You restore " + std::to_string(manaAmount) + " mana. ";
+				}
+				else if (effectMsg.empty()) {
+					effectMsg = "Your mana is already full. ";
+				}
+			}
+			catch (...) { /* bad data */ }
 		}
-		else {
-			effectMsg = "Your health and mana are already full.";
+
+		// --- Handle APPLY_BUFF (Elixirs) ---
+		else if (action == "APPLY_BUFF") {
+			try {
+				std::string stat = params["stat"];
+				int amount = std::stoi(params["amount"]);
+				int duration = std::stoi(params["duration"]);
+
+				StatusEffect buff;
+				if (stat == "speed") buff.type = StatusType::SPEED_UP;
+				else if (stat == "strength") buff.type = StatusType::ATTACK_UP;
+				// Add more buff types here if needed
+				else continue;
+
+				buff.magnitude = amount;
+				buff.remainingTurns = duration * 10; // * 10 turns for out-of-combat duration
+				buff.appliedByPlayer = true;
+
+				player.activeStatusEffects.push_back(buff);
+				itemUsed = true;
+				effectMsg += "You feel a temporary surge of " + stat + "! ";
+
+			}
+			catch (...) { /* bad data */ }
 		}
-	}
-	// --- END UPDATED FOOD LOGIC ---
 
-	else {
-		effectMsg = "That item has no use.";
-	}
+		// --- Handle GRANT_SKILL (Skill Books) ---
+		else if (action == "GRANT_SKILL") {
+			if (params.count("skill_id")) {
+				std::string skill_id = params["skill_id"];
+				std::string outError = "";
 
+				if (grantSkillToPlayer(skill_id, outError)) {
+					itemUsed = true; // Consume the book
+					effectMsg = "You read the tome and learn a new skill: " + skill_id + "! ";
+				}
+				else {
+					itemUsed = false; // Do NOT consume the book
+					effectMsg = outError; // Send the error (e.g., "Skill already known.")
+					break; // Stop processing other effects if this one failed
+				}
+			}
+		}
+	} // End for loop
+
+	// 4. Send final feedback
+	if (effectMsg.empty()) {
+		effectMsg = "That item doesn't seem to do anything.";
+	}
 	send("SERVER:STATUS:" + effectMsg);
 
+	// 5. Consume item if it was successfully used
 	if (itemUsed) {
 		instance.quantity--;
 		if (instance.quantity <= 0) {
+			// Check if it was equipped (e.g., a bug) and unequip it
+			for (auto& slotPair : player.equipment.slots) {
+				if (slotPair.second.has_value() && slotPair.second.value() == itemInstanceId) {
+					slotPair.second = std::nullopt;
+					break;
+				}
+			}
 			player.inventory.erase(itemInstanceId);
 		}
 		send_inventory_and_equipment();
-		send_player_stats();
+		send_player_stats(); // Send updated stats (health/mana/skills)
 	}
 }
 void AsyncSession::dropItem(uint64_t itemInstanceId, int quantity) {
@@ -2149,8 +2086,7 @@ void AsyncSession::handle_login(const string& credentials) {
 		});
 }
 
-// You need to add this new handler function to AsyncSession
-// Add its declaration to AsyncSession.hpp
+
 void AsyncSession::on_login_finished(const LoginResult& result) {
 	// This code is now 100% async and runs safely on the Asio thread.
 	if (!result.success) {
@@ -2736,7 +2672,44 @@ void AsyncSession::handle_message(const string& message)
 		send("SERVER:ERROR:You must be logged in to do that.");
 		return;
 	}
+	if (message.rfind("/", 0) == 0) {
+		// Extract command (e.g., "/additem") and arguments (e.g., "IRON_SWORD 1")
+		std::string command_with_args = message.substr(1); // Remove leading slash
+		size_t space_pos = command_with_args.find(' ');
+		std::string command = (space_pos == std::string::npos)
+			? command_with_args
+			: command_with_args.substr(0, space_pos);
+		std::string args = (space_pos == std::string::npos)
+			? ""
+			: command_with_args.substr(space_pos + 1);
 
+		bool isAdmin = (player.playerName == "Admin");
+
+		// --- ADMIN COMMAND: /additem ---
+		if (command == "additem" && isAdmin) {
+			std::stringstream ss(args);
+			std::string itemId;
+			int quantity = 1;
+
+			if (ss >> itemId) {
+				ss >> quantity;
+			}
+
+			if (itemDatabase.count(itemId) == 0) {
+				send("SERVER:STATUS:Admin: Unknown item ID: " + itemId);
+				return;
+			}
+
+			addItemToInventory(itemId, std::max(1, quantity));
+			send("SERVER:STATUS:Admin: Granted " + std::to_string(std::max(1, quantity)) + "x " + itemId + ".");
+			return;
+		}
+		// --- END ADMIN COMMAND: /additem ---
+
+		// Handle other general slash commands here if needed
+		send("SERVER:STATUS:Unknown command: /" + command);
+		return;
+	}
 	// --- 3. ALL *EXISTING* GAME LOGIC ---
    /* else if (message.rfind("SET_NAME:", 0) == 0 && player.currentClass == PlayerClass::UNSELECTED) {
 		string name = message.substr(9);
@@ -3256,8 +3229,8 @@ void AsyncSession::handle_message(const string& message)
 					player.isFullyInitialized = true;
 					player.hasSpentInitialPoints = true;
 					send("SERVER:CHARACTER_COMPLETE:Character creation complete! You can now explore.");
-					send_inventory_and_equipment(); // 1. Syncs your session data to the global registry
-					handle_message("GO_TO:" + player.currentArea); // 2. Triggers the area change to broadcast you
+					send_inventory_and_equipment();
+					handle_message("GO_TO:" + player.currentArea);
 
 				}
 				else if (player.availableSkillPoints > 0) { send("SERVER:PROMPT:You have " + to_string(player.availableSkillPoints) + " skill points remaining."); }
@@ -3346,6 +3319,10 @@ void AsyncSession::handle_message(const string& message)
 		{
 			player.posX = spawnIt->second.x;
 			player.posY = spawnIt->second.y;
+
+			// --- FIX: Sync broadcast data as well ---
+			broadcast_data.posX = player.posX;
+			broadcast_data.posY = player.posY;
 		}
 
 
@@ -3376,6 +3353,7 @@ void AsyncSession::handle_message(const string& message)
 		send_current_monsters_list();
 		send_player_stats();
 
+		// --- 1. Get all other sessions in the area ---
 		std::vector<std::shared_ptr<AsyncSession>> sessions_in_area;
 		{
 			std::lock_guard<std::mutex> lock(g_session_registry_mutex);
@@ -3390,10 +3368,10 @@ void AsyncSession::handle_message(const string& message)
 			}
 		}
 
-		// 2. Build a "player list" message containing only you
-		std::ostringstream oss;
-		oss << "SERVER:PLAYERS_IN_AREA:[";
-		oss << "{\"id\":" << nlohmann::json(broadcast_data.userId).dump()
+		// --- 2. Build "PLAYER_SPAWNED" message (for others) ---
+		std::ostringstream oss_spawn;
+		oss_spawn << "SERVER:PLAYER_SPAWNED:{"; // <-- NEW COMMAND
+		oss_spawn << "\"id\":" << nlohmann::json(broadcast_data.userId).dump()
 			<< ",\"name\":" << nlohmann::json(broadcast_data.playerName).dump()
 			<< ",\"class\":" << static_cast<int>(broadcast_data.playerClass)
 			<< ",\"x\":" << broadcast_data.posX
@@ -3405,20 +3383,43 @@ void AsyncSession::handle_message(const string& message)
 			<< ",\"legsItemId\":" << nlohmann::json(broadcast_data.legsItemId).dump()
 			<< ",\"bootsItemId\":" << nlohmann::json(broadcast_data.bootsItemId).dump()
 			<< "}";
-		oss << "]";
+		auto shared_spawn_msg = std::make_shared<std::string>(oss_spawn.str());
 
-		// 3. Create a shared_ptr to the message
-		auto shared_spawn_msg = std::make_shared<std::string>(oss.str());
-
-		// 4. Send this "you have spawned" message to all other players
+		// --- 3. Send this "spawn" message to all *other* players ---
 		for (auto& session : sessions_in_area) {
 			net::dispatch(session->ws_.get_executor(), [session, shared_spawn_msg]() {
 				session->send(*shared_spawn_msg);
 				});
 		}
+
+		// --- 4. Build "PLAYERS_IN_AREA" list (for *you*) ---
+		// This sends the list of *other* players only to you.
+		std::ostringstream oss_area;
+		oss_area << "SERVER:PLAYERS_IN_AREA:[";
+		bool first = true;
+		for (auto& session : sessions_in_area) {
+			if (!first) {
+				oss_area << ",";
+
+			}
+			auto& data = session->getBroadcastData();
+			oss_area << "{\"id\":" << nlohmann::json(data.userId).dump()
+				<< ",\"name\":" << nlohmann::json(data.playerName).dump()
+				<< ",\"class\":" << static_cast<int>(data.playerClass)
+				<< ",\"x\":" << data.posX
+				<< ",\"y\":" << data.posY
+				<< ",\"action\":" << nlohmann::json(data.currentAction).dump()
+				<< ",\"weaponItemId\":" << nlohmann::json(data.weaponItemId).dump()
+				<< ",\"hatItemId\":" << nlohmann::json(data.hatItemId).dump()
+				<< ",\"torsoItemId\":" << nlohmann::json(data.torsoItemId).dump()
+				<< ",\"legsItemId\":" << nlohmann::json(data.legsItemId).dump()
+				<< ",\"bootsItemId\":" << nlohmann::json(data.bootsItemId).dump()
+				<< "}";
+			first = false;
+		}
+		oss_area << "]";
+		send(oss_area.str()); // Send the full list
 	}
-
-
 	   else if (message.rfind("MOVE_TO:", 0) == 0) {
 		if (player.isTrading) {
 			send("SERVER:ERROR:Cannot move while trading.");
@@ -3755,16 +3756,42 @@ void AsyncSession::handle_message(const string& message)
 			return;
 		}
 
-		// Format: CRAFT_ITEM:RECIPE_ID or CRAFT_ITEM:RECIPE_ID:BOOST_ITEM_ID
 		std::string content = message.substr(11);
-		std::string recipeId = content;
+		std::string recipeId = "";
 		std::string boostItemId = "";
+		int quantity = 1;
 
-		// Check if a booster was provided (look for the second colon)
-		size_t colonPos = content.find(':');
-		if (colonPos != std::string::npos) {
-			recipeId = content.substr(0, colonPos);
-			boostItemId = content.substr(colonPos + 1);
+		std::stringstream ss(content);
+		std::string segment;
+		std::vector<std::string> parts;
+
+		while (std::getline(ss, segment, ':')) {
+			parts.push_back(segment);
+		}
+
+		if (parts.empty()) {
+			send("SERVER:ERROR:Invalid craft command format.");
+			return;
+		}
+
+		recipeId = parts[0];
+
+		if (parts.size() >= 2) {
+			boostItemId = parts[1];
+			if (boostItemId == "NONE") {
+				boostItemId = "";
+			}
+		}
+
+		if (parts.size() >= 3) {
+			try {
+				quantity = std::stoi(parts[2]);
+			}
+			catch (const std::exception& e) {
+				std::cerr << "Warning: Could not parse craft quantity, defaulting to 1." << std::endl;
+				quantity = 1;
+			}
+			if (quantity <= 0) quantity = 1;
 		}
 
 		if (g_crafting_recipes.count(recipeId) == 0) {
@@ -3774,7 +3801,6 @@ void AsyncSession::handle_message(const string& message)
 
 		const CraftingRecipe& recipe = g_crafting_recipes.at(recipeId);
 
-		// 1. Check Skill Level
 		std::string skillKey = recipe.requiredSkill;
 		int currentXp = player.skills.life_skills[skillKey];
 		int currentLevel = 1 + static_cast<int>(std::sqrt(currentXp) / 5.0f);
@@ -3784,13 +3810,11 @@ void AsyncSession::handle_message(const string& message)
 			return;
 		}
 
-		// 2. Check & Consume Booster (Optional)
 		int bonusChance = 0;
 		if (!boostItemId.empty()) {
 			bool hasBooster = false;
 			uint64_t boosterInstanceId = 0;
 
-			// Search inventory for the booster
 			for (auto& pair : player.inventory) {
 				if (pair.second.itemId == boostItemId) {
 					hasBooster = true;
@@ -3804,16 +3828,14 @@ void AsyncSession::handle_message(const string& message)
 				return;
 			}
 
-			// Define Boosting Power
-			if (boostItemId == "RUBY") bonusChance = 5;         // +5% chance
-			else if (boostItemId == "GOLDEN_LEAF") bonusChance = 5; // +5% chance
-			else if (boostItemId == "PEARL") bonusChance = 5;   // +5% chance
+			if (boostItemId == "RUBY") bonusChance = 1;
+			else if (boostItemId == "GOLDEN_LEAF") bonusChance = 1;
+			else if (boostItemId == "PEARL") bonusChance = 1;
 			else {
 				send("SERVER:ERROR:That item cannot be used as a booster.");
 				return;
 			}
 
-			// Consume Booster
 			ItemInstance& b = player.inventory.at(boosterInstanceId);
 			b.quantity--;
 			if (b.quantity <= 0) {
@@ -3821,23 +3843,23 @@ void AsyncSession::handle_message(const string& message)
 			}
 		}
 
-		// 3. Check Ingredients (Standard check)
 		for (const auto& [ingId, reqQty] : recipe.ingredients) {
+			int totalReqQty = reqQty * quantity;
 			int playerHas = 0;
 			for (const auto& pair : player.inventory) {
 				if (pair.second.itemId == ingId) {
 					playerHas += pair.second.quantity;
 				}
 			}
-			if (playerHas < reqQty) {
-				send("SERVER:ERROR:Missing material: " + ingId + " (" + std::to_string(playerHas) + "/" + std::to_string(reqQty) + ")");
+			if (playerHas < totalReqQty) {
+				send("SERVER:ERROR:Missing material: " + ingId + " (" + std::to_string(playerHas) + "/" + std::to_string(totalReqQty) + ")");
 				return;
 			}
 		}
 
-		// 4. Consume Ingredients
 		for (const auto& [ingId, reqQty] : recipe.ingredients) {
-			int remainingToRemove = reqQty;
+			int totalReqQty = reqQty * quantity;
+			int remainingToRemove = totalReqQty;
 			std::vector<uint64_t> toRemove;
 
 			for (auto& pair : player.inventory) {
@@ -3855,11 +3877,15 @@ void AsyncSession::handle_message(const string& message)
 			}
 		}
 
-		// 5. Grant Result USING SPECIAL CRAFT FUNCTION
-		addCraftedItemToInventory(recipe.resultItemId, recipe.quantityCreated, bonusChance);
-		player.skills.life_skills[skillKey] += recipe.xpReward;
+		addCraftedItemToInventory(
+			recipe.resultItemId,
+			recipe.quantityCreated * quantity,
+			bonusChance
+		);
 
-		std::string msg = "SERVER:STATUS:Crafted " + recipe.resultItemId + "! (+" + std::to_string(recipe.xpReward) + " XP)";
+		player.skills.life_skills[skillKey] += recipe.xpReward * quantity;
+
+		std::string msg = "SERVER:STATUS:Crafted " + std::to_string(quantity) + "x " + recipe.resultItemId + "! (+" + std::to_string(recipe.xpReward * quantity) + " XP)";
 		if (bonusChance > 0) msg += " [Boosted!]";
 
 		send(msg);
@@ -4543,7 +4569,32 @@ void AsyncSession::handle_message(const string& message)
 
 			player.stats.experience += xp_gain;
 			int lootTier = player.currentOpponent->lootTier;
+			const std::vector<std::string> ALL_SKILL_BOOKS = {
+			"BOOK_SUNDER_ARMOR", "BOOK_PUMMEL", "BOOK_ENRAGE", "BOOK_WHIRLWIND", "BOOK_SECOND_WIND",
+			"BOOK_VENOMOUS_SHANK", "BOOK_CRIPPLING_STRIKE", "BOOK_EVASION", "BOOK_GOUGE", "BOOK_BACKSTAB",
+			"BOOK_FROST_NOVA", "BOOK_ARCANE_INTELLECT", "BOOK_LESSER_HEAL", "BOOK_MANA_SHIELD", "BOOK_PYROBLAST"
+			};
 
+			// Check if monster tier is 2 or higher
+			if (player.currentOpponent->lootTier >= 2) {
+				// 0.5% chance = 5 in 1000 roll
+				int skillBookDropChance = 5; // (0.5 * 1000)
+
+				// Roll 0 to 999
+				if ((rand() % 1000) < skillBookDropChance) {
+					// Successful drop! Pick one book at random.
+					int bookIndex = rand() % ALL_SKILL_BOOKS.size();
+					std::string droppedBookId = ALL_SKILL_BOOKS[bookIndex];
+
+					// Add the item to inventory
+					addItemToInventory(droppedBookId, 1);
+
+					send("SERVER:STATUS:A rare tome drops! You found a " + itemDatabase.at(droppedBookId).name + "!");
+
+					std::cout << "[LOOT DEBUG] RARE DROP SUCCESS: Skill Book (" << droppedBookId << ") from Tier "
+						<< player.currentOpponent->lootTier << " monster." << std::endl;
+				}
+			}
 			if (lootTier != -1) {
 				// 1) Base drop chance defined per monster (0–100)
 				int baseDropChance = player.currentOpponent->dropChance;
@@ -4906,12 +4957,14 @@ void AsyncSession::handle_message(const string& message)
 				<< ",\"x\":" << data.posX
 				<< ",\"y\":" << data.posY
 				<< ",\"action\":" << nlohmann::json(data.currentAction).dump()
+
+				// --- FIX: Added Equipment Fields ---
 				<< ",\"weaponItemId\":" << nlohmann::json(data.weaponItemId).dump()
 				<< ",\"hatItemId\":" << nlohmann::json(data.hatItemId).dump()
 				<< ",\"torsoItemId\":" << nlohmann::json(data.torsoItemId).dump()
 				<< ",\"legsItemId\":" << nlohmann::json(data.legsItemId).dump()
 				<< ",\"bootsItemId\":" << nlohmann::json(data.bootsItemId).dump()
-
+				// --- End of Fix ---
 
 				<< "}";
 			first_player = false;
