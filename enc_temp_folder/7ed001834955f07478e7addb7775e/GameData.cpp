@@ -844,7 +844,8 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 				"OLD_MAN_LORE_DIALOGUE",
 				{
 					{"Old Man", "Ahh… another soul chasing glory. Ive seen many like you.", "OLD_MAN"},
-					{"Old Man", "The Forest to the north best you start your journey there, you can always come back to town to heal, eventually you should go to the lake and fish and cook to not have to visit town so often.", "OLD_MAN"},
+					{"Old Man", "The Caves to the north hide things better left undisturbed.", "OLD_MAN"},
+					{"Old Man", "If you insist on going, at least bring a potion or two.", "OLD_MAN"}
 				}
 			},
 			{
