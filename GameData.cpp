@@ -610,12 +610,49 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 			}
 		},
 		{
-			"GUARD_DIALOGUE",
-			{
-				{"Guard", "Careful outside of town!", "Guard"},
-				{"Guard", "Many think there's treasure. Maybe. Teeth and claws? Definitely.", "Guard"}
-			}
-		},
+			{"Old Man", "Ahh… another soul chasing glory. Ive seen many like you.", "OLD_MAN"},
+			{"Old Man", "The Caves to the north hide things better left undisturbed.", "OLD_MAN"},
+			{"Old Man", "If you insist on going, at least bring a potion or two.", "OLD_MAN"}
+		}
+	},
+	{	
+	"TOWN_CRAFSTMAN_DIALOGUE",
+  		{
+        	{"Craftsman", "Find rare materials around the worlds to craft the strongest of items.", "Craftsman"},
+        	{"Craftsman", "Catch fish in the lake to craft food to heal yourself after long battles.", "Craftsman"},
+    	    {"Craftsman", "Mine ores to craft materials, beware, they are found in the most dangerous parts of Vorath.", "Craftsman"}
+    	}
+	 },
+	 {
+       "ORACLE_PROPHECY_DIALOGUE",
+     {
+			{ "Oracle", "Welcome Starborn, the one who was prophesized to be the slayer of the wicked Architect", "Oracle" },
+			{ "Oracle", "The Architect ist he ruler of the land, he resides over us by controling our fate. To him, we are nothing but cattle in a pen", "Oracle" },
+			{ "Oracle", "You must accomplish the prophecy that foretold your fate, only then can you free these lands from madness", "Oracle" },
+			{ "Oracle", "The lands are swallowed with madness, the kingdom kneels to the tyrant, the halls echo with saddness, only the Starborn will remain defiant, its up to them to dig this land up from its grave", "Oracle" }
+        }
+    },
+	{	
+	"GUARD_CAPTAIN_DIALOGUE",
+	 {
+			{"Captain", "Another hero has come, prove to me that your better than the rest", "CAPTAIN"},
+			{"Captain", "Our lands have been plundered and the soldiers are growing weary. This war has decimated us ", "CAPTAIN"},
+			{"Captain", "Help us in this hellish war and you will be rewarded beyond your wildest dreams.", "CAPTAIN"}
+		}
+	 },
+	 {
+       "ORACLE_PROPHECY_DIALOGUE",
+     {
+			{ "Oracle", "Welcome Starborn, the one who was prophesized to be the slayer of the wicked Architect", "Oracle" },
+			{ "Oracle", "The Architect ist he ruler of the land, he resides over us by controling our fate. To him, we are nothing but cattle in a pen", "Oracle" },
+			{ "Oracle", "You must accomplish the prophecy that foretold your fate, only then can you free these lands from madness", "Oracle" },
+			{ "Oracle", "The lands are swallowed with madness, the kingdom kneels to the tyrant, the halls echo with saddness, only the Starborn will remain defiant, its up to them to dig this land up from its grave", "Oracle" }
+        }
+    },
+
+//MOVE LATER
+	{
+		"HERMIT_CAVE_DIALOGUE",
 		{
 			"ARCHAEOLOGIST_RUINS_DIALOGUE",
 			{
@@ -662,8 +699,8 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
         {
             {"Explorer", "Man this place sure is creepy huh?", "Explorer"},
             {"Explorer", "Tell ya what, I've been trying to deal with some monsters around here. Could use the help", "EXPLORER"}, //SIDE QUEST (FOREST): FEELING BLOBBY: KILL 5 SLIMES
-            {"Explorer", "Woah your really strong. I also need help dealing with some spiders. They freak me out", "EXPLORER"}, //SIDE QUEST (FOREST): ARACHNAPHOBIA: KILL 5 GIANT SPIDERS
-            {"Explorer", "The sun is going down. Better be careful, the forest only gets deadlier at night", "EXPLORER"} //SIDE QUEST (FOREST): FULL MOON: KILL 3 WOLVES
+            {"Explorer", "Stand by the trees, you can collect some wood to craft items", "EXPLORER"}, //SIDE QUEST (FOREST): ARACHNAPHOBIA: KILL 5 GIANT SPIDERS
+            {"Explorer", "If your patient, you might get something really special", "EXPLORER"} //SIDE QUEST (FOREST): FULL MOON: KILL 3 WOLVES
         }
     },
 //Swamp DIALOGUE
@@ -683,9 +720,9 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
         "BOATMAN_DIALOGUE",
         {
             {"Boatman", "Hey there, watch out for the mosquitos, they come in swarms", "Boatman" },
-            {"Boatman", "Careful now, nothing in this place is friendly towards outsiders", "Boatman" }, //SWAMP SIDE QUEST 1: WELCOME TO THE SWAMP: KILL 3 ORCS AND 5 SLIMES	
-            {"Boatman", "You are a good fighter. I have a personal request", "Boatman" },
-            {"Boatman", "There is a rare mosnter somewhere in here, bring me back its head", "Boatman" }, //SWAMP SIDE QUEST 2: SWAMP THING: KILL THE SWAMP MONSTER
+            {"Boatman", "Catch fish in the lake and cook them in the town. You can use them to restore your health", "Boatman" }, //SWAMP SIDE QUEST 1: WELCOME TO THE SWAMP: KILL 3 ORCS AND 5 SLIMES	
+            {"Boatman", "Stand by one of the poles, there are plenty to go around", "Boatman" },
+            {"Boatman", "Watch out for the bandits, they hang out along the paths", "Boatman" }, //SWAMP SIDE QUEST 2: SWAMP THING: KILL THE SWAMP MONSTER
 		
         }
     },
@@ -5690,7 +5727,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		// --- NPCs/Shops ---
 		{ "TOWN_GUARD_NORTH", InteractableType::NPC,  {15, 1},  "GUARD_DIALOGUE" },
 		{ "TOWN_GUARD_EAST",  InteractableType::NPC,  {36, 18}, "GUARD_DIALOGUE" },
-		{ "TOWN_GUARD_CENTER",  InteractableType::NPC,  {16,  15}, "GUARD_DIALOGUE" },
+		{ "TOWN_GUARD_CENTER",InteractableType::NPC,  {16,  15}, "GUARD_DIALOGUE" },
 		{ "TOWN_CAPTAIN",     InteractableType::NPC,  {15, 12}, "GUARD_CAPTAIN_DIALOGUE" },
 		{ "TOWN_WEAPONSMITH", InteractableType::SHOP, {10, 10}, "SHOP_TOWN_WEAPONS" },
 		{ "TOWN_ARMORSMITH",  InteractableType::SHOP, {10, 15}, "SHOP_TOWN_ARMOR" },
@@ -5698,6 +5735,8 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "TOWN_MAYOR",       InteractableType::NPC,  {13, 8},  "MAYOR_WELCOME_DIALOGUE" },
 		{ "TOWN_OLD_MAN",     InteractableType::NPC,  {25, 18}, "OLD_MAN_LORE_DIALOGUE" },
 		{ "TOWN_ORACLE",      InteractableType::NPC,  {7, 6},   "ORACLE_PROPHECY_DIALOGUE" },
+		{ "TOWN_CRAFTSMAN",   InteractableType::NPC,  {24,11},   "TOWN_CRAFTSMAN_DIALOGUE" },
+
 
 		// --- Zone Transitions (gates) ---
 		// West gate on main road  OVERWORLD hub
@@ -5834,7 +5873,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 {
 	"SWAMP", {
 		   // --- NPC ---
-        {"WITCH_SWAMP_DIALOGUE", InteractableType::NPC, {12, 10}, "WITCH_DIALOGUE" }
+        {"WITCH_SWAMP_DIALOGUE", InteractableType::NPC, {29, 18}, "WITCH_DIALOGUE" },
 		// --- NPC ---
 // 		{ "WITCH_SWAMP", InteractableType::NPC, {12, 10}, "WITCH_DIALOGUE" },
 
@@ -5873,6 +5912,11 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 },
 {
 	"LAKE", {
+		// --- NPC ---
+        {"BOATMAN_DIALOGUE", InteractableType::NPC, {28, 10}, "BOATMAN_DIALOGUE" },
+		// --- Zone Transitions ---
+		{ "LAKE_FISH_1", InteractableType::RESOURCE_NODE, {10, 14}, "FISHING_SPOT" },
+		{ "LAKE_FISH_2", InteractableType::RESOURCE_NODE, {19, 12}, "FISHING_SPOT" }
 		// --- Resource Nodes (Fishing) ---
 		{ "LAKE_FISH_1",      InteractableType::RESOURCE_NODE, {10, 14}, "FISHING_SPOT" },
 		{ "LAKE_TROUT_1",     InteractableType::RESOURCE_NODE, { 19, 12}, "TROUT_SPOT" },
