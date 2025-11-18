@@ -31,7 +31,7 @@ class listener : public std::enable_shared_from_this<listener>
 	tcp::acceptor acceptor_;
 	std::shared_ptr<DatabaseManager> db_manager_;
 	std::shared_ptr<ThreadPool> db_pool_;
-	std::shared_ptr<ThreadPool> save_pool_; // <-- ADD THIS
+	std::shared_ptr<ThreadPool> save_pool_;
 
 public:
 	listener(net::io_context& ioc, tcp::endpoint endpoint, std::shared_ptr<DatabaseManager> db_manager, std::shared_ptr<ThreadPool> db_pool, std::shared_ptr<ThreadPool> save_pool)
@@ -139,18 +139,6 @@ void run_batch_save_timer(net::steady_timer& timer, int interval_seconds)
 					});
 			}
 
-			// --- The blocking loop has been removed ---
-			/*
-			 int saved = 0;
-			 for (auto& s : sessions)
-			 {
-				 try {
-					 s->save_character(); // <-- THIS WAS BLOCKING
-					 ++saved;
-				 }
-				 // ...
-			 }
-			*/
 
 			auto end_time = std::chrono::steady_clock::now();
 			auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
@@ -180,10 +168,10 @@ void run_monster_tick_timer(net::steady_timer& timer, int interval_ms)
 
 			auto now = std::chrono::steady_clock::now();
 
-			// --- MODIFICATION ---
+
 			// We only need to know *which* areas had spawns, not the monsters themselves
 			std::set<std::string> areas_to_update;
-			// --- END MODIFICATION ---
+
 
 			// Iterate over all game areas
 			for (auto& area_pair : g_areas)
