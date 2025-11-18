@@ -1,44 +1,35 @@
-McKay Seamons
+## Team Members
+* McKay Seamons
+* Nicola
+* Yousaf
+* Ali
 
-    Nicola
+---
 
-    Yousaf
+## Design Criteria Fulfillment
 
-    Ali
-
-Design Criteria
-
-1) World Map that the user can move around
-
+### 1. World Map that the user can move around
 Our project has an overarching world map that allows users to travel to different zones, and there are over 10 zones.
 
-We implemented A* pathfinding. We initially used Chebyshev distance for 8-directional movement, but the focus on diagonal movement led us to switch to Octile distance, which provides a more natural feel and looks much better for interpolation on the client.
+We implemented A\* pathfinding. We initially used Chebyshev distance for 8-directional movement, but the focus on diagonal movement led us to switch to **Octile distance**, which provides a more natural feel and looks much better for interpolation on the client.
 
-2) Combat of some sort, and some way of winning the game
-
+### 2. Combat of some sort, and some way of winning the game
 Our game is an open-ended MMORPG. The way you "Win" is by progressing your character.
 
-    Skills: You can progress through skills like mining, fishing, woodcutting, cooking, crafting, and combat.
+* **Skills:** You can progress through skills like mining, fishing, woodcutting, cooking, crafting, and combat.
+* **Gear:** You get gear through crafting and killing mobs, with a chance to get drops with additional effects from a list of about one hundred. The same randomness applies to crafting.
+* **Goal:** You "beat the game" by fighting and defeating the zone bosses and making your character as overpowered as possible.
 
-    Gear: You get gear through crafting and killing mobs, with a chance to get drops with additional effects from a list of about one hundred. The same randomness applies to crafting.
-
-    Goal: You "beat the game" by fighting and defeating the zone bosses and making your character as overpowered as possible.
-
-3) Must have colors
-
+### 3. Must have colors
 The game has a frontend built with JavaScript that includes multiple different sprites and colors.
 
-    Link: https://github.com/MckaySea/rpg-react-client
+* **Client Repository:** [https://github.com/MckaySea/rpg-react-client](https://github.com/MckaySea/rpg-react-client)
 
-4) Must have 5 puzzles to win the game
-
+### 4. Must have 5 puzzles to win the game
 The "puzzles" are the players figuring out the world around them and navigating how to make their characters as strong as possible. There are many hidden secrets, such as skillbooks as super rare drops and secret areas with rare resource nodes. Players can also trade items amongst each other, creating a dynamic experience.
 
-5) 40 lines of dialogue and/or descriptions of the world
-
-Our NPCs have hundreds of lines of dialogue, as seen in the gamedata.cpp file.
-
---------------------------------------------------------------------------------------------------------
+### 5. 40 lines of dialogue and/or descriptions of the world
+Our NPCs have **hundreds of lines of dialogue**, as seen in the `gamedata.cpp` file.
 
 
 
