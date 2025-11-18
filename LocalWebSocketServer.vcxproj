@@ -140,6 +140,7 @@
     <ClInclude Include="GameData.hpp" />
     <ClInclude Include="game_session.hpp" />
     <ClInclude Include="Items.hpp" />
+    <ClInclude Include="ThreadPool.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

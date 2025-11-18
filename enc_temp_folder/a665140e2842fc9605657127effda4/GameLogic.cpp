@@ -4866,7 +4866,7 @@ void AsyncSession::handle_message(const string& message)
 			player.isInCombat = false;
 
 			// --- MODIFICATION ---
-			const int RESPAWN_TIME_SECONDS = 15; // <-- CHANGED FROM 60
+			const int RESPAWN_TIME_SECONDS = 20; // <-- CHANGED FROM 60
 			set_monster_respawn_timer(player.currentArea, current_monster_spawn_id, RESPAWN_TIME_SECONDS);
 
 			player.currentOpponent.reset();
