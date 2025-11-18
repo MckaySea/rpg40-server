@@ -44,175 +44,176 @@ std::map<std::string, ResourceDefinition> g_resource_defs = {
 	{"FISHING_SPOT", {LifeSkillType::FISHING,     1, 12,  "RAW_FISH",   95, "PEARL",       1}},
 
 	// --- TIER 2 (Lvl 10) ---
-	{"YEW_TREE",     {LifeSkillType::WOODCUTTING, 10, 25,  "YEW_LOG",   90, "ENCHANTED_TWIG", 1}},
-	{"IRON_VEIN",    {LifeSkillType::MINING,      10, 30,  "IRON_ORE",  90, "SAPPHIRE", 1}},
-	{"TROUT_SPOT",   {LifeSkillType::FISHING,     10, 35,  "RAW_TROUT", 90, "GLISTENING_SCALE", 1}},
+	{"YEW_TREE",     {LifeSkillType::WOODCUTTING, 10, 15,  "YEW_LOG",   90, "ENCHANTED_TWIG", 1}},
+	{"IRON_VEIN",    {LifeSkillType::MINING,      10, 15,  "IRON_ORE",  90, "SAPPHIRE", 1}},
+	{"TROUT_SPOT",   {LifeSkillType::FISHING,     10, 15,  "RAW_TROUT", 90, "GLISTENING_SCALE", 1}},
 
 	// --- TIER 3 (Lvl 20) ---
-	{"MAGIC_TREE",   {LifeSkillType::WOODCUTTING, 20, 60,  "MAGIC_LOG",   85, "LIVING_ROOT", 1}},
-	{"MITHRIL_VEIN", {LifeSkillType::MINING,      20, 70,  "MITHRIL_ORE", 85, "EMERALD", 1}},
-	{"SHARK_SPOT",   {LifeSkillType::FISHING,     20, 80,  "RAW_SHARK",   85, "SHARK_TOOTH", 1}},
+	{"MAGIC_TREE",   {LifeSkillType::WOODCUTTING, 20, 25,  "MAGIC_LOG",   85, "LIVING_ROOT", 1}},
+	{"MITHRIL_VEIN", {LifeSkillType::MINING,      20, 25,  "MITHRIL_ORE", 85, "EMERALD", 1}},
+	{"SHARK_SPOT",   {LifeSkillType::FISHING,     20, 25,  "RAW_SHARK",   85, "SHARK_TOOTH", 1}},
 
 	// --- TIER 4 (Lvl 30) ---
-	{"REDWOOD_TREE", {LifeSkillType::WOODCUTTING, 30, 150, "REDWOOD_LOG", 80, "BLOODWOOD_SAP", 1}},
-	{"ADAMANT_VEIN", {LifeSkillType::MINING,      30, 170, "ADAMANT_ORE", 80, "DIAMOND", 1}},
-	{"ANGLER_SPOT",  {LifeSkillType::FISHING,     30, 190, "RAW_ANGLER",  80, "DEEP_CRYSTAL", 1}},
+	{"REDWOOD_TREE", {LifeSkillType::WOODCUTTING, 30, 45, "REDWOOD_LOG", 80, "BLOODWOOD_SAP", 1}},
+	{"ADAMANT_VEIN", {LifeSkillType::MINING,      30, 45, "ADAMANT_ORE", 80, "DIAMOND", 1}},
+	{"ANGLER_SPOT",  {LifeSkillType::FISHING,     30, 45, "RAW_ANGLER",  80, "DEEP_CRYSTAL", 1}},
 
 	// --- TIER 5 (Lvl 40) ---
-	{"ELDER_TREE",   {LifeSkillType::WOODCUTTING, 40, 300, "ELDER_LOG",   75, "WORLD_TREE_HEART", 1}},
-	{"ORICHALCUM_VEIN",{LifeSkillType::MINING,    40, 325, "ORICHALCUM_ORE",75, "VOID_GEM", 1}},
-	{"LEVIATHAN_SPOT", {LifeSkillType::FISHING,   40, 350, "RAW_LEVIATHAN", 75, "KRAKENS_EYE", 1}},
+	{"ELDER_TREE",   {LifeSkillType::WOODCUTTING, 40, 65, "ELDER_LOG",   75, "WORLD_TREE_HEART", 1}},
+	{"ORICHALCUM_VEIN",{LifeSkillType::MINING,    40, 65, "ORICHALCUM_ORE",75, "VOID_GEM", 1}},
+	{"LEVIATHAN_SPOT", {LifeSkillType::FISHING,   40, 65, "RAW_LEVIATHAN", 75, "KRAKENS_EYE", 1}},
 
 	// --- TIER 6 (Lvl 50) ---
-	{"ANCIENT_TREE", {LifeSkillType::WOODCUTTING, 50, 450, "ANCIENT_LOG", 70, "ETERNAL_EMBER", 1}},
-	{"RUNITE_VEIN",  {LifeSkillType::MINING,      50, 500, "RUNITE_ORE",  70, "STAR_METAL_FRAGMENT", 1}},
-	{"SQUID_SPOT",   {LifeSkillType::FISHING,     50, 550, "SQUID_INK",   70, "AZURE_GEM", 1}},
+	{"ANCIENT_TREE", {LifeSkillType::WOODCUTTING, 50, 95, "ANCIENT_LOG", 70, "ETERNAL_EMBER", 1}},
+	{"RUNITE_VEIN",  {LifeSkillType::MINING,      50, 95, "RUNITE_ORE",  70, "STAR_METAL_FRAGMENT", 1}},
+	{"SQUID_SPOT",   {LifeSkillType::FISHING,     50, 95, "SQUID_INK",   70, "AZURE_GEM", 1}},
 
 	// --- TIER 7 (Lvl 60) ---
-	{"CRYSTAL_TREE", {LifeSkillType::WOODCUTTING, 60, 700, "CRYSTAL_SHARD", 65, "CRYSTALLINE_CORE", 1}},
-	{"NEBULITE_VEIN",{LifeSkillType::MINING,      60, 750, "NEBULITE_ORE",  65, "NEBULA_MOTE", 1}},
-	{"DEEP_SEA_SPOT",{LifeSkillType::FISHING,     60, 800, "ABYSSAL_FIN",   65, "VOID_TENDRIL", 1}}
+	{"CRYSTAL_TREE", {LifeSkillType::WOODCUTTING, 60, 120, "CRYSTAL_SHARD", 65, "CRYSTALLINE_CORE", 1}},
+	{"NEBULITE_VEIN",{LifeSkillType::MINING,      60, 120, "NEBULITE_ORE",  65, "NEBULA_MOTE", 1}},
+	{"DEEP_SEA_SPOT",{LifeSkillType::FISHING,     60, 120, "ABYSSAL_FIN",   65, "VOID_TENDRIL", 1}}
 };
 
 // --- Crafting Recipes ---
 // --- Crafting Recipes ---
 std::map<std::string, CraftingRecipe> g_crafting_recipes = {
-	// ID             Result, Qty, Skill, Lvl, Ingredients, XP
+	// ID                 Result, Qty, Skill, Lvl, Ingredients, XP
 
 	// --- TIER 1 INTERMEDIATE (Lvl 1) ---
-	{"COPPER_INGOT",  {"COPPER_INGOT",  1, "Crafting", 1, {{"COPPER_ORE", 2}}, 3}},
-	{"OAK_PLANK",     {"OAK_PLANK",     1, "Crafting", 1, {{"OAK_LOG", 1}},    3}},
+	{"COPPER_INGOT",  {"COPPER_INGOT",  1, "Crafting", 1, {{"COPPER_ORE", 2}}, 1}},
+	{"OAK_PLANK",     {"OAK_PLANK",     1, "Crafting", 1, {{"OAK_LOG", 1}},    1}},
 
 	// --- TIER 1 EQUIPMENT (Lvl 1-7) ---
-	{"WOODEN_BOOTS",    {"WOODEN_BOOTS",    1, "Crafting", 1, {{"OAK_PLANK", 3}}, 15}},
-	{"COPPER_DAGGER",   {"COPPER_DAGGER",   1, "Crafting", 2, {{"COPPER_INGOT", 1}, {"OAK_PLANK", 1}}, 20}},
-	{"COPPER_BOOTS",    {"COPPER_BOOTS",    1, "Crafting", 2, {{"COPPER_INGOT", 1}}, 20}},
-	{"COPPER_SWORD",    {"COPPER_SWORD",    1, "Crafting", 3, {{"COPPER_INGOT", 2}, {"OAK_PLANK", 1}}, 30}},
-	{"OAK_SHORTBOW",    {"OAK_SHORTBOW",    1, "Crafting", 3, {{"OAK_PLANK", 3}},    25}},
-	{"COPPER_HELMET",   {"COPPER_HELMET",   1, "Crafting", 4, {{"COPPER_INGOT", 2}}, 30}},
-	{"COPPER_LEGS",     {"COPPER_LEGS",     1, "Crafting", 4, {{"COPPER_INGOT", 3}}, 40}},
-	{"COPPER_CHAINBODY",{"COPPER_CHAINBODY",1, "Crafting", 5, {{"COPPER_INGOT", 4}}, 50}},
-	{"OAK_STAFF",       {"OAK_STAFF",       1, "Crafting", 6, {{"OAK_PLANK", 2}, {"RUBY", 1}}, 70}},
-	{"OAK_SHIELD",      {"OAK_SHIELD",      1, "Crafting", 7, {{"OAK_PLANK", 4}},    40}},
-	{"REINFORCED_OAK_SHIELD", {"REINFORCED_OAK_SHIELD", 1, "Crafting", 9, {{"OAK_SHIELD", 1}, {"COPPER_INGOT", 1}, {"MONSTER_BONE", 2}}, 100}},
+	{"WOODEN_BOOTS",    {"WOODEN_BOOTS",    1, "Crafting", 1, {{"OAK_PLANK", 3}}, 7}},
+	{"COPPER_DAGGER",   {"COPPER_DAGGER",   1, "Crafting", 2, {{"COPPER_INGOT", 1}, {"OAK_PLANK", 1}}, 10}},
+	{"COPPER_BOOTS",    {"COPPER_BOOTS",    1, "Crafting", 2, {{"COPPER_INGOT", 1}}, 10}},
+	{"COPPER_SWORD",    {"COPPER_SWORD",    1, "Crafting", 3, {{"COPPER_INGOT", 2}, {"OAK_PLANK", 1}}, 15}},
+	{"OAK_SHORTBOW",    {"OAK_SHORTBOW",    1, "Crafting", 3, {{"OAK_PLANK", 3}},    12}},
+	{"COPPER_HELMET",   {"COPPER_HELMET",   1, "Crafting", 4, {{"COPPER_INGOT", 2}}, 15}},
+	{"COPPER_LEGS",     {"COPPER_LEGS",     1, "Crafting", 4, {{"COPPER_INGOT", 3}}, 20}},
+	{"COPPER_CHAINBODY",{"COPPER_CHAINBODY",1, "Crafting", 5, {{"COPPER_INGOT", 4}}, 25}},
+	{"OAK_STAFF",       {"OAK_STAFF",       1, "Crafting", 6, {{"OAK_PLANK", 2}, {"RUBY", 1}}, 35}},
+	{"OAK_SHIELD",      {"OAK_SHIELD",      1, "Crafting", 7, {{"OAK_PLANK", 4}},    20}},
+	{"REINFORCED_OAK_SHIELD", {"REINFORCED_OAK_SHIELD", 1, "Crafting", 9, {{"OAK_SHIELD", 1}, {"COPPER_INGOT", 1}, {"MONSTER_BONE", 2}}, 50}},
 
 	// --- TIER 2 INTERMEDIATE (Lvl 10) ---
-	{"IRON_INGOT",    {"IRON_INGOT",    1, "Crafting", 10, {{"IRON_ORE", 2}},   25}},
-	{"YEW_PLANK",     {"YEW_PLANK",     1, "Crafting", 10, {{"YEW_LOG", 1}},    18}},
+	{"IRON_INGOT",    {"IRON_INGOT",    1, "Crafting", 10, {{"IRON_ORE", 2}},    3}},
+	{"YEW_PLANK",     {"YEW_PLANK",     1, "Crafting", 10, {{"YEW_LOG", 1}},    3}},
 
 	// --- TIER 2 EQUIPMENT (Lvl 10-19) ---
-	{"IRON_DAGGER",     {"IRON_DAGGER",     1, "Crafting", 11,  {{"IRON_INGOT", 1}, {"YEW_PLANK", 1}}, 40}},
-	{"IRON_BOOTS",      {"IRON_BOOTS",      1, "Crafting", 11,  {{"IRON_INGOT", 1}}, 40}},
-	{"IRON_SWORD",      {"IRON_SWORD",      1, "Crafting", 12, {{"IRON_INGOT", 2}, {"YEW_PLANK", 1}}, 55}},
-	{"IRON_FULL_HELM",  {"IRON_FULL_HELM",  1, "Crafting", 12, {{"IRON_INGOT", 2}}, 55}},
-	{"SPIKED_IRON_HELM",{"SPIKED_IRON_HELM",1, "Crafting", 13, {{"IRON_FULL_HELM", 1}, {"MONSTER_FANG", 5}}, 120}},
-	{"IRON_PLATELEGS",  {"IRON_PLATELEGS",  1, "Crafting", 13, {{"IRON_INGOT", 3}}, 80}},
-	{"YEW_SHORTBOW",    {"YEW_SHORTBOW",    1, "Crafting", 14, {{"YEW_PLANK", 3}}, 70}},
-	{"RANGER_TUNIC",    {"RANGER_TUNIC",    1, "Crafting", 14, {{"YEW_PLANK", 6}, {"MONSTER_HIDE", 10}}, 150}},
-	{"IRON_PLATEBODY",  {"IRON_PLATEBODY",  1, "Crafting", 15, {{"IRON_INGOT", 5}}, 120}},
-	{"IRON_GREATSWORD", {"IRON_GREATSWORD", 1, "Crafting", 16, {{"IRON_INGOT", 4}, {"YEW_PLANK", 2}}, 130}},
-	{"YEW_STAFF",       {"YEW_STAFF",       1, "Crafting", 17, {{"YEW_PLANK", 2}, {"SAPPHIRE", 1}}, 180}},
-	{"YEW_SHIELD",      {"YEW_SHIELD",      1, "Crafting", 17, {{"YEW_PLANK", 4}}, 90}},
-	{"SCALE_MAIL_VEST", {"SCALE_MAIL_VEST", 1, "Crafting", 18, {{"GLISTENING_SCALE", 5}, {"IRON_INGOT", 2}}, 250}},
-	{"SAPPHIRE_RING",   {"SAPPHIRE_RING",   1, "Crafting", 19, {{"IRON_INGOT", 1}, {"SAPPHIRE", 1}}, 220}},
+	{"IRON_DAGGER",     {"IRON_DAGGER",     1, "Crafting", 11,  {{"IRON_INGOT", 1}, {"YEW_PLANK", 1}}, 20}},
+	{"IRON_BOOTS",      {"IRON_BOOTS",      1, "Crafting", 11,  {{"IRON_INGOT", 1}}, 20}},
+	{"IRON_SWORD",      {"IRON_SWORD",      1, "Crafting", 12, {{"IRON_INGOT", 2}, {"YEW_PLANK", 1}}, 27}},
+	{"IRON_FULL_HELM",  {"IRON_FULL_HELM",  1, "Crafting", 12, {{"IRON_INGOT", 2}}, 27}},
+	{"SPIKED_IRON_HELM",{"SPIKED_IRON_HELM",1, "Crafting", 13, {{"IRON_FULL_HELM", 1}, {"MONSTER_FANG", 5}}, 60}},
+	{"IRON_PLATELEGS",  {"IRON_PLATELEGS",  1, "Crafting", 13, {{"IRON_INGOT", 3}}, 40}},
+	{"YEW_SHORTBOW",    {"YEW_SHORTBOW",    1, "Crafting", 14, {{"YEW_PLANK", 3}}, 35}},
+	{"RANGER_TUNIC",    {"RANGER_TUNIC",    1, "Crafting", 14, {{"YEW_PLANK", 6}, {"MONSTER_HIDE", 10}}, 75}},
+	{"IRON_PLATEBODY",  {"IRON_PLATEBODY",  1, "Crafting", 15, {{"IRON_INGOT", 5}}, 60}},
+	{"IRON_GREATSWORD", {"IRON_GREATSWORD", 1, "Crafting", 16, {{"IRON_INGOT", 4}, {"YEW_PLANK", 2}}, 65}},
+	{"YEW_STAFF",       {"YEW_STAFF",       1, "Crafting", 17, {{"YEW_PLANK", 2}, {"SAPPHIRE", 1}}, 90}},
+	{"YEW_SHIELD",      {"YEW_SHIELD",      1, "Crafting", 17, {{"YEW_PLANK", 4}}, 45}},
+	{"SCALE_MAIL_VEST", {"SCALE_MAIL_VEST", 1, "Crafting", 18, {{"GLISTENING_SCALE", 5}, {"IRON_INGOT", 2}}, 125}},
+	{"SAPPHIRE_RING",   {"SAPPHIRE_RING",   1, "Crafting", 19, {{"IRON_INGOT", 1}, {"SAPPHIRE", 1}}, 110}},
 
 	// --- TIER 3 INTERMEDIATE (Lvl 20) ---
-	{"MITHRIL_INGOT", {"MITHRIL_INGOT", 1, "Crafting", 20, {{"MITHRIL_ORE", 2}}, 50}},
-	{"MAGIC_PLANK",   {"MAGIC_PLANK",   1, "Crafting", 20, {{"MAGIC_LOG", 1}},   40}},
+	{"MITHRIL_INGOT", {"MITHRIL_INGOT", 1, "Crafting", 20, {{"MITHRIL_ORE", 2}}, 5}},
+	{"MAGIC_PLANK",   {"MAGIC_PLANK",   1, "Crafting", 20, {{"MAGIC_LOG", 1}},    5}},
 
 	// --- TIER 3 EQUIPMENT (Lvl 20-29) ---
-	{"MITHRIL_DAGGER",    {"MITHRIL_DAGGER",    1, "Crafting", 21, {{"MITHRIL_INGOT", 1}, {"MAGIC_PLANK", 1}}, 90}},
-	{"MITHRIL_BOOTS",     {"MITHRIL_BOOTS",     1, "Crafting", 21, {{"MITHRIL_INGOT", 1}}, 90}},
-	{"MITHRIL_SWORD",     {"MITHRIL_SWORD",     1, "Crafting", 22, {{"MITHRIL_INGOT", 2}, {"MAGIC_PLANK", 1}}, 110}},
-	{"MITHRIL_FULL_HELM", {"MITHRIL_FULL_HELM", 1, "Crafting", 22, {{"MITHRIL_INGOT", 2}}, 110}},
-	{"MITHRIL_PLATELEGS", {"MITHRIL_PLATELEGS", 1, "Crafting", 23, {{"MITHRIL_INGOT", 3}}, 160}},
-	{"MAGIC_SHIELD",      {"MAGIC_SHIELD",      1, "Crafting", 24, {{"MAGIC_PLANK", 4}}, 150}},
-	{"MITHRIL_PLATEBODY", {"MITHRIL_PLATEBODY", 1, "Crafting", 25, {{"MITHRIL_INGOT", 5}}, 250}},
-	{"MAGIC_SHORTBOW",    {"MAGIC_SHORTBOW",    1, "Crafting", 25, {{"MAGIC_PLANK", 3}}, 220}},
-	{"ESSENCE_STAFF",     {"ESSENCE_STAFF",     1, "Crafting", 26, {{"MAGIC_PLANK", 3}, {"MONSTER_ESSENCE", 5}, {"SAPPHIRE", 1}}, 350}},
-	{"MITHRIL_BATTLEAXE", {"MITHRIL_BATTLEAXE", 1, "Crafting", 27, {{"MITHRIL_INGOT", 3}, {"YEW_PLANK", 2}, {"MONSTER_CLAW", 5}}, 320}},
-	{"MITHRIL_GREATSWORD",{"MITHRIL_GREATSWORD",1, "Crafting", 28, {{"MITHRIL_INGOT", 4}, {"MAGIC_PLANK", 2}}, 280}},
-	{"EMERALD_AMULET",    {"EMERALD_AMULET",    1, "Crafting", 29, {{"MITHRIL_INGOT", 1}, {"EMERALD", 1}}, 450}},
+	{"MITHRIL_DAGGER",    {"MITHRIL_DAGGER",    1, "Crafting", 21, {{"MITHRIL_INGOT", 1}, {"MAGIC_PLANK", 1}}, 45}},
+	{"MITHRIL_BOOTS",     {"MITHRIL_BOOTS",     1, "Crafting", 21, {{"MITHRIL_INGOT", 1}}, 45}},
+	{"MITHRIL_SWORD",     {"MITHRIL_SWORD",     1, "Crafting", 22, {{"MITHRIL_INGOT", 2}, {"MAGIC_PLANK", 1}}, 55}},
+	{"MITHRIL_FULL_HELM", {"MITHRIL_FULL_HELM", 1, "Crafting", 22, {{"MITHRIL_INGOT", 2}}, 55}},
+	{"MITHRIL_PLATELEGS", {"MITHRIL_PLATELEGS", 1, "Crafting", 23, {{"MITHRIL_INGOT", 3}}, 80}},
+	{"MAGIC_SHIELD",      {"MAGIC_SHIELD",      1, "Crafting", 24, {{"MAGIC_PLANK", 4}}, 75}},
+	{"MITHRIL_PLATEBODY", {"MITHRIL_PLATEBODY", 1, "Crafting", 25, {{"MITHRIL_INGOT", 5}}, 125}},
+	{"MAGIC_SHORTBOW",    {"MAGIC_SHORTBOW",    1, "Crafting", 25, {{"MAGIC_PLANK", 3}}, 110}},
+	{"ESSENCE_STAFF",     {"ESSENCE_STAFF",     1, "Crafting", 26, {{"MAGIC_PLANK", 3}, {"MONSTER_ESSENCE", 5}, {"SAPPHIRE", 1}}, 175}},
+	{"MITHRIL_BATTLEAXE", {"MITHRIL_BATTLEAXE", 1, "Crafting", 27, {{"MITHRIL_INGOT", 3}, {"YEW_PLANK", 2}, {"MONSTER_CLAW", 5}}, 160}},
+	{"MITHRIL_GREATSWORD",{"MITHRIL_GREATSWORD",1, "Crafting", 28, {{"MITHRIL_INGOT", 4}, {"MAGIC_PLANK", 2}}, 140}},
+	{"EMERALD_AMULET",    {"EMERALD_AMULET",    1, "Crafting", 29, {{"MITHRIL_INGOT", 1}, {"EMERALD", 1}}, 225}},
 
 	// --- TIER 4 INTERMEDIATE (Lvl 30) ---
-	{"ADAMANT_INGOT", {"ADAMANT_INGOT", 1, "Crafting", 30, {{"ADAMANT_ORE", 2}}, 100}},
-	{"REDWOOD_PLANK", {"REDWOOD_PLANK", 1, "Crafting", 30, {{"REDWOOD_LOG", 1}}, 80}},
+	{"ADAMANT_INGOT", {"ADAMANT_INGOT", 1, "Crafting", 30, {{"ADAMANT_ORE", 2}}, 8}},
+	{"REDWOOD_PLANK", {"REDWOOD_PLANK", 1, "Crafting", 30, {{"REDWOOD_LOG", 1}}, 8}},
 
 	// --- TIER 4 EQUIPMENT (Lvl 30-39) ---
-	{"ADAMANT_DAGGER",    {"ADAMANT_DAGGER",    1, "Crafting", 31, {{"ADAMANT_INGOT", 1}, {"REDWOOD_PLANK", 1}}, 180}},
-	{"ADAMANT_BOOTS",     {"ADAMANT_BOOTS",     1, "Crafting", 31, {{"ADAMANT_INGOT", 1}}, 180}},
-	{"ADAMANT_SWORD",     {"ADAMANT_SWORD",     1, "Crafting", 32, {{"ADAMANT_INGOT", 2}, {"REDWOOD_PLANK", 1}}, 220}},
-	{"ADAMANT_FULL_HELM", {"ADAMANT_FULL_HELM", 1, "Crafting", 32, {{"ADAMANT_INGOT", 2}}, 220}},
-	{"ADAMANT_PLATELEGS", {"ADAMANT_PLATELEGS", 1, "Crafting", 33, {{"ADAMANT_INGOT", 3}}, 320}},
-	{"ADAMANT_PLATEBODY", {"ADAMANT_PLATEBODY", 1, "Crafting", 35, {{"ADAMANT_INGOT", 5}}, 500}},
-	{"REDWOOD_SHORTBOW",  {"REDWOOD_SHORTBOW",  1, "Crafting", 35, {{"REDWOOD_PLANK", 3}}, 450}},
-	{"ADAMANT_GREATSWORD",{"ADAMANT_GREATSWORD",1, "Crafting", 36, {{"ADAMANT_INGOT", 4}, {"REDWOOD_PLANK", 2}}, 550}},
-	{"REDWOOD_WARBOW",    {"REDWOOD_WARBOW",    1, "Crafting", 37, {{"REDWOOD_PLANK", 5}, {"ADAMANT_INGOT", 1}, {"MONSTER_ESSENCE", 10}}, 700}},
-	{"ADAMANT_SPEAR",     {"ADAMANT_SPEAR",     1, "Crafting", 38, {{"ADAMANT_INGOT", 2}, {"REDWOOD_PLANK", 1}, {"SHARK_TOOTH", 3}}, 650}},
-	{"DIAMOND_RING",      {"DIAMOND_RING",      1, "Crafting", 39, {{"ADAMANT_INGOT", 1}, {"DIAMOND", 1}}, 800}},
-	{"BLOODWOOD_WAND",    {"BLOODWOOD_WAND",    1, "Crafting", 39, {{"BLOODWOOD_SAP", 1}, {"REDWOOD_PLANK", 1}}, 800}},
-	{"CRYSTAL_SHIELD",    {"CRYSTAL_SHIELD",    1, "Crafting", 39, {{"DEEP_CRYSTAL", 5}, {"MAGIC_PLANK", 2}}, 900}},
+	{"ADAMANT_DAGGER",    {"ADAMANT_DAGGER",    1, "Crafting", 31, {{"ADAMANT_INGOT", 1}, {"REDWOOD_PLANK", 1}}, 90}},
+	{"ADAMANT_BOOTS",     {"ADAMANT_BOOTS",     1, "Crafting", 31, {{"ADAMANT_INGOT", 1}}, 90}},
+	{"ADAMANT_SWORD",     {"ADAMANT_SWORD",     1, "Crafting", 32, {{"ADAMANT_INGOT", 2}, {"REDWOOD_PLANK", 1}}, 110}},
+	{"ADAMANT_FULL_HELM", {"ADAMANT_FULL_HELM", 1, "Crafting", 32, {{"ADAMANT_INGOT", 2}}, 110}},
+	{"ADAMANT_PLATELEGS", {"ADAMANT_PLATELEGS", 1, "Crafting", 33, {{"ADAMANT_INGOT", 3}}, 160}},
+	{"ADAMANT_PLATEBODY", {"ADAMANT_PLATEBODY", 1, "Crafting", 35, {{"ADAMANT_INGOT", 5}}, 250}},
+	{"REDWOOD_SHORTBOW",  {"REDWOOD_SHORTBOW",  1, "Crafting", 35, {{"REDWOOD_PLANK", 3}}, 225}},
+	{"ADAMANT_GREATSWORD",{"ADAMANT_GREATSWORD",1, "Crafting", 36, {{"ADAMANT_INGOT", 4}, {"REDWOOD_PLANK", 2}}, 275}},
+	{"REDWOOD_WARBOW",    {"REDWOOD_WARBOW",    1, "Crafting", 37, {{"REDWOOD_PLANK", 5}, {"ADAMANT_INGOT", 1}, {"MONSTER_ESSENCE", 10}}, 350}},
+	{"ADAMANT_SPEAR",     {"ADAMANT_SPEAR",     1, "Crafting", 38, {{"ADAMANT_INGOT", 2}, {"REDWOOD_PLANK", 1}, {"SHARK_TOOTH", 3}}, 325}},
+	{"DIAMOND_RING",      {"DIAMOND_RING",      1, "Crafting", 39, {{"ADAMANT_INGOT", 1}, {"DIAMOND", 1}}, 400}},
+	{"BLOODWOOD_WAND",    {"BLOODWOOD_WAND",    1, "Crafting", 39, {{"BLOODWOOD_SAP", 1}, {"REDWOOD_PLANK", 1}}, 400}},
+	{"CRYSTAL_SHIELD",    {"CRYSTAL_SHIELD",    1, "Crafting", 39, {{"DEEP_CRYSTAL", 5}, {"MAGIC_PLANK", 2}}, 450}},
 
 	// --- TIER 5 INTERMEDIATE (Lvl 40) ---
-	{"ORICHALCUM_INGOT", {"ORICHALCUM_INGOT", 1, "Crafting", 40, {{"ORICHALCUM_ORE", 2}}, 200}},
-	{"ELDER_PLANK",      {"ELDER_PLANK",      1, "Crafting", 40, {{"ELDER_LOG", 1}}, 150}},
+	{"ORICHALCUM_INGOT", {"ORICHALCUM_INGOT", 1, "Crafting", 40, {{"ORICHALCUM_ORE", 2}}, 12}},
+	{"ELDER_PLANK",      {"ELDER_PLANK",      1, "Crafting", 40, {{"ELDER_LOG", 1}}, 12}},
 
 	// --- TIER 5 EQUIPMENT (Lvl 40-49) ---
-	{"ORICHALCUM_DAGGER",    {"ORICHALCUM_DAGGER",    1, "Crafting", 41, {{"ORICHALCUM_INGOT", 1}, {"ELDER_PLANK", 1}}, 350}},
-	{"ORICHALCUM_BOOTS",     {"ORICHALCUM_BOOTS",     1, "Crafting", 41, {{"ORICHALCUM_INGOT", 1}}, 350}},
-	{"ORICHALCUM_SWORD",     {"ORICHALCUM_SWORD",     1, "Crafting", 42, {{"ORICHALCUM_INGOT", 2}, {"ELDER_PLANK", 1}}, 400}},
-	{"ORICHALCUM_HELM",      {"ORICHALCUM_HELM",      1, "Crafting", 42, {{"ORICHALCUM_INGOT", 2}}, 400}},
-	{"ORICHALCUM_PLATELEGS", {"ORICHALCUM_PLATELEGS", 1, "Crafting", 43, {{"ORICHALCUM_INGOT", 3}}, 600}},
-	{"ORICHALCUM_PLATEBODY", {"ORICHALCUM_PLATEBODY", 1, "Crafting", 45, {{"ORICHALCUM_INGOT", 5}}, 1000}},
-	{"ELDER_BOW",            {"ELDER_BOW",            1, "Crafting", 45, {{"ELDER_PLANK", 3}}, 800}},
-	{"ORICHALCUM_GREATSWORD",{"ORICHALCUM_GREATSWORD",1, "Crafting", 46, {{"ORICHALCUM_INGOT", 4}, {"ELDER_PLANK", 2}}, 1100}},
-	{"VOID_GEM_AMULET",      {"VOID_GEM_AMULET",      1, "Crafting", 48, {{"ORICHALCUM_INGOT", 1}, {"VOID_GEM", 1}}, 1500}},
-	{"LEVIATHAN_TRIDENT",    {"LEVIATHAN_TRIDENT",    1, "Crafting", 49, {{"KRAKENS_EYE", 1}, {"SHARK_TOOTH", 3}, {"ADAMANT_INGOT", 2}}, 1600}},
-	{"WORLD_TREE_STAFF",     {"WORLD_TREE_STAFF",     1, "Crafting", 49, {{"WORLD_TREE_HEART", 1}, {"ELDER_PLANK", 2}}, 1800}},
+	{"ORICHALCUM_DAGGER",    {"ORICHALCUM_DAGGER",    1, "Crafting", 41, {{"ORICHALCUM_INGOT", 1}, {"ELDER_PLANK", 1}}, 175}},
+	{"ORICHALCUM_BOOTS",     {"ORICHALCUM_BOOTS",     1, "Crafting", 41, {{"ORICHALCUM_INGOT", 1}}, 175}},
+	{"ORICHALCUM_SWORD",     {"ORICHALCUM_SWORD",     1, "Crafting", 42, {{"ORICHALCUM_INGOT", 2}, {"ELDER_PLANK", 1}}, 200}},
+	{"ORICHALCUM_HELM",      {"ORICHALCUM_HELM",      1, "Crafting", 42, {{"ORICHALCUM_INGOT", 2}}, 200}},
+	{"ORICHALCUM_PLATELEGS", {"ORICHALCUM_PLATELEGS", 1, "Crafting", 43, {{"ORICHALCUM_INGOT", 3}}, 300}},
+	{"ORICHALCUM_PLATEBODY", {"ORICHALCUM_PLATEBODY", 1, "Crafting", 45, {{"ORICHALCUM_INGOT", 5}}, 500}},
+	{"ELDER_BOW",            {"ELDER_BOW",            1, "Crafting", 45, {{"ELDER_PLANK", 3}}, 400}},
+	{"ORICHALCUM_GREATSWORD",{"ORICHALCUM_GREATSWORD",1, "Crafting", 46, {{"ORICHALCUM_INGOT", 4}, {"ELDER_PLANK", 2}}, 550}},
+	{"VOID_GEM_AMULET",      {"VOID_GEM_AMULET",      1, "Crafting", 48, {{"ORICHALCUM_INGOT", 1}, {"VOID_GEM", 1}}, 750}},
+	{"LEVIATHAN_TRIDENT",    {"LEVIATHAN_TRIDENT",    1, "Crafting", 49, {{"KRAKENS_EYE", 1}, {"SHARK_TOOTH", 3}, {"ADAMANT_INGOT", 2}}, 800}},
+	{"WORLD_TREE_STAFF",     {"WORLD_TREE_STAFF",     1, "Crafting", 49, {{"WORLD_TREE_HEART", 1}, {"ELDER_PLANK", 2}}, 900}},
 
 	// --- TIER 6 INTERMEDIATE (Lvl 50) ---
-	{"RUNITE_INGOT", {"RUNITE_INGOT", 1, "Crafting", 50, {{"RUNITE_ORE", 2}}, 350}},
-	{"ANCIENT_PLANK",{"ANCIENT_PLANK",1, "Crafting", 50, {{"ANCIENT_LOG", 1}}, 280}},
+	{"RUNITE_INGOT", {"RUNITE_INGOT", 1, "Crafting", 50, {{"RUNITE_ORE", 2}}, 18}},
+	{"ANCIENT_PLANK",{"ANCIENT_PLANK",1, "Crafting", 50, {{"ANCIENT_LOG", 1}}, 18}},
 
 	// --- TIER 6 EQUIPMENT (Lvl 50-59) ---
-	{"RUNITE_HELM",       {"RUNITE_HELM",       1, "Crafting", 51, {{"RUNITE_INGOT", 2}}, 700}},
-	{"RUNITE_BOOTS",      {"RUNITE_BOOTS",      1, "Crafting", 51, {{"RUNITE_INGOT", 1}}, 700}},
-	{"ANCIENT_MASK",      {"ANCIENT_MASK",      1, "Crafting", 52, {{"ANCIENT_PLANK", 3}}, 650}},
-	{"ANCIENT_BOOTS",     {"ANCIENT_BOOTS",     1, "Crafting", 52, {{"ANCIENT_PLANK", 2}}, 650}},
-	{"RUNITE_PLATELEGS",  {"RUNITE_PLATELEGS",  1, "Crafting", 53, {{"RUNITE_INGOT", 3}}, 1000}},
-	{"ANCIENT_LEGGINGS",  {"ANCIENT_LEGGINGS",  1, "Crafting", 53, {{"ANCIENT_PLANK", 4}}, 900}},
-	{"RUNITE_GREATSWORD", {"RUNITE_GREATSWORD", 1, "Crafting", 55, {{"RUNITE_INGOT", 4}, {"ELDER_PLANK", 2}}, 1500}},
-	{"ANCIENT_BOW",       {"ANCIENT_BOW",       1, "Crafting", 55, {{"ANCIENT_PLANK", 5}}, 1300}},
-	{"RUNITE_PLATEBODY",  {"RUNITE_PLATEBODY",  1, "Crafting", 56, {{"RUNITE_INGOT", 5}}, 1800}},
-	{"ANCIENT_ROBE",      {"ANCIENT_ROBE",      1, "Crafting", 56, {{"ANCIENT_PLANK", 6}}, 1600}},
-	{"RUNIC_PLATEBODY",   {"RUNIC_PLATEBODY",   1, "Crafting", 57, {{"RUNITE_PLATEBODY", 1}, {"MONSTER_ESSENCE", 20}, {"CURSED_RELIC", 1}}, 2500}},
-	{"SQUID_INK_STAFF",   {"SQUID_INK_STAFF",   1, "Crafting", 58, {{"SQUID_INK", 1}, {"ANCIENT_PLANK", 1}, {"ETERNAL_EMBER", 1}}, 2800}},
-	{"STARFALL_SPEAR",    {"STARFALL_SPEAR",    1, "Crafting", 59, {{"RUNITE_INGOT", 3}, {"ANCIENT_PLANK", 2}, {"STAR_METAL_FRAGMENT", 1}}, 3000}},
+	{"RUNITE_HELM",       {"RUNITE_HELM",       1, "Crafting", 51, {{"RUNITE_INGOT", 2}}, 350}},
+	{"RUNITE_BOOTS",      {"RUNITE_BOOTS",      1, "Crafting", 51, {{"RUNITE_INGOT", 1}}, 350}},
+	{"ANCIENT_MASK",      {"ANCIENT_MASK",      1, "Crafting", 52, {{"ANCIENT_PLANK", 3}}, 325}},
+	{"ANCIENT_BOOTS",     {"ANCIENT_BOOTS",     1, "Crafting", 52, {{"ANCIENT_PLANK", 2}}, 325}},
+	{"RUNITE_PLATELEGS",  {"RUNITE_PLATELEGS",  1, "Crafting", 53, {{"RUNITE_INGOT", 3}}, 500}},
+	{"ANCIENT_LEGGINGS",  {"ANCIENT_LEGGINGS",  1, "Crafting", 53, {{"ANCIENT_PLANK", 4}}, 450}},
+	{"RUNITE_GREATSWORD", {"RUNITE_GREATSWORD", 1, "Crafting", 55, {{"RUNITE_INGOT", 4}, {"ELDER_PLANK", 2}}, 750}},
+	{"ANCIENT_BOW",       {"ANCIENT_BOW",       1, "Crafting", 55, {{"ANCIENT_PLANK", 5}}, 650}},
+	{"RUNITE_PLATEBODY",  {"RUNITE_PLATEBODY",  1, "Crafting", 56, {{"RUNITE_INGOT", 5}}, 900}},
+	{"ANCIENT_ROBE",      {"ANCIENT_ROBE",      1, "Crafting", 56, {{"ANCIENT_PLANK", 6}}, 800}},
+	{"RUNIC_PLATEBODY",   {"RUNIC_PLATEBODY",   1, "Crafting", 57, {{"RUNITE_PLATEBODY", 1}, {"MONSTER_ESSENCE", 20}, {"CURSED_RELIC", 1}}, 1250}},
+	{"SQUID_INK_STAFF",   {"SQUID_INK_STAFF",   1, "Crafting", 58, {{"SQUID_INK", 1}, {"ANCIENT_PLANK", 1}, {"ETERNAL_EMBER", 1}}, 1400}},
+	{"STARFALL_SPEAR",    {"STARFALL_SPEAR",    1, "Crafting", 59, {{"RUNITE_INGOT", 3}, {"ANCIENT_PLANK", 2}, {"STAR_METAL_FRAGMENT", 1}}, 1500}},
 
 	// --- TIER 7 INTERMEDIATE (Lvl 60) ---
-	{"NEBULITE_INGOT", {"NEBULITE_INGOT", 1, "Crafting", 60, {{"NEBULITE_ORE", 2}}, 600}},
-	{"CRYSTAL_PLANK",  {"CRYSTAL_PLANK",  1, "Crafting", 60, {{"CRYSTAL_SHARD", 1}}, 500}},
+	{"NEBULITE_INGOT", {"NEBULITE_INGOT", 1, "Crafting", 60, {{"NEBULITE_ORE", 2}}, 25}},
+	{"CRYSTAL_PLANK",  {"CRYSTAL_PLANK",  1, "Crafting", 60, {{"CRYSTAL_SHARD", 1}}, 25}},
 
 	// --- TIER 7 EQUIPMENT (Lvl 60+) ---
-	{"NEBULITE_HELM",      {"NEBULITE_HELM",      1, "Crafting", 61, {{"NEBULITE_INGOT", 2}}, 1200}},
-	{"NEBULITE_BOOTS",     {"NEBULITE_BOOTS",     1, "Crafting", 61, {{"NEBULITE_INGOT", 1}}, 1200}},
-	{"CRYSTAL_CROWN",      {"CRYSTAL_CROWN",      1, "Crafting", 62, {{"CRYSTAL_PLANK", 3}}, 1100}},
-	{"CRYSTAL_BOOTS",      {"CRYSTAL_BOOTS",      1, "Crafting", 62, {{"CRYSTAL_PLANK", 2}}, 1100}},
-	{"VOID_EDGE",          {"VOID_EDGE",          1, "Crafting", 63, {{"NEBULITE_INGOT", 3}, {"VOID_GEM", 2}, {"CURSED_RELIC", 5}}, 3500}},
-	{"NEBULITE_LEGS",      {"NEBULITE_LEGS",      1, "Crafting", 63, {{"NEBULITE_INGOT", 3}}, 1800}},
-	{"CRYSTAL_LEGGINGS",   {"CRYSTAL_LEGGINGS",   1, "Crafting", 63, {{"CRYSTAL_PLANK", 4}}, 1600}},
-	{"NEBULITE_PLATEBODY", {"NEBULITE_PLATEBODY", 1, "Crafting", 65, {{"NEBULITE_INGOT", 5}}, 3000}},
-	{"CRYSTAL_ROBE",       {"CRYSTAL_ROBE",       1, "Crafting", 65, {{"CRYSTAL_PLANK", 6}}, 2800}},
-	{"NEBULITE_WARHAMMER", {"NEBULITE_WARHAMMER", 1, "Crafting", 66, {{"NEBULITE_INGOT", 4}, {"ANCIENT_PLANK", 2}}, 2500}},
-	{"CRYSTAL_WAND",       {"CRYSTAL_WAND",       1, "Crafting", 66, {{"CRYSTAL_PLANK", 3}, {"CRYSTALLINE_CORE", 1}}, 3200}},
-	{"CORE_STAFF",         {"CORE_STAFF",         1, "Crafting", 68, {{"CRYSTAL_PLANK", 3}, {"ELEMENTAL_CORE", 3}, {"NEBULA_MOTE", 1}}, 4000}},
-	{"ABYSSAL_SPEAR",      {"ABYSSAL_SPEAR",      1, "Crafting", 70, {{"ABYSSAL_FIN", 5}, {"VOID_TENDRIL", 1}, {"ANCIENT_PLANK", 1}}, 5000}},
+	{"NEBULITE_HELM",     {"NEBULITE_HELM",     1, "Crafting", 61, {{"NEBULITE_INGOT", 2}}, 600}},
+	{"NEBULITE_BOOTS",    {"NEBULITE_BOOTS",    1, "Crafting", 61, {{"NEBULITE_INGOT", 1}}, 600}},
+	{"CRYSTAL_CROWN",     {"CRYSTAL_CROWN",     1, "Crafting", 62, {{"CRYSTAL_PLANK", 3}}, 550}},
+	{"CRYSTAL_BOOTS",     {"CRYSTAL_BOOTS",     1, "Crafting", 62, {{"CRYSTAL_PLANK", 2}}, 550}},
+	{"VOID_EDGE",         {"VOID_EDGE",         1, "Crafting", 63, {{"NEBULITE_INGOT", 3}, {"VOID_GEM", 2}, {"CURSED_RELIC", 5}}, 1750}},
+	{"NEBULITE_LEGS",     {"NEBULITE_LEGS",     1, "Crafting", 63, {{"NEBULITE_INGOT", 3}}, 900}},
+	{"CRYSTAL_LEGGINGS",  {"CRYSTAL_LEGGINGS",  1, "Crafting", 63, {{"CRYSTAL_PLANK", 4}}, 800}},
+	{"NEBULITE_PLATEBODY",{"NEBULITE_PLATEBODY",1, "Crafting", 65, {{"NEBULITE_INGOT", 5}}, 1500}},
+	{"CRYSTAL_ROBE",      {"CRYSTAL_ROBE",      1, "Crafting", 65, {{"CRYSTAL_PLANK", 6}}, 1400}},
+	{"NEBULITE_WARHAMMER",{"NEBULITE_WARHAMMER",1, "Crafting", 66, {{"NEBULITE_INGOT", 4}, {"ANCIENT_PLANK", 2}}, 1250}},
+	{"CRYSTAL_WAND",      {"CRYSTAL_WAND",      1, "Crafting", 66, {{"CRYSTAL_PLANK", 3}, {"CRYSTALLINE_CORE", 1}}, 1600}},
+	{"CORE_STAFF",        {"CORE_STAFF",        1, "Crafting", 68, {{"CRYSTAL_PLANK", 3}, {"ELEMENTAL_CORE", 3}, {"NEBULA_MOTE", 1}}, 2000}},
+	{"ABYSSAL_SPEAR",     {"ABYSSAL_SPEAR",     1, "Crafting", 70, {{"ABYSSAL_FIN", 5}, {"VOID_TENDRIL", 1}, {"ANCIENT_PLANK", 1}}, 2500}},
+
 	// --- Stage 1: Simple Cooking (Raw -> Cooked) ---
-	{ "COOK_FISH",      {"COOKED_FISH",      1, "Cooking", 1,  {{"RAW_FISH", 1}}, 5} },
-	{ "COOK_TROUT",     {"COOKED_TROUT",     1, "Cooking", 10, {{"RAW_TROUT", 1}}, 20} },
-	{ "COOK_SHARK",     {"COOKED_SHARK",     1, "Cooking", 20, {{"RAW_SHARK", 1}}, 50} },
-	{ "COOK_ANGLER",    {"COOKED_ANGLER",    1, "Cooking", 30, {{"RAW_ANGLER", 1}}, 120} },
-	{ "COOK_LEVIATHAN", {"COOKED_LEVIATHAN", 1, "Cooking", 40, {{"RAW_LEVIATHAN", 1}}, 250} },
+	{ "COOK_FISH",      {"COOKED_FISH",      1, "Cooking", 1,  {{"RAW_FISH", 1}}, 2} },
+	{ "COOK_TROUT",     {"COOKED_TROUT",     1, "Cooking", 10, {{"RAW_TROUT", 1}}, 10} },
+	{ "COOK_SHARK",     {"COOKED_SHARK",     1, "Cooking", 20, {{"RAW_SHARK", 1}}, 25} },
+	{ "COOK_ANGLER",    {"COOKED_ANGLER",    1, "Cooking", 30, {{"RAW_ANGLER", 1}}, 60} },
+	{ "COOK_LEVIATHAN", {"COOKED_LEVIATHAN", 1, "Cooking", 40, {{"RAW_LEVIATHAN", 1}}, 125} },
 
 	// --- Stage 2: Complex Meals (Cooked + Mats -> Meal) ---
 	{ "FISH_STEW", {
@@ -221,7 +222,7 @@ std::map<std::string, CraftingRecipe> g_crafting_recipes = {
 			{"COOKED_FISH", 2},
 			{"HERBS", 1}
 		},
-		30
+		15
 	} },
 	{ "SAVORY_TROUT", {
 		"SAVORY_TROUT", 1, "Cooking", 15,
@@ -230,7 +231,7 @@ std::map<std::string, CraftingRecipe> g_crafting_recipes = {
 			{"HERBS", 2},
 			{"GOLDEN_LEAF", 1}
 		},
-		70
+		35
 	} },
 	{ "SHARK_FEAST", {
 		"SHARK_FEAST", 1, "Cooking", 25,
@@ -239,7 +240,7 @@ std::map<std::string, CraftingRecipe> g_crafting_recipes = {
 			{"HERBS", 3},
 			{"SHARK_TOOTH", 1}
 		},
-		200
+		100
 	} },
 	{ "DEEP_SEA_FEAST", {
 		"DEEP_SEA_FEAST", 1, "Cooking", 45,
@@ -249,7 +250,7 @@ std::map<std::string, CraftingRecipe> g_crafting_recipes = {
 			{"DEEP_CRYSTAL", 1},
 			{"KRAKENS_EYE", 1}
 		},
-		1000
+		500
 	} },
 	{ "ABYSSAL_PLATTER", {
 		"ABYSSAL_PLATTER", 1, "Cooking", 60,
@@ -258,7 +259,7 @@ std::map<std::string, CraftingRecipe> g_crafting_recipes = {
 			{"SQUID_INK", 1},
 			{"VOID_TENDRIL", 1}
 		},
-		2500
+		1250
 	} },
 };
 
@@ -339,29 +340,28 @@ const std::vector<std::vector<int>> CASTLEINSIDE_GRID = {
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}  // 21
 };
 const std::vector<std::vector<int>> TOWN_GRID = {
-	//   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
 	{0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 0
 	{0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 1
 	{0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 2
-	{0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 3
-	{0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0}, // 4
-	{0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0}, // 5
-	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0}, // 6
-	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0}, // 7
-	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0}, // 8
-	{0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0}, // 9
-	{0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0}, // 10
-	{0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0}, // 11
-	{0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0}, // 12
-	{0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,1,0}, // 13
-	{0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,0}, // 14
-	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,0}, // 15
-	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0}, // 16
-	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,1,1,1,1,1,0}, // 17
-	{0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0}, // 18
-	{0,0,1,1,1,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,0}, // 19
-	{0,0,1,1,1,1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0}, // 20
-	{0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0}, // 21
+	{0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 3
+	{0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 4
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 5
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 6
+	{0,0,0,0,0,0,0,0,0,0,1,1,1,0,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 7
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0}, // 8
+	{0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0}, // 9
+	{0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0}, // 10
+	{0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1,1,0}, // 11
+	{0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,1,1,1,1,0}, // 12
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,1,1,1,1,0}, // 13
+	{0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,1,1,1,1,0}, // 14
+	{0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,1,1,1,1,0}, // 15
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,1,0,0,0,0,0,0,0,0,0}, // 16
+	{0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 17
+	{0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 18
+	{0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 19
+	{0,0,1,1,1,1,1,1,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 20
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 21
 };
 const std::vector<std::vector<int>> MARKET_GRID = {
 	//   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
@@ -438,7 +438,7 @@ const std::vector<std::vector<int>> RUINS_GRID = {
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 20
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 21
 };
-const std::vector<std::vector<int>> FOREST_GRID = {
+const std::vector<std::vector<int>> FOREST2_GRID = {
 	//   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
 	{0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 0
 	{0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0}, // 1
@@ -463,33 +463,33 @@ const std::vector<std::vector<int>> FOREST_GRID = {
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 20
 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 21
 };
-const std::vector<std::vector<int>> FOREST2_GRID = {
-
-	//                                           (Paths)  
-	//       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 0
-			{0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 1
-			{0,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 2
-			{0,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0}, // 3
-			{0,0,0,1,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0}, // 4
-			{0,0,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 5 
-			{0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 6
-			{0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 7                                                   
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 8
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 9
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}, // 10 (Path)
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}, // 11 (Path)
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}, // 12 (Path)
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 13 
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 14 
-			{0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 15 
-			{0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0}, // 16
-			{0,0,1,1,1,0,0,0,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0}, // 17 (Goblin hut)
-			{0,0,1,1,1,0,0,0,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0}, // 18
-			{0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0}, // 19
-			{0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0}, // 20
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}  // 21
-};
+//const std::vector<std::vector<int>> FOREST2_GRID = {
+//
+//	//                                           (Paths)  
+//	//       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
+//			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 0
+//			{0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 1
+//			{0,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 2
+//			{0,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0}, // 3
+//			{0,0,0,1,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0}, // 4
+//			{0,0,0,0,0,0,1,1,1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 5 
+//			{0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 6
+//			{0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 7                                                   
+//			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 8
+//			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 9
+//			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}, // 10 (Path)
+//			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}, // 11 (Path)
+//			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}, // 12 (Path)
+//			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 13 
+//			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 14 
+//			{0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 15 
+//			{0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0}, // 16
+//			{0,0,1,1,1,0,0,0,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0}, // 17 (Goblin hut)
+//			{0,0,1,1,1,0,0,0,1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0}, // 18
+//			{0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0}, // 19
+//			{0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0}, // 20
+//			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}  // 21
+//};
 const std::vector<std::vector<int>> FOREST3_GRID = {
 
 	//                                           (Paths)  
@@ -541,6 +541,30 @@ const std::vector<std::vector<int>> CAVES_GRID = {
 	{0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 19
 	{0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 20
 	{0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 21
+};
+const std::vector<std::vector<int>> FOREST_GRID = {
+  {0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 0
+	{0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 1
+	{0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 2
+	{0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 3
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 4
+	{0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0}, // 5
+	{0,0,0,0,0,1,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0}, // 6
+	{0,0,0,0,0,1,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 7
+	{0,0,0,0,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 8
+	{0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 9
+	{0,0,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0}, // 10
+	{0,0,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0}, // 11
+	{0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0}, // 12
+	{0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 13
+	{0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,1,0,0,0,0,0}, // 14
+	{0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0}, // 15
+	{0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 16
+	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,0,0}, // 17
+	{0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0}, // 18
+	{0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0}, // 19
+	{0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0}, // 20
+	{0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 21
 };
 const std::vector<std::vector<int>> DESERT_GRID = {
 	//       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
@@ -843,8 +867,11 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 			{
 				"OLD_MAN_LORE_DIALOGUE",
 				{
-					{"Old Man", "Ahh… another soul chasing glory. Ive seen many like you.", "OLD_MAN"},
-					{"Old Man", "The Forest to the north best you start your journey there, you can always come back to town to heal, eventually you should go to the lake and fish and cook to not have to visit town so often.", "OLD_MAN"},
+					{"Old Man", "Ahh... a Starborn. Chasing glory, or perhaps fate? Many like you have passed through here.", "OLD_MAN"},
+					{"Old Man", "Your journey begins in the Forest to the north. It's a dangerous place, but you must start somewhere.", "OLD_MAN"},
+					{"Old Man", "As you explore, keep your eyes peeled. Chop trees, mine ores... gather what you can. You'll need those materials.", "OLD_MAN"},
+					{"Old Man", "Bring your resources back to the crafting bench in town to make better gear. You can also catch fish at the lake... cook them up for a good meal.", "OLD_MAN"},
+					{"Old Man", "It's better than running back to town to heal every five minutes, eh? Remember, the strongest materials are in the most dangerous lands. Be prepared.", "OLD_MAN"}
 				}
 			},
 			{
@@ -891,7 +918,7 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 		{
 		 "ANGEL_OVERWORLD_GUIDE_DIALOGUE",
 		{
-				{ "Heavenly Guide", "Hello Starborn, you can acess all parts of the map here. Look for the glowing green squares", "HEAVENLY GUIDE"  },
+				{ "Heavenly Guide", "Hello Starborn, you can acess all parts of the map here. Look for the blue portals!", "HEAVENLY GUIDE"  },
 				{ "Heavenly Guide", "Start your journey in the Forest, proceed to the swamps, journey through Vorath's desert and Mountains. Explore the Caves and dive into the Volacno", "HEAVENLY GUIDE"  },
 				{ "Heavenly Guide", "Overcoming adversary means you start small. Gain confidence by defeating weaker monsters and then chase your destiny Starborn", "HEAVENLY GUIDE" }
 			}
@@ -1785,14 +1812,15 @@ const std::unordered_map<std::string, SpawnPoint>& get_area_spawns()
 {
 	static const std::unordered_map<std::string, SpawnPoint> area_spawns{
 {"TOWN",         {18, 12}},
-{"FOREST",       {17, 2}},
+{"FOREST2",       {17, 2}},
+{"FOREST",       {3, 6}},
 {"VOLCANO",      {4, 12}},
 {"OVERWORLD",    {26, 8}},
 {"CAVES",        {28, 6}},
 {"RUINS",        {9, 17}},
 {"SWAMP",        {25, 19}},
 {"LAKE",         {12, 19}},
-{"CASTLEINSIDE", {18, 19}},
+{"CASTLEINSIDE", {18, 20}},
 {"MOUNTAINS",    {21, 19}},
 {"DESERT",       {9, 16}},
 {"MARKET",       {0, 0}}
@@ -1843,7 +1871,7 @@ void initializeAreas() {
 	std::vector<TempArea> areaTemplates = {
 		{"TOWN", "/town.png", &TOWN_GRID},
 		{"FOREST", "/forest.png", &FOREST_GRID},
-		{"FOREST2", "/forest.png", &FOREST_GRID},
+		{"FOREST2", "/forest.png", &FOREST2_GRID},
 		{"VOLCANO", "/volcano.png", &VOLCANO_GRID},
 		{"OVERWORLD", "/overworld.png", &OVERWORLD_GRID},
 		{"CAVES", "/caves.png", &CAVES_GRID},
@@ -1902,9 +1930,9 @@ void initializeAreas() {
 	};
 	g_areas["FOREST"].monsters = {
 		{global_monster_id_counter++, "SLIME", 12, 8, 2, 4},
-		{global_monster_id_counter++, "SLIME", 29, 12, 2, 4},
-		{global_monster_id_counter++, "WOLF", 20, 12, 1, 3},
-		{global_monster_id_counter++, "WOLF", 2, 13, 1, 3},
+		{global_monster_id_counter++, "SLIME", 19, 17, 2, 4},
+		{global_monster_id_counter++, "WOLF", 19, 19, 1, 3},
+		{global_monster_id_counter++, "WOLF", 30, 19, 1, 3},
 		{global_monster_id_counter++, "GOBLIN_PEON", 5, 5, 1, 3},
 		{global_monster_id_counter++, "GOBLIN_PEON", 15, 12, 1, 3},
 		{global_monster_id_counter++, "FOREST_SPRITE", 10, 15, 2, 5},
@@ -1945,8 +1973,6 @@ void initializeAreas() {
 		{global_monster_id_counter++, "GOBLIN_SHAMAN", 26, 11, 1, 1},
 		{global_monster_id_counter++, "GOBLIN_SHAMAN", 28, 18, 1, 1},
 		{global_monster_id_counter++, "DARK_WIZARD", 25, 5, 1, 1},
-		{global_monster_id_counter++, "GIANT_RAT", 30, 18, 2, 5},
-		{global_monster_id_counter++, "GIANT_RAT", 10, 13, 2, 5},
 		{global_monster_id_counter++, "NECROMANCER", 34, 6, 1, 1},  // <-- Added
 		{global_monster_id_counter++, "NECROMANCER", 6, 4, 1, 1}      // <-- Added
 	};
@@ -1958,7 +1984,6 @@ void initializeAreas() {
 		{global_monster_id_counter++, "GOBLIN_SHAMAN", 30, 5, 2, 4},
 		{global_monster_id_counter++, "SLIME", 15, 15, 3, 5},
 		{global_monster_id_counter++, "GIANT_SPIDER", 5, 5, 1, 2},   // <-- Fixed: space
-		{global_monster_id_counter++, "BAT", 8, 18, 2, 4},
 		{global_monster_id_counter++, "KOBOLD", 12, 10, 1, 3},
 		{global_monster_id_counter++, "KOBOLD", 12, 10, 1, 3}// <-- Added
 	};
@@ -2785,6 +2810,50 @@ void initialize_item_database() {
 	def.effects = { ItemEffect{"USE", {{"action", "RESTORE_HEALTH"}, {"amount", "30"}}} };
 	itemDatabase[def.id] = def;
 
+	def = {};
+	def.id = "IRON_FULL_HELM";
+	def.name = "Iron Full Helm";
+	def.description = "A standard-issue iron helm.";
+	def.imagePath = "IRON_FULL_HELM";
+	def.equipSlot = EquipSlot::Hat;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"defense", 11} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "IRON_PLATELEGS";
+	def.name = "Iron Platelegs";
+	def.description = "Solid iron plate leggings.";
+	def.imagePath = "IRON_PLATELEGS";
+	def.equipSlot = EquipSlot::Bottom;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"defense", 14}, {"speed", -2} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "YEW_SHORTBOW";
+	def.name = "Yew Shortbow";
+	def.description = "A flexible and strong yew bow.";
+	def.imagePath = "YEW_SHORTBOW";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"dexterity", 12}, {"speed", 1} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "IRON_PLATEBODY";
+	def.name = "Iron Platebody";
+	def.description = "A solid iron platebody.";
+	def.imagePath = "IRON_PLATEBODY";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 3;
+	def.stats = { {"defense", 18}, {"strength", 1}, {"speed", -4} };
+	itemDatabase[def.id] = def;
+
 	// --- NEW: T4 Complex Meal --- (Tier 4)
 	def = {};
 	def.id = "SAVORY_TROUT";
@@ -3279,6 +3348,49 @@ void initialize_item_database() {
 	def.item_tier = 5;
 	def.stats = { {"dexterity", 14}, {"speed", 3} };
 	itemDatabase[def.id] = def;
+	def = {};
+	def.id = "MITHRIL_FULL_HELM";
+	def.name = "Mithril Full Helm";
+	def.description = "A lightweight and durable mithril helm.";
+	def.imagePath = "MITHRIL_FULL_HELM";
+	def.equipSlot = EquipSlot::Hat;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"defense", 15}, {"strength", 2}, {"strength", -3} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MITHRIL_PLATELEGS";
+	def.name = "Mithril Platelegs";
+	def.description = "Shining mithril plate leggings.";
+	def.imagePath = "MITHRIL_PLATELEGS";
+	def.equipSlot = EquipSlot::Bottom;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"defense", 20}, {"strength", 2}, {"strength", -3} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MITHRIL_PLATEBODY";
+	def.name = "Mithril Platebody";
+	def.description = "A strong and light mithril platebody.";
+	def.imagePath = "MITHRIL_PLATEBODY";
+	def.equipSlot = EquipSlot::Top;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"defense", 25}, {"strength", 3}, {"maxHealth", 15}, {"speed", -3} };
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "MAGIC_SHORTBOW";
+	def.name = "Magic Shortbow";
+	def.description = "A magic-wood bow that hums with energy.";
+	def.imagePath = "MAGIC_SHORTBOW";
+	def.equipSlot = EquipSlot::Weapon;
+	def.stackable = false;
+	def.item_tier = 5;
+	def.stats = { {"dexterity", 17}, {"intellect", 5}, {"speed", 2} };
+	itemDatabase[def.id] = def;
 
 	def = {};
 	def.id = "MITHRIL_SWORD";
@@ -3392,6 +3504,16 @@ void initialize_item_database() {
 
 	// --- NEW TIER 4 MATERIALS & EQUIPMENT ---
 	def = {};
+	def.id = "REDWOOD_LOG";
+	def.name = "Redwood Log";
+	def.description = "A log of dense, red-hued wood.";
+	def.imagePath = "REDWOOD_LOG";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 7;
+	itemDatabase[def.id] = def;
+
+	def = {};
 	def.id = "REDWOOD_PLANK";
 	def.name = "Redwood Plank";
 	def.description = "A plank of incredibly durable redwood.";
@@ -3408,7 +3530,7 @@ void initialize_item_database() {
 	def.imagePath = "ADAMANT_ORE";
 	def.equipSlot = EquipSlot::None;
 	def.stackable = true;
-	def.item_tier = 7;
+	def.item_tier = 5;
 	itemDatabase[def.id] = def;
 
 	def = {};
@@ -3418,7 +3540,7 @@ void initialize_item_database() {
 	def.imagePath = "ADAMANT_INGOT";
 	def.equipSlot = EquipSlot::None;
 	def.stackable = true;
-	def.item_tier = 7;
+	def.item_tier = 5;
 	itemDatabase[def.id] = def;
 
 	def = {};
@@ -3428,7 +3550,7 @@ void initialize_item_database() {
 	def.imagePath = "RAW_ANGLER";
 	def.equipSlot = EquipSlot::None;
 	def.stackable = true;
-	def.item_tier = 7;
+	def.item_tier = 5;
 	itemDatabase[def.id] = def;
 
 	def = {};
@@ -3468,7 +3590,7 @@ void initialize_item_database() {
 	def.imagePath = "ADAMANT_DAGGER";
 	def.equipSlot = EquipSlot::Weapon;
 	def.stackable = false;
-	def.item_tier = 7;
+	def.item_tier = 6;
 	def.stats = { {"dexterity", 20}, {"speed", 4} };
 	itemDatabase[def.id] = def;
 
@@ -3479,7 +3601,7 @@ void initialize_item_database() {
 	def.imagePath = "ADAMANT_SWORD";
 	def.equipSlot = EquipSlot::Weapon;
 	def.stackable = false;
-	def.item_tier = 7;
+	def.item_tier = 6;
 	def.stats = { {"strength", 22} };
 	itemDatabase[def.id] = def;
 
@@ -3490,7 +3612,7 @@ void initialize_item_database() {
 	def.imagePath = "ADAMANT_GREATSWORD";
 	def.equipSlot = EquipSlot::Weapon;
 	def.stackable = false;
-	def.item_tier = 7;
+	def.item_tier = 6;
 	def.stats = { {"strength", 30}, {"speed", -4} };
 	itemDatabase[def.id] = def;
 
@@ -3501,7 +3623,7 @@ void initialize_item_database() {
 	def.imagePath = "ADAMANT_FULL_HELM";
 	def.equipSlot = EquipSlot::Hat;
 	def.stackable = false;
-	def.item_tier = 7;
+	def.item_tier = 6;
 	def.stats = { {"defense", 18}, {"strength", 3} };
 	itemDatabase[def.id] = def;
 
@@ -3512,7 +3634,7 @@ void initialize_item_database() {
 	def.imagePath = "ADAMANT_PLATEBODY";
 	def.equipSlot = EquipSlot::Top;
 	def.stackable = false;
-	def.item_tier = 7;
+	def.item_tier = 6;
 	def.stats = { {"defense", 32}, {"strength", 5}, {"maxHealth", 20} };
 	itemDatabase[def.id] = def;
 
@@ -3523,7 +3645,7 @@ void initialize_item_database() {
 	def.imagePath = "ADAMANT_PLATELEGS";
 	def.equipSlot = EquipSlot::Bottom;
 	def.stackable = false;
-	def.item_tier = 7;
+	def.item_tier = 6;
 	def.stats = { {"defense", 26}, {"strength", 3} };
 	itemDatabase[def.id] = def;
 
@@ -3534,7 +3656,7 @@ void initialize_item_database() {
 	def.imagePath = "ADAMANT_BOOTS";
 	def.equipSlot = EquipSlot::Boots;
 	def.stackable = false;
-	def.item_tier = 7;
+	def.item_tier = 6;
 	def.stats = { {"defense", 15}, {"speed", -2} };
 	itemDatabase[def.id] = def;
 
@@ -3556,7 +3678,7 @@ void initialize_item_database() {
 	def.imagePath = "DIAMOND_RING";
 	def.equipSlot = EquipSlot::Hat; // Ring slot
 	def.stackable = false;
-	def.item_tier = 8;
+	def.item_tier = 6;
 	def.stats = { {"luck", 10}, {"maxHealth", 25}, {"maxMana", 25} };
 	itemDatabase[def.id] = def;
 
@@ -3567,7 +3689,7 @@ void initialize_item_database() {
 	def.imagePath = "BLOODWOOD_WAND";
 	def.equipSlot = EquipSlot::Weapon;
 	def.stackable = false;
-	def.item_tier = 8;
+	def.item_tier = 6;
 	def.stats = { {"intellect", 25}, {"maxHealth", -20} };
 	itemDatabase[def.id] = def;
 
@@ -3578,7 +3700,7 @@ void initialize_item_database() {
 	def.imagePath = "CRYSTAL_SHIELD";
 	def.equipSlot = EquipSlot::Weapon;
 	def.stackable = false;
-	def.item_tier = 8;
+	def.item_tier = 6;
 	def.stats = { {"defense", 20}, {"intellect", 10} };
 	itemDatabase[def.id] = def;
 
@@ -3589,7 +3711,7 @@ void initialize_item_database() {
 	def.imagePath = "REDWOOD_WARBOW";
 	def.equipSlot = EquipSlot::Weapon;
 	def.stackable = false;
-	def.item_tier = 8;
+	def.item_tier = 7;
 	def.stats = { {"dexterity", 30}, {"intellect", 10}, {"speed", 4} };
 	itemDatabase[def.id] = def;
 
@@ -3600,11 +3722,21 @@ void initialize_item_database() {
 	def.imagePath = "ADAMANT_SPEAR";
 	def.equipSlot = EquipSlot::Weapon;
 	def.stackable = false;
-	def.item_tier = 8;
+	def.item_tier = 7;
 	def.stats = { {"strength", 20}, {"dexterity", 15}, {"luck", 5} };
 	itemDatabase[def.id] = def;
 
 	// --- NEW TIER 5 MATERIALS & EQUIPMENT ---
+	def = {};
+	def.id = "ELDER_LOG";
+	def.name = "Elder Log";
+	def.description = "A log from an ancient, wise tree.";
+	def.imagePath = "ELDER_LOG";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 9;
+	itemDatabase[def.id] = def;
+
 	def = {};
 	def.id = "ELDER_PLANK";
 	def.name = "Elder Plank";
@@ -3797,6 +3929,16 @@ void initialize_item_database() {
 	itemDatabase[def.id] = def;
 
 	// --- NEW TIER 6 MATERIALS & EQUIPMENT ---
+	def = {};
+	def.id = "ANCIENT_LOG";
+	def.name = "Ancient Log";
+	def.description = "A log of petrified, ancient wood.";
+	def.imagePath = "ANCIENT_LOG";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 11;
+	itemDatabase[def.id] = def;
+
 	def = {};
 	def.id = "ANCIENT_PLANK";
 	def.name = "Ancient Plank";
@@ -4026,6 +4168,16 @@ void initialize_item_database() {
 	def.name = "Nebulite Ore";
 	def.description = "An ore that swirls with a galactic nebula.";
 	def.imagePath = "NEBULITE_ORE";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 13;
+	itemDatabase[def.id] = def;
+
+	def = {};
+	def.id = "CRYSTAL_SHARD";
+	def.name = "Crystal Shard";
+	def.description = "A shard of a massive crystal, used like wood.";
+	def.imagePath = "CRYSTAL_SHARD";
 	def.equipSlot = EquipSlot::None;
 	def.stackable = true;
 	def.item_tier = 13;
@@ -5947,35 +6099,35 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 	{
 		"TOWN", {
 		// --- NPCs/Shops ---
-		{ "TOWN_GUARD_NORTH", InteractableType::NPC,  {15, 1},  "GUARD_DIALOGUE" },
-		{ "TOWN_GUARD_EAST",  InteractableType::NPC,  {36, 18}, "GUARD_DIALOGUE" },
-		{ "TOWN_GUARD_CENTER",  InteractableType::NPC,  {16,  15}, "GUARD_DIALOGUE" },
-		{ "TOWN_CAPTAIN",     InteractableType::NPC,  {15, 12}, "GUARD_CAPTAIN_DIALOGUE" },
-		{ "TOWN_WEAPONSMITH", InteractableType::SHOP, {10, 10}, "SHOP_TOWN_WEAPONS" },
-		{ "TOWN_ARMORSMITH",  InteractableType::SHOP, {10, 15}, "SHOP_TOWN_ARMOR" },
-		{ "TOWN_ALCHEMIST",   InteractableType::SHOP, {30,  12}, "SHOP_TOWN_POTIONS" },
-		{ "TOWN_MAYOR",       InteractableType::NPC,  {13, 8},  "MAYOR_WELCOME_DIALOGUE" },
-		{ "TOWN_OLD_MAN",     InteractableType::NPC,  {25, 18}, "OLD_MAN_LORE_DIALOGUE" },
-		{ "TOWN_ORACLE",      InteractableType::NPC,  {7, 6},   "ORACLE_PROPHECY_DIALOGUE" },
-		{ "TOWN_CRAFTSMAN",   InteractableType::NPC,  {24,11},   "TOWN_CRAFSTMAN_DIALOGUE" },
-		// --- Zone Transitions (gates) ---
-		// West gate on main road  OVERWORLD hub
-		//{ "TOWN_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0,  19}, "OVERWORLD" },
-		// North gate  CAVES
-		{ "TOWN_TO_FOREST",     InteractableType::ZONE_TRANSITION, {18, 0},  "FOREST" },
-		// South gate  MARKET
-		{ "TOWN_TO_OVERWORLD",    InteractableType::ZONE_TRANSITION, {18, 21}, "OVERWORLD" },
-		//crafting stuff
-		{ "TOWN_CRAFT_TABLE", InteractableType::CRAFTING_STATION, {23, 11}, "CRAFTING_TABLE" },
-	}
-},
-{
-	"OVERWORLD", {
+		{ "TOWN_GUARD_NORTH", InteractableType::NPC,  {15, 18},  "GUARD_DIALOGUE" },
+		{ "TOWN_GUARD_EAST",  InteractableType::NPC,  {21, 18}, "GUARD_DIALOGUE" },
+		{ "TOWN_GUARD_CENTER",  InteractableType::NPC,  {21,  2}, "GUARD_DIALOGUE" },
+		{ "TOWN_CAPTAIN",     InteractableType::NPC,  {27, 15}, "GUARD_CAPTAIN_DIALOGUE" },
+		{ "TOWN_WEAPONSMITH", InteractableType::SHOP, {8, 16}, "SHOP_TOWN_WEAPONS" },
+		{ "TOWN_ARMORSMITH",  InteractableType::SHOP, {13, 15}, "SHOP_TOWN_ARMOR" },
+		{ "TOWN_ALCHEMIST",   InteractableType::SHOP, {14,  8}, "SHOP_TOWN_POTIONS" },
+		/*	{ "TOWN_MAYOR",       InteractableType::NPC,  {13, 8},  "MAYOR_WELCOME_DIALOGUE" },*/
+			{ "TOWN_OLD_MAN",     InteractableType::NPC,  {16, 5}, "OLD_MAN_LORE_DIALOGUE" },
+			{ "TOWN_ORACLE",      InteractableType::NPC,  {7, 6},   "ORACLE_PROPHECY_DIALOGUE" },
+			{ "TOWN_CRAFTSMAN",   InteractableType::NPC,  {25,9},   "TOWN_CRAFSTMAN_DIALOGUE" },
+			// --- Zone Transitions (gates) ---
+			// West gate on main road  OVERWORLD hub
+			//{ "TOWN_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0,  19}, "OVERWORLD" },
+			// North gate  CAVES
+			{ "TOWN_TO_FOREST",     InteractableType::ZONE_TRANSITION, {18, 0},  "FOREST" },
+			// South gate  MARKET
+			{ "TOWN_TO_OVERWORLD",    InteractableType::ZONE_TRANSITION, {18, 21}, "OVERWORLD" },
+			//crafting stuff
+			{ "TOWN_CRAFT_TABLE", InteractableType::CRAFTING_STATION, {23, 9}, "CRAFTING_TABLE" },
+		}
+	},
+	{
+		"OVERWORLD", {
 		// --- NPCs ---
-		{ "ANGEL_OVERWORLD_GUIDE",InteractableType::NPC, {24, 19}, "ANGEL_OVERWORLD_GUIDE_DIALOGUE" },
+		/*{ "ANGEL_OVERWORLD_GUIDE",InteractableType::NPC, {24, 19}, "ANGEL_OVERWORLD_GUIDE_DIALOGUE" },*/
 		/*	{ "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" },*/
-			{ "OVERWORLD_PROSPECTOR", InteractableType::NPC, {19, 2},  "PROSPECTOR_MTN_DIALOGUE" },
-			{ "OVERWORLD_NOMAD",      InteractableType::NPC, {34, 20}, "NOMAD_DESERT_DIALOGUE" },
+		/*	{ "OVERWORLD_PROSPECTOR", InteractableType::NPC, {19, 2},  "PROSPECTOR_MTN_DIALOGUE" },
+			{ "OVERWORLD_NOMAD",      InteractableType::NPC, {34, 20}, "NOMAD_DESERT_DIALOGUE" },*/
 
 			// --- Zone Transitions ---
 			// East edge back into TOWN west gate
@@ -6009,13 +6161,13 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		/*{ "FOREST_GUARDIAN",   InteractableType::NPC, {12, 6},  "FOREST_GUARDIAN_DIALOGUE" },*/
 		{ "OAK_TREE_FOREST",  InteractableType::RESOURCE_NODE, {30, 17}, "OAK_TREE" },
 		{ "OAK_TREE_FOREST2", InteractableType::RESOURCE_NODE, {29, 15}, "OAK_TREE" },
-		{ "OAK_TREE_FOREST3", InteractableType::RESOURCE_NODE, {4,  18}, "OAK_TREE" },
-		{ "FOREST_EXPLORER",  InteractableType::NPC, {14, 19}, "EXPLORER_FOREST_DIALOGUE" },
+		{ "OAK_TREE_FOREST3", InteractableType::RESOURCE_NODE, {26, 13}, "OAK_TREE" },
+		{ "FOREST_EXPLORER",  InteractableType::NPC, {18, 6}, "EXPLORER_FOREST_DIALOGUE" },
 
 		// --- Zone Transitions ---
-		{ "FOREST_TO_TOWN",      InteractableType::ZONE_TRANSITION, {0,  10}, "TOWN" },
-		{ "FOREST_TO_FOREST2",   InteractableType::ZONE_TRANSITION, {39, 15}, "FOREST2" },
-		{ "FOREST_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {20, 0},  "OVERWORLD" }
+		{ "FOREST_TO_TOWN",      InteractableType::ZONE_TRANSITION, {0,  7}, "TOWN" },
+		{ "FOREST_TO_FOREST2",   InteractableType::ZONE_TRANSITION, {39, 9}, "FOREST2" },
+		/*{ "FOREST_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0, 10},  "OVERWORLD" }*/
 	}
 },
 {
@@ -6027,8 +6179,8 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 
 		// --- Zone Transitions ---
 		{ "FOREST2_TO_FOREST", InteractableType::ZONE_TRANSITION, {0,  15}, "FOREST" },
-		{ "FOREST2_TO_SWAMP",  InteractableType::ZONE_TRANSITION, {39, 10}, "SWAMP" },
-		{ "FOREST2_TO_RUINS",  InteractableType::ZONE_TRANSITION, {20, 0},  "RUINS" }
+		//{ "FOREST2_TO_SWAMP",  InteractableType::ZONE_TRANSITION, {39, 10}, "SWAMP" },
+		//{ "FOREST2_TO_RUINS",  InteractableType::ZONE_TRANSITION, {20, 0},  "RUINS" }
 	}
 },
 {
@@ -6041,20 +6193,20 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "CAVE_MITHRIL_1",    InteractableType::RESOURCE_NODE, {25,  8}, "MITHRIL_VEIN" },
 
 		// --- Zone Transitions ---
-		{ "CAVES_TO_TOWN", InteractableType::ZONE_TRANSITION, {23, 19}, "OVERWORLD" }
+		{ "CAVES_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {23, 19}, "OVERWORLD" }
 	}
 },
 {
 	"RUINS", {
-		{ "RUINS_ARCHAEOLOGIST", InteractableType::NPC,          {3,  3},  "ARCHAEOLOGIST_RUINS_DIALOGUE" },
+		/*{ "RUINS_ARCHAEOLOGIST", InteractableType::NPC,          {3,  3},  "ARCHAEOLOGIST_RUINS_DIALOGUE" },*/
 		{ "CAVE_COPPER_1",       InteractableType::RESOURCE_NODE, {6, 17}, "COPPER_VEIN" },
 
 		// --- Resource Nodes ---
 		{ "RUINS_IRON_1",        InteractableType::RESOURCE_NODE, {10, 14}, "IRON_VEIN" },
-		{ "RUINS_MITHRIL_1",     InteractableType::RESOURCE_NODE, {25,  6}, "MITHRIL_VEIN" },
+		{ "RUINS_MITHRIL_1",     InteractableType::RESOURCE_NODE, {20,  5}, "MITHRIL_VEIN" },
 
 		// --- Zone Transitions ---
-		{ "RUINS_TO_FOREST2",   InteractableType::ZONE_TRANSITION, {20, 21}, "FOREST2" },
+		/*{ "RUINS_TO_FOREST2",   InteractableType::ZONE_TRANSITION, {20, 21}, "FOREST2" },*/
 		{ "RUINS_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0,  10}, "OVERWORLD" }
 	}
 },
@@ -6066,7 +6218,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "VOLCANO_NEBULITE_1",   InteractableType::RESOURCE_NODE, {25, 16}, "NEBULITE_VEIN" },
 
 		// --- Zone Transitions ---
-		{ "VOLCANO_TO_DESERT",    InteractableType::ZONE_TRANSITION, {0,  10}, "DESERT" },
+		/*{ "VOLCANO_TO_DESERT",    InteractableType::ZONE_TRANSITION, {0,  10}, "DESERT" },*/
 		{ "VOLCANO_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {20, 21}, "OVERWORLD" }
 	}
 },
@@ -6078,8 +6230,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "DESERT_ORICHALCUM_1", InteractableType::RESOURCE_NODE, {30, 16}, "ORICHALCUM_VEIN" },
 
 		// --- Zone Transitions ---
-		{ "DESERT_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0,  10}, "OVERWORLD" },
-		{ "DESERT_TO_VOLCANO",   InteractableType::ZONE_TRANSITION, {39, 10}, "VOLCANO" }
+		{ "DESERT_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0,  10}, "OVERWORLD" }
 	}
 },
 {
@@ -6093,7 +6244,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "SWAMP_ANGLER_1",  InteractableType::RESOURCE_NODE, {24, 12}, "ANGLER_SPOT" },
 
 		// --- Zone Transitions ---
-		{ "SWAMP_TO_FOREST2", InteractableType::ZONE_TRANSITION, {0, 10}, "FOREST2" }
+		{ "SWAMP_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0, 10}, "OVERWORLD" }
 	}
 },
 {
@@ -6121,9 +6272,17 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "LAKE_SHARK_1",     InteractableType::RESOURCE_NODE, {22, 7}, "SHARK_SPOT" },
 		{ "LAKE_ANGLER_1",    InteractableType::RESOURCE_NODE, {20,  4}, "ANGLER_SPOT" },
 		{"LAKE_BOATMAN", InteractableType::NPC, {28, 10}, "BOATMAN_DIALOGUE" },
+		{ "LAKE_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {31, 0}, "OVERWORLD" }
 		//{ "LAKE_LEVIATHAN_1", InteractableType::RESOURCE_NODE, {32, 12}, "LEVIATHAN_SPOT" },
 		//{ "LAKE_SQUID_1",     InteractableType::RESOURCE_NODE, {14,  6}, "SQUID_SPOT" },
 		//{ "LAKE_DEEP_SEA_1",  InteractableType::RESOURCE_NODE, {20,  4}, "DEEP_SEA_SPOT" }
+	}
+
+},
+{
+	"CASTLEINSIDE", {
+		//add inner castle transition l8r
+		{ "CASTLEINSIDE_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {18, 21}, "OVERWORLD" }
 	}
 
 },
@@ -6144,9 +6303,9 @@ const std::map<std::string, std::vector<std::string>> g_shops = {
 		"SMALL_HEALTH_POTION",
 		"SMALL_MANA_POTION",
 		"LARGE_HEALTH_POTION",
-		"LARGE_MANA_POTION",
-		"ELIXIR_OF_SPEED",
-		"ELIXIR_OF_GIANTS_STRENGTH"
+		"LARGE_MANA_POTION"
+		//"ELIXIR_OF_SPEED",    need to fix both of these
+		//"ELIXIR_OF_GIANTS_STRENGTH"
 	}
 },
 {
