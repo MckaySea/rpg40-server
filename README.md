@@ -31,6 +31,36 @@ The "puzzles" are the players figuring out the world around them and navigating 
 ### 5. 40 lines of dialogue and/or descriptions of the world
 Our NPCs have **hundreds of lines of dialogue**, as seen in the `gamedata.cpp` file.
 
+---
+
+## Non-Blocking Server Architecture
+
+Our server's architecture is built on the Boost.Asio library to be fully non-blocking, allowing it to handle many concurrent users efficiently.
+
+We utilize a central `net::io_context` that runs on a pool of threads, managing all I/O operations asynchronously. When a client connects, the `AsyncSession` immediately enters an asynchronous read loop (`do_read` -> `async_read` -> `on_read`). This ensures the server is always listening for data from all clients without ever blocking a thread to wait for a specific message.
+
+For writes, we implemented an asynchronous send queue. A call to `AsyncSession::send` is a non-blocking operation that places the message into a session-specific `write_queue_`. A separate write loop (`do_async_write` -> `async_write` -> `on_write`) consumes this queue, ensuring that large or frequent messages are sent without blocking the main read loop.
+
+To handle inherently blocking operations, such as password hashing and database I/O, we use dedicated thread pools (`db_pool_` and `save_pool_`). For example, `handle_login` enqueues the slow `crypto_pwhash_str_verify` check onto the `db_pool_`. Once complete, the result is posted back to the session's main thread via `on_login_finished`, guaranteeing that the I/O threads remain free to handle other clients.
+
+---
+
+## Inventory System Design
+
+Our inventory system is designed to distinguish between item *templates* and item *instances*, allowing for a robust and scalable item database.
+
+* **ItemDefinition (`Items.hpp`)**: This struct acts as the template, storing all static, shared data for an item, such as its `id` (e.g., "RUSTY_SWORD"), `name`, `equipSlot`, base `stats`, and `stackable` status. All definitions are loaded into the global `itemDatabase` at startup.
+
+* **ItemInstance (`Items.hpp`)**: This struct represents a unique item a player actually owns. It contains a unique `instanceId` (a `uint64_t`), a `itemId` (to link to its definition), a `quantity`, and maps for `customStats` and `customEffects` generated from random rolls or crafting.
+
+* **Storage and Equipment**: A player's inventory (`PlayerState::inventory`) is a `std::map` that links the unique `instanceId` to its `ItemInstance` data. The player's `equipment` map (`PlayerState::equipment`) simply stores the `instanceId` for each `EquipSlot`, rather than duplicating the item data.
+
+* **Persistence and Stat Calculation**: When a new item is created (`addItemToInventory`), we fetch a unique `instanceId` from a PostgreSQL sequence (`nextval('item_instance_id_seq')`). This ensures item IDs are always unique, even across server restarts, preventing data corruption. When calculating player stats (`getCalculatedStats`), the system iterates the equipped `instanceId`s, looks them up in the inventory map, and correctly sums the base `stats` from the `ItemDefinition` with any `customStats` from the `ItemInstance`.
+
+
+
+
+
 
 
 
