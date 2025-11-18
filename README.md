@@ -1,39 +1,42 @@
-McKay Seamons - https://gemini.google.com/share/72118c934ca1
-Nicola
-Yousaf
-Ali
+McKay Seamons
 
+    Nicola
 
-This is an "open ended assignment" meaning it will be graded by hand, and your
-grade will be based on how many design criteria you fulfill. You will work
-with a partner on this assignment, so my advice is to figure out early on who
-will be responsible for each design criteria, and to set deadlines ahead of
-the final deadline for when they'll be done. If your partner flakes, then
-you'll have to pick up the work.
+    Yousaf
 
-Purpose: To teach you how to work on programming assignments with other people
-and to get experienced writing code on longer projects rather than little
-functions or toy assignments. Also to learn how the design process works a
-bit.
+    Ali
 
-Design Criteria:
-1) World Map that the user can move around -- The user can move through multiple zones. we have an overarching world map that allows users to travel to different zones as well. There are over 10 zones. I implemented a* using Chebyshev distance for 8 directional movement opposed to manhattan distance but the focus on diagonal movement made me change to octile distance for a more natural feel and looks way better for interpolation on the client.
-2) Combat of some sort, and some way of winning the game -- Our game is an open ended mmorpg, the way you "Win" is by progressing your character through skills like mining, fishing, woodcutting, cooking, crafting and combat. You get gear through crafting and killing mobs sometimes even having the chance to get a drop with additional effects that can range from a list of about one hundred effects. Same goes with crafting. You beat the game by fighting and defeating the zone bosses and making your character as overpowered as possible!
-3) Must have colors (Use #include "/public/colors.h") -- Game has a front end through javascript that includes multiple differnt sprites and colors - https://github.com/MckaySea/rpg-react-client
-4) Must have 5 puzzles to win the game -- the puzzles are the players figuring out the world around them and navigating how to make their characters as strong as possible. There are many hidden secrets throughout the world as well such as skillbooks you can as a super rare drop and secret areas where you can find rare resource nodes. Players can trade items amongst each other too, creating a dynamic experience.
-5) 40 lines of dialogue and/or descriptions of the world -- our npcs have hundreds of lines of dialogue as seeen in gamedata.cpp
+Design Criteria
 
-Extra Credit:
-1) Nonblocking I/O (also in colors.h)
-2) Compose Original Music and Cover Art (Make it yourself) Upload music to
-Youtube.
-3) Inventory System
+1) World Map that the user can move around
 
-Each one of these is a letter grade. If you do none, you get a 0%, if you do
-one you get an F (50%), two a D (60%), three a C (70%), four a B (80%), five
-an A (100%), and each extra credit point is an extra 10% added to your grade.
-So the max grade is 130%.
-~
+Our project has an overarching world map that allows users to travel to different zones, and there are over 10 zones.
+
+We implemented A* pathfinding. We initially used Chebyshev distance for 8-directional movement, but the focus on diagonal movement led us to switch to Octile distance, which provides a more natural feel and looks much better for interpolation on the client.
+
+2) Combat of some sort, and some way of winning the game
+
+Our game is an open-ended MMORPG. The way you "Win" is by progressing your character.
+
+    Skills: You can progress through skills like mining, fishing, woodcutting, cooking, crafting, and combat.
+
+    Gear: You get gear through crafting and killing mobs, with a chance to get drops with additional effects from a list of about one hundred. The same randomness applies to crafting.
+
+    Goal: You "beat the game" by fighting and defeating the zone bosses and making your character as overpowered as possible.
+
+3) Must have colors
+
+The game has a frontend built with JavaScript that includes multiple different sprites and colors.
+
+    Link: https://github.com/MckaySea/rpg-react-client
+
+4) Must have 5 puzzles to win the game
+
+The "puzzles" are the players figuring out the world around them and navigating how to make their characters as strong as possible. There are many hidden secrets, such as skillbooks as super rare drops and secret areas with rare resource nodes. Players can also trade items amongst each other, creating a dynamic experience.
+
+5) 40 lines of dialogue and/or descriptions of the world
+
+Our NPCs have hundreds of lines of dialogue, as seen in the gamedata.cpp file.
 
 --------------------------------------------------------------------------------------------------------
 
