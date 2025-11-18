@@ -1,5 +1,5 @@
 ## Team Members
-* McKay Seamons
+* McKay Seamons - https://gemini.google.com/share/1d149b286822 most items are ai generated because its such a huge list of items, our suffixs for the effects were also ai genrated for obvious reasons.
 * Nicola
 * Yousaf
 * Ali
