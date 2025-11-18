@@ -1,7 +1,7 @@
 ## Team Members
 * McKay Seamons - https://gemini.google.com/share/1d149b286822 most items are ai generated because its such a huge list of items, our suffixs for the effects were also ai generated for obvious reasons.
 * Nicola
-* Yousaf
+* Yousaf - https://chatgpt.com/share/691bd424-8b30-8013-a0a8-f5d1aa479fae generated some dialogue for different NPCS scattered in different zones. The dialogue structure works by setting an ID to the NPC that will speak. Each NPC is assigned a position throughout the world, and when the user interacts with that NPC, it prints the dialogue out to the screen
 * Ali
 
 ---
