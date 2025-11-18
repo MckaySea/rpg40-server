@@ -1772,7 +1772,7 @@ const std::map<std::string, std::vector<std::string>> MONSTER_SKILL_LISTS = {
 	// Endgame Bosses
 	{"ABYSSAL_HORROR", {"LIFE_SIPHON", "VOID_BLAST", "ARMOR_SHRED"}},
 	{"ARCH_DEMON", {"HELLFIRE", "CURSE_OF_WEAKNESS", "WAR_CRY"}},
-	{"LICH_KING", {"VOID_BLAST", "SOUL_DRAIN", "SUMMON_MINION"}},
+	{"LICH_KING", {"VOID_BLAST", "SOUL_DRAIN"}}, //"SUMMON_MINION" add l8r
 	{"ANCIENT_DRAGON", {"DRAGON_FIRE", "EARTHQUAKE", "REGENERATE"}},
 };
 const std::unordered_map<std::string, SpawnPoint>& get_area_spawns()
@@ -1886,7 +1886,14 @@ void initializeAreas() {
 	g_areas["OVERWORLD"].monsters = {
 		// Overworld is safe, no monsters.
 	};
-
+	g_areas["FOREST2"].monsters = {
+	{global_monster_id_counter++, "ANCIENT_DRAGON", 4, 3, 1, 1},
+	{global_monster_id_counter++, "TREANT", 25, 5, 1, 1},
+	{global_monster_id_counter++, "TREANT", 28, 9, 1, 1},
+	{global_monster_id_counter++, "TREANT", 9, 17, 1, 1},
+	{ global_monster_id_counter++, "TREANT", 16, 12, 1, 1 },
+	{ global_monster_id_counter++, "TREANT", 28, 17, 1, 1 }  		// <-- Added
+	};
 	g_areas["FOREST"].monsters = {
 		{global_monster_id_counter++, "SLIME", 12, 8, 2, 4},
 		{global_monster_id_counter++, "SLIME", 29, 12, 2, 4},
@@ -4223,6 +4230,16 @@ void initialize_item_database() {
 	itemDatabase[def.id] = def;
 
 	def = {};
+	def.id = "MAGIC_LOG";
+	def.name = "Magic Log";
+	def.description = "A magical log.";
+	def.imagePath = "MAGIC_LOG";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 4;
+	itemDatabase[def.id] = def;
+
+	def = {};
 	def.id = "YEW_LOG";
 	def.name = "Yew Log";
 	def.description = "A hearty wooden log.";
@@ -4261,6 +4278,25 @@ void initialize_item_database() {
 	def.equipSlot = EquipSlot::None;
 	def.stackable = true;
 	def.item_tier = 1;
+	itemDatabase[def.id] = def;
+	def = {};
+	def.id = "IRON_INGOT";
+	def.name = "Iron Ingot";
+	def.description = "Refined Iron bar.";
+	def.imagePath = "IRON_INGOT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 3;
+
+	itemDatabase[def.id] = def;
+	def = {};
+	def.id = "MITHRIL_INGOT";
+	def.name = "Mithril Ingot";
+	def.description = "Refined Mithril bar.";
+	def.imagePath = "MITHRIL_INGOT";
+	def.equipSlot = EquipSlot::None;
+	def.stackable = true;
+	def.item_tier = 4;
 	itemDatabase[def.id] = def;
 
 	def = {};
