@@ -242,6 +242,8 @@ void AsyncSession::do_move_tick(beast::error_code ec)
  */
 void AsyncSession::on_session_end()
 {
+	// [EXISTING] Solo Combat Cleanup
+	// This handles players who disconnect while fighting a solo monster instance
 	if (player_.isInCombat && player_.currentOpponent.has_value()) {
 		std::cout << "[" << client_address_ << "] Player disconnected during combat. Respawning monster ID "
 			<< player_.currentOpponent->id << " in area " << player_.currentArea << std::endl;
@@ -249,12 +251,71 @@ void AsyncSession::on_session_end()
 		// Use the global helper to respawn the monster immediately
 		respawn_monster_immediately(player_.currentArea, player_.currentOpponent->id);
 	}
+
+	// [NEW] Party & Party Combat Cleanup
+	if (!player_.partyId.empty()) {
+		std::lock_guard<std::mutex> lock(g_parties_mutex);
+
+		auto itParty = g_parties.find(player_.partyId);
+		if (itParty != g_parties.end()) {
+			auto party = itParty->second;
+
+			// 1. Remove from Member List using Erase-Remove
+			auto& mems = party->memberIds;
+			mems.erase(std::remove(mems.begin(), mems.end(), player_.userId), mems.end());
+
+			// 2. Remove from Active Party Combat participants
+			if (party->activeCombat) {
+				auto& parts = party->activeCombat->participantIds;
+				parts.erase(std::remove(parts.begin(), parts.end(), player_.userId), parts.end());
+
+				// Remove pending actions to prevent round stalling
+				party->activeCombat->pendingActions.erase(player_.userId);
+
+				// If they were the last one in combat, clean up the fight
+				if (parts.empty()) {
+					// Important: If the whole party disconnects, ensure the monster respawns
+					// so it isn't lost forever (since it was removed from the map on engagement).
+					if (party->activeCombat->monster) {
+						respawn_monster_immediately(player_.currentArea, party->activeCombat->monster->id);
+					}
+					party->activeCombat = nullptr;
+				}
+			}
+
+			// 3. Handle Empty Party or Leadership Transfer
+			if (mems.empty()) {
+				// Everyone left, delete the party
+				g_parties.erase(player_.partyId);
+			}
+			else {
+				// People remain; handle leadership
+				broadcast_party_update(party);
+				if (party->leaderId == player_.userId) {
+					party->leaderId = mems[0];
+					// Manual broadcast to remaining members
+					std::string msg = "SERVER:STATUS:Leader disconnected. " + get_session_by_id(mems[0])->getPlayerState().playerName + " is the new leader.";
+					for (const auto& mid : mems) {
+						if (auto s = get_session_by_id(mid)) s->send(msg);
+					}
+				}
+				else {
+					// Just notify disconnection
+					std::string msg = "SERVER:STATUS:" + player_.playerName + " disconnected.";
+					for (const auto& mid : mems) {
+						if (auto s = get_session_by_id(mid)) s->send(msg);
+					}
+				}
+			}
+		}
+	}
+
+	// [EXISTING] Trade Cleanup
 	if (player_.isTrading && !player_.tradePartnerId.empty()) {
 		std::string partnerId = player_.tradePartnerId;
 		std::string myId = player_.userId;
 
 		// Find partner session
-		// We use the raw function here since this isn't in GameLogic.cpp
 		std::shared_ptr<AsyncSession> partnerSession = nullptr;
 		{
 			std::lock_guard<std::mutex> lock(g_session_registry_mutex);
@@ -281,8 +342,11 @@ void AsyncSession::on_session_end()
 				});
 		}
 	}
+
+	// [EXISTING] Timer Cleanup
 	move_timer_.cancel();
 
+	// [EXISTING] Save Character
 	if (is_authenticated_ && account_id_ != 0)
 	{
 		// This is now safe. It calls the fast, non-blocking
@@ -290,6 +354,7 @@ void AsyncSession::on_session_end()
 		save_character();
 	}
 
+	// [EXISTING] Registry Cleanup (Player Data)
 	try {
 		std::lock_guard<std::mutex> lock(g_player_registry_mutex);
 		g_player_registry.erase(player_.userId);
@@ -298,6 +363,7 @@ void AsyncSession::on_session_end()
 		std::cerr << "[" << client_address_ << "] Exception during data cleanup: " << e.what() << "\n";
 	}
 
+	// [EXISTING] Registry Cleanup (Session)
 	try {
 		std::lock_guard<std::mutex> lock(g_session_registry_mutex);
 		g_session_registry.erase(player_.userId);

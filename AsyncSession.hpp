@@ -4,7 +4,7 @@
 #pragma once
 
 #include "game_session.hpp" 
-#include "DatabaseManager.hpp"// Includes PlayerState, Point, etc.
+#include "DatabaseManager.hpp"
 #include <boost/beast/websocket.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -15,27 +15,28 @@
 #include <atomic>
 #include "ThreadPool.hpp"
 #include <queue>
+
 namespace beast = boost::beast;
 namespace websocket = beast::websocket;
 namespace net = boost::asio;
 using tcp = net::ip::tcp;
 
-//should manaage a single ws connection async
+// Manages a single ws connection async
 class AsyncSession : public std::enable_shared_from_this<AsyncSession>
 {
 	// --- Networking Members ---
 	std::queue<std::shared_ptr<std::string>> write_queue_;
 	bool is_writing_ = false;
-	websocket::stream<tcp::socket> ws_;// The WebSocket stream
-	net::steady_timer move_timer_; // Timer for player movement ticks
-	beast::flat_buffer buffer_; // Buffer for reading messages
-	std::string client_address_; // Client's IP for logging
+	websocket::stream<tcp::socket> ws_; // The WebSocket stream
+	net::steady_timer move_timer_;      // Timer for player movement ticks
+	beast::flat_buffer buffer_;         // Buffer for reading messages
+	std::string client_address_;        // Client's IP for logging
 	std::shared_ptr<DatabaseManager> db_manager_;
-	std::shared_ptr<ThreadPool> db_pool_; //logins
-	std::shared_ptr<ThreadPool> save_pool_; //qued saves
+	std::shared_ptr<ThreadPool> db_pool_;   // logins
+	std::shared_ptr<ThreadPool> save_pool_; // queued saves
 	std::atomic<bool> is_authenticated_ = false;
 	std::atomic<int> account_id_ = 0;
-	PlayerState player_; // This session's unique player state
+	PlayerState player_;                 // This session's unique player state
 	PlayerBroadcastData broadcast_data_; // Public data for other players
 
 public:
@@ -49,22 +50,49 @@ public:
 
 	// Destructor for proper cleanup
 	~AsyncSession() noexcept;
+
 	void send(std::string message);
 	// Start the session's asynchronous operations
 	void run();
 	void save_character();
-	void send_shutdown_warning(int seconds); // <-- ADD THIS
+	void send_shutdown_warning(int seconds);
 	void disconnect();
-	//void do_async_write(std::shared_ptr<std::string> message);
 
 	// These allow the game logic functions to interact with the session
 	PlayerState& getPlayerState() { return player_; }
 	PlayerBroadcastData& getBroadcastData() { return broadcast_data_; }
 	websocket::stream<tcp::socket>& getWebSocket() { return ws_; }
-	bool grantSkillToPlayer(const std::string& skillName, std::string& outError);
 
+	bool grantSkillToPlayer(const std::string& skillName, std::string& outError);
 	void handle_register(const std::string& credentials);
 	void handle_login(const std::string& credentials);
+
+	// --- MOVED TO PUBLIC FOR PARTY SYSTEM ACCESS ---
+	void handle_message(const std::string& message);
+	/**
+	 * @brief Checks if the player has enough XP to level up, and processes it.
+	 */
+	void check_for_level_up();
+
+	/**
+	 * @brief Sends the player's complete stat block to the client.
+	 */
+	void send_player_stats();
+
+	/**
+	 * @brief Sends the player's inventory and equipment to their client.
+	 * Moved public so loot systems can trigger updates.
+	 */
+	void send_inventory_and_equipment();
+
+	/**
+	 * @brief Adds an item to the player's inventory, handling ID generation.
+	 * Moved public so party loot logic can award items.
+	 */
+	void addItemToInventory(const std::string& itemId, int quantity = 1);
+
+	// Gets the players final stats with equips and all
+	PlayerStats getCalculatedStats();
 
 private:
 	void load_character(int accountId);
@@ -76,17 +104,18 @@ private:
 	void on_write(beast::error_code ec, std::size_t bytes_transferred);
 	void do_move_tick(beast::error_code ec);
 	void on_session_end();
+
 	struct LoginResult {
 		bool success = false;
 		std::string error_message;
 		int account_id = 0;
 		std::string player_class_str;
 	};
+
 	void on_login_finished(const LoginResult& result);
 	void useItem(uint64_t itemInstanceId);
 	void dropItem(uint64_t itemInstanceId, int quantity);
 	void ensureAutoGrantedSkillsForClass();
-	// --- ADD THESE FOUR LINES ---
 
 	/**
 	 * @brief Processes a single movement tick.
@@ -95,20 +124,16 @@ private:
 	void process_movement();
 
 	void process_gathering();
+
 	/**
 	 * @brief The main router for all incoming client messages.
 	 * @param message The raw message from the client.
 	 */
-	void handle_message(const std::string& message);
 
-	/**
-	 * @brief Sends the player's complete stat block to the client.
-	 */
-	void send_player_stats();
 
-	/**
-	 * @brief Sends a dynamically generated list of available areas to travel to.
-	 */
+	 /**
+	  * @brief Sends a dynamically generated list of available areas to travel to.
+	  */
 	void send_available_areas();
 
 	/**
@@ -121,13 +146,8 @@ private:
 	 */
 	void send_current_monsters_list();
 
-	//this just send the interactables for the current arera the player is in(needed for performance as well lol (12threadsbtw)
+	// sends interactables for the current area
 	void send_interactables(const std::string& areaName);
-
-	/**
-	 * @brief Checks if the player has enough XP to level up, and processes it.
-	 */
-	void check_for_level_up();
 
 	/**
 	 * @brief Sends the tile map data (e.g., TOWN_GRID) for the current area.
@@ -135,22 +155,15 @@ private:
 	 */
 	void send_area_map_data(const std::string& areaName);
 
-
-
-
-	//gets the plyrs final stats with equips and all
-	PlayerStats getCalculatedStats();
-	//similar t add item can roll rare rolls on your crafted items using rare mats you gather
+	// similar to add item can roll rare rolls on your crafted items
 	void addCraftedItemToInventory(const std::string& itemId, int quantity, int bonusEffectChance);
+
 	void send_crafting_recipes();
-	//this adds an item to the players inventory but always rolls for random stats from its base
-	void addItemToInventory(const std::string& itemId, int quantity = 1);
+
 	void sellItem(uint64_t itemInstanceId, int quantity);
-	//equips an item from inventory if possible with the uniqueitem id
+
+	// equips an item from inventory if possible with the unique item id
 	std::string equipItem(uint64_t itemInstanceId);
 
 	std::string unequipItem(EquipSlot slotToUnequip);
-
-	//sends the players inventory n equipment to their client !
-	void send_inventory_and_equipment();
 };
