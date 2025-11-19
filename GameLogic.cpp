@@ -4015,7 +4015,7 @@ void AsyncSession::handle_message(const string& message)
 				}
 			}
 		}
-		// --- END MODIFICATION ---
+
 
 		// --- 2. Build "PLAYER_SPAWNED" message (for others) ---
 		std::ostringstream oss_spawn;
@@ -4267,6 +4267,99 @@ void AsyncSession::handle_message(const string& message)
 			}
 		}
 		player.pendingPartyInviteId = "";
+	}
+	   else if (message == "PARTY_LEAVE") {
+		if (player.partyId.empty()) {
+			send("SERVER:ERROR:You are not in a party.");
+			return;
+		}
+
+		std::lock_guard<std::mutex> lock(g_parties_mutex);
+		auto it = g_parties.find(player.partyId);
+
+		if (it != g_parties.end()) {
+			auto party = it->second;
+
+			// 1. Remove YOU (The Leaver) from Member List
+			auto& mems = party->memberIds;
+			mems.erase(std::remove(mems.begin(), mems.end(), player.userId), mems.end());
+
+			// 2. Remove YOU from Active Combat (if applicable)
+			if (party->activeCombat) {
+				auto& parts = party->activeCombat->participantIds;
+				parts.erase(std::remove(parts.begin(), parts.end(), player.userId), parts.end());
+				party->activeCombat->pendingActions.erase(player.userId);
+				party->activeCombat->threatMap.erase(player.userId);
+
+				// If you were the last real person in the fight, kill the combat instance
+				if (parts.empty()) {
+					// Respawn monster if needed so it doesn't disappear forever
+					if (party->activeCombat->monster) {
+						respawn_monster_immediately(player.currentArea, party->activeCombat->monster->id);
+					}
+					party->activeCombat = nullptr;
+				}
+			}
+
+			// 3. Check State of Remaining Party
+			if (mems.empty()) {
+				// Case A: Party is now empty -> Delete it
+				g_parties.erase(player.partyId);
+			}
+			else if (mems.size() == 1) {
+				// Case B: Only 1 person left -> AUTO-DISBAND
+				// Leaving a party of 1 is pointless, so we free the survivor.
+				std::string lastMemberId = mems[0];
+
+				if (auto lastSess = get_session_by_id(lastMemberId)) {
+					PlayerState& lastP = lastSess->getPlayerState();
+
+					// Clear their party data
+					lastP.partyId = "";
+
+					// If they were in combat, force end it so they aren't stuck
+					if (lastP.isInCombat) {
+						lastP.isInCombat = false;
+						lastSess->send("SERVER:COMBAT_VICTORY:Party Disbanded"); // Closes combat UI
+						lastSess->send_current_monsters_list(); // Refresh map
+					}
+
+					// Notify client to clear HUD
+					lastSess->send("SERVER:PARTY_LEFT");
+					lastSess->send("SERVER:STATUS:The party has been disbanded.");
+				}
+
+				// Finally, delete the party object
+				g_parties.erase(player.partyId);
+			}
+			else {
+				// Case C: Party still valid (2+ people) -> Assign new leader if needed
+				if (party->leaderId == player.userId) {
+					party->leaderId = mems[0];
+					std::string newLeaderName = "Unknown";
+					if (auto s = get_session_by_id(mems[0])) {
+						newLeaderName = s->getPlayerState().playerName;
+					}
+					broadcast_to_party(party, "SERVER:STATUS:" + player.playerName + " left. " + newLeaderName + " is now leader.");
+				}
+				else {
+					broadcast_to_party(party, "SERVER:STATUS:" + player.playerName + " left the party.");
+				}
+				// Update HUD for remaining members
+				broadcast_party_update(party);
+			}
+		}
+
+		// 4. Reset YOUR (The Leaver) State
+		player.partyId = "";
+		player.isInCombat = false; // Ensure you drop out of combat state
+
+		// Refresh your view (in case you were in combat)
+		if (player.currentOpponent) {
+			player.currentOpponent.reset();
+		}
+		send_current_monsters_list();
+		send("SERVER:PARTY_LEFT");
 	}
 	   else if (message.rfind("INTERACT_AT:", 0) == 0) {
 		if (player.isInCombat) {
@@ -4642,7 +4735,7 @@ void AsyncSession::handle_message(const string& message)
 
 				if (party) {
 					// ==============================
-					//       PARTY COMBAT PATH
+					//        PARTY COMBAT PATH
 					// ==============================
 					std::lock_guard<std::mutex> lock(g_parties_mutex); // Safety
 
@@ -4673,11 +4766,26 @@ void AsyncSession::handle_message(const string& message)
 
 						auto combat = std::make_shared<PartyCombat>();
 						combat->monster = std::make_shared<MonsterInstance>(*monsterOpt);
-						combat->participantIds = party->memberIds; // All members join
+
+						// --- FIX START: Only add party members in the SAME AREA ---
+						std::vector<std::string> validParticipants;
+						std::string combatArea = player.currentArea;
+
+						for (const auto& memId : party->memberIds) {
+							auto memSess = get_session_by_id(memId);
+							// Check if online AND in the same area
+							if (memSess && memSess->getPlayerState().currentArea == combatArea) {
+								validParticipants.push_back(memId);
+								memSess->getPlayerState().isInCombat = true; // Set state immediately
+							}
+						}
+						combat->participantIds = validParticipants;
+						// --- FIX END ---
+
 						combat->roundStartTime = std::chrono::steady_clock::now();
 						party->activeCombat = combat;
 
-						// Notify Party
+						// Prepare Combat Start Message
 						std::ostringstream oss;
 						oss << "SERVER:COMBAT_START:{"
 							<< "\"id\":" << combat->monster->id
@@ -4685,21 +4793,74 @@ void AsyncSession::handle_message(const string& message)
 							<< ",\"health\":" << combat->monster->health
 							<< ",\"maxHealth\":" << combat->monster->maxHealth << "}";
 
-						broadcast_to_party(party, oss.str());
-						broadcast_to_party(party, "SERVER:COMBAT_TURN:Your turn."); // Start Round 1
+						std::string startMsg = oss.str();
+
+						// --- NEW MESSAGING LOGIC ---
+						// Iterate all party members. 
+						// If they are in validParticipants -> Send Combat Start + Turn.
+						// If NOT -> Send a status update.
+						for (const auto& memId : party->memberIds) {
+							auto sess = get_session_by_id(memId);
+							if (!sess) continue;
+
+							bool isParticipant = false;
+							for (const auto& pId : validParticipants) {
+								if (pId == memId) { isParticipant = true; break; }
+							}
+
+							if (isParticipant) {
+								sess->send(startMsg);
+								sess->send("SERVER:COMBAT_TURN:Your turn.");
+							}
+							else {
+								sess->send("SERVER:STATUS:Your party engaged a " + mType + " in " + combatArea + ", but you are too far away!");
+							}
+						}
 					}
+					else {
+						// --- JOINING EXISTING COMBAT ---
+						bool canJoin = false;
+						if (!party->activeCombat->participantIds.empty()) {
+							// Check area against the first participant (usually the leader/initiator)
+							auto leaderSess = get_session_by_id(party->activeCombat->participantIds[0]);
+							if (leaderSess && leaderSess->getPlayerState().currentArea == player.currentArea) {
+								canJoin = true;
+							}
+						}
 
-					// 2. Set Player State
-					player.isInCombat = true;
-					// IMPORTANT: In Party Mode, player.currentOpponent remains empty/null!
-					// We rely on party->activeCombat->monster.
+						if (canJoin) {
+							// Add self to combat if not already there
+							bool alreadyIn = false;
+							for (const auto& pid : party->activeCombat->participantIds) {
+								if (pid == player.userId) { alreadyIn = true; break; }
+							}
 
+							if (!alreadyIn) {
+								party->activeCombat->participantIds.push_back(player.userId);
+							}
+							player.isInCombat = true;
+
+							// Send current combat state to the joiner
+							std::ostringstream oss;
+							oss << "SERVER:COMBAT_START:{"
+								<< "\"id\":" << party->activeCombat->monster->id
+								<< ",\"name\":" << nlohmann::json(party->activeCombat->monster->type).dump()
+								<< ",\"health\":" << party->activeCombat->monster->health
+								<< ",\"maxHealth\":" << party->activeCombat->monster->maxHealth << "}";
+							send(oss.str());
+
+							// Let the joiner know the current turn state immediately
+							send("SERVER:COMBAT_TURN:Your turn.");
+						}
+						else {
+							send("SERVER:ERROR:You are too far away to join this battle!");
+						}
+					}
 				}
 				else {
 					// ==============================
-					//    SOLO COMBAT PATH (Preexisting)
+					//    SOLO COMBAT PATH (Unchanged)
 					// ==============================
-					// 1. Find and claim (Global Logic)
 					auto areaIt = g_areas.find(player.currentArea);
 					if (areaIt == g_areas.end()) return;
 					AreaData& area = areaIt->second;
@@ -4745,7 +4906,7 @@ void AsyncSession::handle_message(const string& message)
 							send("SERVER:COMBAT_TURN:Your turn.");
 						}
 						else {
-							// Monster Attacks First (Preexisting Logic)
+							// Monster Attacks First
 							send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " is faster! It attacks first.");
 							float pwr = attack_power_for_monster(*player.currentOpponent);
 							int dmg = damage_after_defense(pwr, finalStats.defense);
