@@ -870,7 +870,7 @@ const std::map<std::string, std::vector<DialogueLine>> g_dialogues = {
 					{"Old Man", "Your journey begins in the Forest to the north. It's a dangerous place, but you must start somewhere.", "OLD_MAN"},
 					{"Old Man", "As you explore, keep your eyes peeled. Chop trees, mine ores... gather what you can. You'll need those materials.", "OLD_MAN"},
 					{"Old Man", "Bring your resources back to the crafting bench in town to make better gear. You can also catch fish at the lake... cook them up for a good meal.", "OLD_MAN"},
-					{"Old Man", "It's better than running back to town to heal every five minutes, eh? Remember, the strongest materials are in the most dangerous lands. Be prepared.", "OLD_MAN"}
+					{"Old Man", "It's better than running back to town to heal every five minutes, eh? Remember, the strongest materials are in the most dangerous lands. Be prepared, and use the blue portals to travel around.", "OLD_MAN"}
 				}
 			},
 			{

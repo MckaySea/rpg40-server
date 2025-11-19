@@ -216,6 +216,20 @@ void run_monster_tick_timer(net::steady_timer& timer, int interval_ms)
 			run_monster_tick_timer(timer, interval_ms);
 		});
 }
+void run_combat_timer(net::steady_timer& timer) {
+	// Check every 1 second (1000ms)
+	timer.expires_after(std::chrono::milliseconds(1000));
+
+	timer.async_wait([&timer](const boost::system::error_code& ec) {
+		if (ec) return;
+
+		// Run the check
+		check_party_timeouts();
+
+		// Re-arm
+		run_combat_timer(timer);
+		});
+}
 // ==========================================
 // Main Entry Point
 // ==========================================
@@ -229,6 +243,7 @@ int main()
 	net::io_context ioc;
 	net::steady_timer save_timer(ioc);
 	net::steady_timer monster_tick_timer(ioc);
+	net::steady_timer combat_timer(ioc);
 	auto db_pool = std::make_shared<ThreadPool>(4);
 	auto save_pool = std::make_shared<ThreadPool>(1);
 
@@ -261,6 +276,7 @@ int main()
 		const int SAVE_INTERVAL_SECONDS = 360; // every 6 minutes
 		run_batch_save_timer(save_timer, SAVE_INTERVAL_SECONDS);
 		run_monster_tick_timer(monster_tick_timer, 1000);
+		run_combat_timer(combat_timer);
 		std::cout << "Server is listening on port " << port << "...\n";
 		std::cout << "Type 'exit' or 'shutdown' to stop the server.\n";
 

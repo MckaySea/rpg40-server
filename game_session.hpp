@@ -202,7 +202,29 @@ struct PlayerSkills {
 };
 // --- END NEW ---
 
+struct CombatAction {
+	std::string actorId; // Player userId or "BOSS"
+	std::string type;    // "ATTACK", "SKILL", "SPELL", "DEFEND", "FLEE"
+	std::string param;   // Skill name or target ID (if needed)
+	int speed = 0;       // For sorting turn order
+};
 
+struct PartyCombat {
+	std::string id; // Unique combat ID
+	std::shared_ptr<MonsterInstance> monster; // Shared boss instance
+	std::vector<std::string> participantIds;  // UserIDs in fight
+	std::map<std::string, int> threatMap;     // UserId -> Threat Value
+	std::map<std::string, CombatAction> pendingActions; // UserId -> Action
+	int roundNumber = 1;
+	std::chrono::steady_clock::time_point roundStartTime;
+};
+
+struct Party {
+	std::string partyId;
+	std::string leaderId;
+	std::vector<std::string> memberIds;
+	std::shared_ptr<PartyCombat> activeCombat = nullptr; // Null if not fighting
+};
 /**
  * @struct PlayerState
  * @brief The complete state for a single connected player.
@@ -256,4 +278,6 @@ struct PlayerState {
 	std::chrono::steady_clock::time_point lastGatherTime;
 	bool isTrading = false;
 	std::string tradePartnerId;
+	std::string partyId = "";
+	std::string pendingPartyInviteId = "";
 };

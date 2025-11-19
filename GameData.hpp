@@ -54,6 +54,8 @@ struct DialogueLine {
 extern const std::map<std::string, std::vector<DialogueLine>> g_dialogues;
 
 // --- Monster Data ---
+extern std::map<std::string, std::shared_ptr<Party>> g_parties;
+extern std::mutex g_parties_mutex;
 extern const std::map<std::string, std::string> MONSTER_ASSETS;
 extern const std::map<std::string, MonsterInstance> MONSTER_TEMPLATES;
 extern const std::vector<std::string> MONSTER_KEYS;
@@ -209,4 +211,6 @@ Point find_random_spawn_point(const AreaData& area);
 void broadcast_monster_despawn(const std::string& areaName, int spawn_id, const std::string& exclude_user_id);
 
 void broadcast_monster_list(const std::string& areaName); // <-- ADD THIS
+void broadcast_party_update(std::shared_ptr<Party> party);
 void respawn_monster_immediately(const std::string& areaName, int spawn_id);
+void check_party_timeouts();

@@ -27,6 +27,7 @@
 #include <algorithm>
 
 using namespace std;
+
 std::shared_ptr<AsyncSession> get_session_by_id(const std::string& userId) {
 	std::lock_guard<std::mutex> lock(g_session_registry_mutex);
 	auto it = g_session_registry.find(userId);
@@ -67,205 +68,6 @@ void broadcast_monster_despawn(const std::string& areaName, int spawn_id, const 
 			});
 	}
 }
-
-
-void broadcast_monster_list(const std::string& areaName) {
-	// 1. Get the area data
-	auto areaIt = g_areas.find(areaName);
-	if (areaIt == g_areas.end()) return;
-	AreaData& area = areaIt->second;
-
-	// 2. Build the monster list payload
-	nlohmann::json payload;
-	payload["area"] = areaName;
-	payload["monsters"] = nlohmann::json::array();
-
-	{
-		// Lock this area's monster list while we read it
-		std::lock_guard<std::mutex> lock(area.monster_mutex);
-
-		for (const auto& pair : area.live_monsters) {
-			const LiveMonster& lm = pair.second;
-			if (lm.is_alive) {
-				payload["monsters"].push_back({
-					{"id", lm.spawn_id},
-					{"name", lm.monster_type},
-					{"asset", lm.asset_key},
-					{"x", lm.position.x},
-					{"y", lm.position.y}
-					});
-			}
-		}
-	} // Monster mutex unlocks here
-
-	// 3. Create the shared message
-	auto shared_msg = std::make_shared<std::string>(
-		"SERVER:MONSTERS:" + payload.dump()
-	);
-
-	// 4. Get the list of sessions to notify (using the safe lock order)
-	std::vector<std::shared_ptr<AsyncSession>> sessions_to_notify;
-	{
-		std::lock_guard<std::mutex> lock_reg(g_session_registry_mutex);
-		std::lock_guard<std::mutex> lock_data(g_player_registry_mutex);
-
-		for (auto const& [id, weak_session] : g_session_registry) {
-			auto data_it = g_player_registry.find(id);
-			if (data_it == g_player_registry.end()) continue;
-
-			if (data_it->second.currentArea == areaName) {
-				if (auto session = weak_session.lock()) {
-					sessions_to_notify.push_back(session);
-				}
-			}
-		}
-	} // All locks released
-
-	// 5. Dispatch the message to everyone
-	std::cout << "[Broadcast] Sending full monster list (" << payload["monsters"].size()
-		<< " monsters) to " << sessions_to_notify.size()
-		<< " players in " << areaName << std::endl;
-
-	for (auto& session : sessions_to_notify) {
-		net::dispatch(session->getWebSocket().get_executor(), [session, shared_msg]() {
-			session->send(*shared_msg);
-			});
-	}
-}
-/**
- * @brief Sets a monster's respawn timer.
- * @param areaName The area the monster is in.
- * @param spawn_id The monster's ID.
- * @param seconds The number of seconds until respawn.
- */
-void set_monster_respawn_timer(const std::string& areaName, int spawn_id, int seconds) {
-	auto areaIt = g_areas.find(areaName);
-	if (areaIt == g_areas.end()) return;
-
-	AreaData& area = areaIt->second;
-	std::lock_guard<std::mutex> lock(area.monster_mutex);
-
-	auto monsterIt = area.live_monsters.find(spawn_id);
-	if (monsterIt != area.live_monsters.end()) {
-		monsterIt->second.is_alive = false; // Ensure it's marked as dead
-		monsterIt->second.respawn_time = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
-	}
-}
-
-/**
- * @brief Respawns a monster immediately (for flee/player death).
- * @param areaName The area the monster is in.
- * @param spawn_id The monster's ID.
- */
-void respawn_monster_immediately(const std::string& areaName, int spawn_id) {
-	auto areaIt = g_areas.find(areaName);
-	if (areaIt == g_areas.end()) return;
-
-	AreaData& area = areaIt->second;
-	bool found = false;
-
-	{
-		std::lock_guard<std::mutex> lock(area.monster_mutex);
-		auto monsterIt = area.live_monsters.find(spawn_id);
-		if (monsterIt != area.live_monsters.end()) {
-			monsterIt->second.is_alive = true;
-			monsterIt->second.respawn_time = std::chrono::steady_clock::time_point::max();
-			monsterIt->second.position = monsterIt->second.original_spawn_point;
-			// No need to copy the monster, just set the flag
-			found = true;
-		}
-	}
-
-	if (found) {
-		// --- THIS IS THE FIX ---
-		// We no longer broadcast just one monster, we broadcast the
-		// entire new list for the area to ensure everyone is in sync.
-		broadcast_monster_list(areaName);
-		// --- END FIX ---
-	}
-}
-// Helper function to safely end a trade and reset player states
-void cleanup_trade_session(std::string playerAId, std::string playerBId) {
-	// 1. Remove the trade from the global map
-	{
-		std::lock_guard<std::mutex> lock(g_active_trades_mutex);
-		g_active_trades.erase(playerAId);
-		g_active_trades.erase(playerBId);
-	}
-
-	// 2. Find sessions (if they are still online) and reset their flags
-	if (auto sessionA = get_session_by_id(playerAId)) {
-		sessionA->getPlayerState().isTrading = false;
-		sessionA->getPlayerState().tradePartnerId.clear();
-	}
-	if (auto sessionB = get_session_by_id(playerBId)) {
-		sessionB->getPlayerState().isTrading = false;
-		sessionB->getPlayerState().tradePartnerId.clear();
-	}
-}
-
-// Helper function to send the current trade state to both players
-void send_trade_update(std::shared_ptr<TradeSession> trade) {
-	if (!trade) return;
-
-	// Find both sessions
-	auto sessionA = get_session_by_id(trade->playerAId);
-	auto sessionB = get_session_by_id(trade->playerBId);
-
-	// Build the JSON payload
-	using json = nlohmann::json;
-	json j;
-
-	// --- Player A's Offer ---
-	json offerA;
-	json itemsA = json::array();
-	if (sessionA) { // Need sessionA to get item details
-		PlayerState& playerA = sessionA->getPlayerState();
-		for (auto const& [instanceId, quantity] : trade->offerAItems) {
-			if (playerA.inventory.count(instanceId)) {
-				const auto& item = playerA.inventory.at(instanceId);
-				itemsA.push_back({
-					{"instanceId", instanceId},
-					{"name", item.getDefinition().name}, // Get name from definition
-					{"quantity", quantity}
-					});
-			}
-		}
-	}
-	offerA["items"] = itemsA;
-	offerA["gold"] = trade->offerAGold;
-	offerA["confirmed"] = trade->confirmA;
-
-	// --- Player B's Offer ---
-	json offerB;
-	json itemsB = json::array();
-	if (sessionB) { // Need sessionB to get item details
-		PlayerState& playerB = sessionB->getPlayerState();
-		for (auto const& [instanceId, quantity] : trade->offerBItems) {
-			if (playerB.inventory.count(instanceId)) {
-				const auto& item = playerB.inventory.at(instanceId);
-				itemsB.push_back({
-					{"instanceId", instanceId},
-					{"name", item.getDefinition().name}, // Get name from definition
-					{"quantity", quantity}
-					});
-			}
-		}
-	}
-	offerB["items"] = itemsB;
-	offerB["gold"] = trade->offerBGold;
-	offerB["confirmed"] = trade->confirmB;
-
-	j["offerA"] = offerA;
-	j["offerB"] = offerB;
-
-	std::string payload = "SERVER:TRADE_UPDATE:" + j.dump();
-
-	// Send to both players (if they are still online)
-	if (sessionA) sessionA->send(payload);
-	if (sessionB) sessionB->send(payload);
-}
-// --- Combat math helpers ---
 
 static const float DEF_SCALE = 1.0f;
 static const float GLOBAL_CRIT_CAP = 0.40f;
@@ -395,6 +197,734 @@ float crit_chance_for_monster(const MonsterInstance& m) {
 	if (crit < 0.0f) crit = 0.0f;
 	return crit;
 }
+void broadcast_monster_list(const std::string& areaName) {
+	// 1. Get the area data
+	auto areaIt = g_areas.find(areaName);
+	if (areaIt == g_areas.end()) return;
+	AreaData& area = areaIt->second;
+
+	// 2. Build the monster list payload
+	nlohmann::json payload;
+	payload["area"] = areaName;
+	payload["monsters"] = nlohmann::json::array();
+
+	{
+		// Lock this area's monster list while we read it
+		std::lock_guard<std::mutex> lock(area.monster_mutex);
+
+		for (const auto& pair : area.live_monsters) {
+			const LiveMonster& lm = pair.second;
+			if (lm.is_alive) {
+				payload["monsters"].push_back({
+					{"id", lm.spawn_id},
+					{"name", lm.monster_type},
+					{"asset", lm.asset_key},
+					{"x", lm.position.x},
+					{"y", lm.position.y}
+					});
+			}
+		}
+	} // Monster mutex unlocks here
+
+	// 3. Create the shared message
+	auto shared_msg = std::make_shared<std::string>(
+		"SERVER:MONSTERS:" + payload.dump()
+	);
+
+	// 4. Get the list of sessions to notify (using the safe lock order)
+	std::vector<std::shared_ptr<AsyncSession>> sessions_to_notify;
+	{
+		std::lock_guard<std::mutex> lock_reg(g_session_registry_mutex);
+		std::lock_guard<std::mutex> lock_data(g_player_registry_mutex);
+
+		for (auto const& [id, weak_session] : g_session_registry) {
+			auto data_it = g_player_registry.find(id);
+			if (data_it == g_player_registry.end()) continue;
+
+			if (data_it->second.currentArea == areaName) {
+				if (auto session = weak_session.lock()) {
+					sessions_to_notify.push_back(session);
+				}
+			}
+		}
+	} // All locks released
+
+	// 5. Dispatch the message to everyone
+	std::cout << "[Broadcast] Sending full monster list (" << payload["monsters"].size()
+		<< " monsters) to " << sessions_to_notify.size()
+		<< " players in " << areaName << std::endl;
+
+	for (auto& session : sessions_to_notify) {
+		net::dispatch(session->getWebSocket().get_executor(), [session, shared_msg]() {
+			session->send(*shared_msg);
+			});
+	}
+}
+/**
+ * @brief Sets a monster's respawn timer.
+ * @param areaName The area the monster is in.
+ * @param spawn_id The monster's ID.
+ * @param seconds The number of seconds until respawn.
+ */
+void set_monster_respawn_timer(const std::string& areaName, int spawn_id, int seconds) {
+	auto areaIt = g_areas.find(areaName);
+	if (areaIt == g_areas.end()) return;
+
+	AreaData& area = areaIt->second;
+	std::lock_guard<std::mutex> lock(area.monster_mutex);
+
+	auto monsterIt = area.live_monsters.find(spawn_id);
+	if (monsterIt != area.live_monsters.end()) {
+		monsterIt->second.is_alive = false; // Ensure it's marked as dead
+		monsterIt->second.respawn_time = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
+	}
+}
+// Global Party Registry (Matches GameData.hpp extern)
+std::map<std::string, std::shared_ptr<Party>> g_parties;
+std::mutex g_parties_mutex;
+
+// --- Helper: Get Party Safely ---
+std::shared_ptr<Party> get_party_by_id(const std::string& partyId) {
+	std::lock_guard<std::mutex> lock(g_parties_mutex);
+	auto it = g_parties.find(partyId);
+	return (it != g_parties.end()) ? it->second : nullptr;
+}
+
+// --- Helper: Broadcast to Party Members ---
+void broadcast_to_party(std::shared_ptr<Party> party, const std::string& msg) {
+	if (!party) return;
+	for (const auto& memId : party->memberIds) {
+		if (auto sess = get_session_by_id(memId)) {
+			sess->send(msg);
+		}
+	}
+}
+void broadcast_party_update(std::shared_ptr<Party> party) {
+	if (!party) return;
+
+	nlohmann::json j;
+	j["members"] = nlohmann::json::array();
+
+	// Collect all member names
+	for (const auto& mid : party->memberIds) {
+		if (auto s = get_session_by_id(mid)) {
+			j["members"].push_back(s->getPlayerState().playerName);
+		}
+	}
+
+	std::string msg = "SERVER:PARTY_UPDATE:" + j.dump();
+
+	// Reuse the existing helper to send to everyone
+	broadcast_to_party(party, msg);
+}
+// --- Helper: Resolve Party Round (Full Logic) ---
+// --- Helper: Resolve Party Round (Full Logic) ---
+// --- Helper: Resolve Party Round (Full Logic) ---
+// File: GameLogic.cpp
+
+// --- Helper: Resolve Party Round (Full Logic) ---
+// --- Helper: Resolve Party Round (Full Logic) ---
+void resolve_party_round(std::shared_ptr<Party> party) {
+	if (!party || !party->activeCombat) return;
+
+	auto combat = party->activeCombat;
+	auto monster = combat->monster; // Shared monster instance
+
+	// ==================================================
+	// 0. UPKEEP PHASE (Status Effects & DoTs)
+	// ==================================================
+
+	// A. Monster Upkeep
+	{
+		int totalDot = 0;
+		auto& mEffects = monster->activeStatusEffects;
+		for (auto it = mEffects.begin(); it != mEffects.end(); ) {
+			// Apply DoTs
+			if (it->type == StatusType::BURN || it->type == StatusType::BLEED) {
+				int dmg = std::max(1, it->magnitude);
+				totalDot += dmg;
+				monster->health -= dmg;
+			}
+
+			// Tick Duration
+			it->remainingTurns--;
+			if (it->remainingTurns <= 0) {
+				it = mEffects.erase(it);
+			}
+			else {
+				++it;
+			}
+		}
+		if (totalDot > 0) {
+			broadcast_to_party(party, "SERVER:COMBAT_LOG:The " + monster->type + " takes " + std::to_string(totalDot) + " damage from effects!");
+		}
+	}
+
+	// B. Player Upkeep
+	std::vector<std::string> participants = combat->participantIds;
+	for (const auto& pid : participants) {
+		if (auto s = get_session_by_id(pid)) {
+			PlayerState& p = s->getPlayerState();
+			int totalDot = 0;
+			auto& pEffects = p.activeStatusEffects;
+
+			for (auto it = pEffects.begin(); it != pEffects.end(); ) {
+				if (it->type == StatusType::BURN || it->type == StatusType::BLEED) {
+					int dmg = std::max(1, it->magnitude);
+					totalDot += dmg;
+					p.stats.health -= dmg;
+				}
+
+				it->remainingTurns--;
+				if (it->remainingTurns <= 0) {
+					it = pEffects.erase(it);
+				}
+				else {
+					++it;
+				}
+			}
+
+			if (totalDot > 0) {
+				broadcast_to_party(party, "SERVER:COMBAT_LOG:" + p.playerName + " takes " + std::to_string(totalDot) + " damage from effects!");
+				s->send_player_stats();
+			}
+
+			// --- CHECK DEATH (UPKEEP) ---
+			if (p.stats.health <= 0) {
+				p.stats.health = 0;
+				s->send("SERVER:COMBAT_DEFEAT:You have succumbed to your wounds!");
+				broadcast_to_party(party, "SERVER:COMBAT_LOG:" + p.playerName + " has died from status effects!");
+				p.isInCombat = false;
+
+				// Capture area BEFORE reset for respawn logic if wipe occurs
+				std::string fightArea = p.currentArea;
+
+				// 1. Remove from Combat
+				auto& parts = combat->participantIds;
+				parts.erase(std::remove(parts.begin(), parts.end(), pid), parts.end());
+				combat->threatMap.erase(pid);
+				combat->pendingActions.erase(pid);
+
+				// 2. Remove from Party (Treat as Solo Death)
+				auto& mems = party->memberIds;
+				mems.erase(std::remove(mems.begin(), mems.end(), pid), mems.end());
+				p.partyId = "";
+
+				// 3. Update Clients
+				broadcast_party_update(party); // Notify survivors
+				s->send("SERVER:PARTY_UPDATE:{\"members\":[]}"); // Clear victim's HUD
+
+				// 4. FULL RESET: Use existing logic to teleport, heal, and reload map
+				s->handle_message("GO_TO:TOWN");
+
+				// 5. Check Wipe
+				if (combat->participantIds.empty()) {
+					party->activeCombat = nullptr;
+					// FIX: Use fightArea instead of assetKey
+					set_monster_respawn_timer(fightArea, monster->id, 15);
+					return; // Combat Over
+				}
+			}
+		}
+	}
+
+	// Check if Monster died from DoTs
+	if (monster->health <= 0) {
+		// Fall through to victory logic at bottom
+	}
+
+	// ==================================================
+	// 1. AGGREGATE ACTIONS
+	// ==================================================
+	std::vector<CombatAction> turnOrder;
+
+	for (const auto& pid : combat->participantIds) {
+		if (combat->pendingActions.count(pid)) {
+			turnOrder.push_back(combat->pendingActions[pid]);
+		}
+		else {
+			// Default to DEFEND
+			CombatAction def;
+			def.actorId = pid;
+			def.type = "DEFEND";
+			def.speed = 0;
+			turnOrder.push_back(def);
+		}
+	}
+
+	// Boss Action Logic
+	std::string targetId = "";
+	int maxThreat = -1;
+
+	if (!combat->participantIds.empty()) {
+		targetId = combat->participantIds[0];
+		for (const auto& [pid, threat] : combat->threatMap) {
+			// Verify player is in combat list
+			if (std::find(combat->participantIds.begin(), combat->participantIds.end(), pid) == combat->participantIds.end()) continue;
+
+			if (threat > maxThreat) {
+				if (auto s = get_session_by_id(pid)) {
+					if (s->getPlayerState().stats.health > 0) {
+						maxThreat = threat;
+						targetId = pid;
+					}
+				}
+			}
+		}
+	}
+
+	CombatAction bossAction;
+	bossAction.actorId = "BOSS";
+	bossAction.speed = monster->speed;
+	bossAction.param = targetId;
+
+	if (!monster->skills.empty() && (rand() % 100 < 30)) {
+		std::string chosenSkill = monster->skills[rand() % monster->skills.size()];
+		bossAction.type = "SKILL";
+		bossAction.param = chosenSkill + ":" + targetId;
+	}
+	else {
+		bossAction.type = "ATTACK";
+		bossAction.param = targetId;
+	}
+	turnOrder.push_back(bossAction);
+
+	// Sort by Speed
+	std::sort(turnOrder.begin(), turnOrder.end(), [](const CombatAction& a, const CombatAction& b) {
+		return a.speed > b.speed;
+		});
+
+	// Log Round
+	std::string roundLog = "SERVER:COMBAT_LOG:--- Round " + std::to_string(combat->roundNumber++) + " ---";
+	broadcast_to_party(party, roundLog);
+
+	// ==================================================
+	// 2. EXECUTE ACTIONS
+	// ==================================================
+	for (const auto& act : turnOrder) {
+		if (monster->health <= 0) break;
+
+		// --- BOSS TURN ---
+		if (act.actorId == "BOSS") {
+			std::string tId = act.param;
+			std::string skillName = "";
+
+			if (act.type == "SKILL") {
+				size_t colon = act.param.find(':');
+				if (colon != std::string::npos) {
+					skillName = act.param.substr(0, colon);
+					tId = act.param.substr(colon + 1);
+				}
+				else {
+					skillName = act.param;
+					tId = targetId;
+				}
+			}
+
+			auto targetSession = get_session_by_id(tId);
+			if (!targetSession) continue;
+
+			// Re-check participation
+			if (std::find(combat->participantIds.begin(), combat->participantIds.end(), tId) == combat->participantIds.end()) continue;
+
+			PlayerState& pState = targetSession->getPlayerState();
+			if (pState.stats.health <= 0) continue;
+
+			// USE CALCULATED STATS
+			PlayerStats targetStats = targetSession->getCalculatedStats();
+
+			int damage = 0;
+			std::string logMsg;
+
+			if (act.type == "ATTACK") {
+				float pwr = attack_power_for_monster(*monster);
+				int pDef = targetStats.defense;
+
+				if (pState.isDefending) {
+					pDef *= 2;
+					pState.isDefending = false;
+				}
+
+				damage = damage_after_defense(pwr, pDef);
+
+				float crit = crit_chance_for_monster(*monster);
+				if (((float)rand() / RAND_MAX) < crit) {
+					damage = (int)(damage * 1.5f);
+					broadcast_to_party(party, "SERVER:COMBAT_LOG:The " + monster->type + " lands a CRITICAL hit!");
+				}
+
+				if (damage < 1) damage = 1;
+				pState.stats.health -= damage;
+				logMsg = "The " + monster->type + " attacks " + pState.playerName + " for " + std::to_string(damage) + "!";
+			}
+			else if (act.type == "SKILL") {
+				float pwr = attack_power_for_monster(*monster) * 1.2f;
+
+				const SkillDefinition* skillDef = nullptr;
+				if (g_monster_spell_defs.count(skillName)) skillDef = &g_monster_spell_defs.at(skillName);
+				else if (g_skill_defs.count(skillName)) skillDef = &g_skill_defs.at(skillName);
+
+				if (skillDef) {
+					pwr = attack_power_for_monster(*monster) * 1.2f;
+				}
+
+				damage = damage_after_defense(pwr, targetStats.defense);
+				if (damage < 1) damage = 1;
+
+				pState.stats.health -= damage;
+				logMsg = "The " + monster->type + " uses " + skillName + " on " + pState.playerName + " for " + std::to_string(damage) + "!";
+
+				if (skillDef && skillDef->appliesStatus) {
+					StatusEffect eff;
+					eff.type = skillDef->statusType;
+					eff.magnitude = skillDef->statusMagnitude;
+					eff.remainingTurns = skillDef->statusDuration;
+					eff.appliedByPlayer = false;
+					pState.activeStatusEffects.push_back(eff);
+					broadcast_to_party(party, "SERVER:COMBAT_LOG:" + pState.playerName + " is affected by " + skillName + "!");
+				}
+			}
+
+			broadcast_to_party(party, "SERVER:COMBAT_LOG:" + logMsg);
+			targetSession->send_player_stats(); // Update UI for victim
+
+			// --- CHECK PLAYER DEATH (BOSS TURN) ---
+			if (pState.stats.health <= 0) {
+				pState.stats.health = 0;
+				targetSession->send("SERVER:COMBAT_DEFEAT:You have fallen!");
+				pState.isInCombat = false;
+				broadcast_to_party(party, "SERVER:COMBAT_LOG:" + pState.playerName + " has been defeated!");
+
+				// Capture area BEFORE reset
+				std::string fightArea = pState.currentArea;
+
+				// 1. Remove from Combat
+				auto& parts = combat->participantIds;
+				parts.erase(std::remove(parts.begin(), parts.end(), tId), parts.end());
+				combat->threatMap.erase(tId);
+				combat->pendingActions.erase(tId);
+
+				// 2. Remove from Party (Treat as Solo Death)
+				auto& mems = party->memberIds;
+				mems.erase(std::remove(mems.begin(), mems.end(), tId), mems.end());
+				pState.partyId = "";
+
+				// 3. Update Clients
+				broadcast_party_update(party); // Update survivors HUD
+				targetSession->send("SERVER:PARTY_UPDATE:{\"members\":[]}"); // Clear victim HUD
+
+				// 4. FULL RESET: Use GO_TO:TOWN
+				targetSession->handle_message("GO_TO:TOWN");
+
+				// 5. Check Wipe
+				if (combat->participantIds.empty()) {
+					party->activeCombat = nullptr;
+					// FIX: Use fightArea instead of assetKey
+					set_monster_respawn_timer(fightArea, monster->id, 15);
+					return; // End function
+				}
+			}
+		}
+		// --- PLAYER TURN ---
+		else {
+			if (std::find(combat->participantIds.begin(), combat->participantIds.end(), act.actorId) == combat->participantIds.end()) continue;
+
+			auto session = get_session_by_id(act.actorId);
+			if (!session) continue;
+			PlayerState& pState = session->getPlayerState();
+
+			if (pState.stats.health <= 0) continue;
+
+			// USE CALCULATED STATS
+			PlayerStats playerCalcStats = session->getCalculatedStats();
+
+			if (act.type == "DEFEND") {
+				pState.isDefending = true;
+				broadcast_to_party(party, "SERVER:COMBAT_LOG:" + pState.playerName + " braces for impact.");
+			}
+			else if (act.type == "FLEE") {
+				if (rand() % 100 < 50) {
+					pState.isInCombat = false;
+					combat->pendingActions.erase(act.actorId);
+					auto& parts = combat->participantIds;
+					parts.erase(std::remove(parts.begin(), parts.end(), act.actorId), parts.end());
+					combat->threatMap.erase(act.actorId);
+
+					session->send("SERVER:COMBAT_VICTORY:Fled");
+					broadcast_to_party(party, "SERVER:COMBAT_LOG:" + pState.playerName + " fled the battle!");
+
+					if (combat->participantIds.empty()) {
+						party->activeCombat = nullptr;
+						return;
+					}
+				}
+				else {
+					broadcast_to_party(party, "SERVER:COMBAT_LOG:" + pState.playerName + " failed to flee!");
+				}
+			}
+			else if (act.type == "ATTACK") {
+				float atk = attack_power_for_player(playerCalcStats, pState.currentClass);
+				int dmg = damage_after_defense(atk, monster->defense);
+
+				float crit = crit_chance_for_player(playerCalcStats, pState.currentClass);
+				if (((float)rand() / RAND_MAX) < crit) {
+					dmg = (int)(dmg * 1.5f);
+					broadcast_to_party(party, "SERVER:COMBAT_LOG:" + pState.playerName + " lands a CRITICAL hit!");
+				}
+
+				if (dmg < 1) dmg = 1;
+				monster->health -= dmg;
+				combat->threatMap[act.actorId] += dmg;
+				broadcast_to_party(party, "SERVER:COMBAT_LOG:" + pState.playerName + " attacks for " + std::to_string(dmg) + "!");
+			}
+			else if (act.type == "SKILL" || act.type == "SPELL") {
+				std::string skillName = act.param;
+				const SkillDefinition* sDef = nullptr;
+				if (g_skill_defs.count(skillName)) sDef = &g_skill_defs.at(skillName);
+
+				if (sDef) {
+					float atk = playerCalcStats.strength * sDef->strScale +
+						playerCalcStats.dexterity * sDef->dexScale +
+						playerCalcStats.intellect * sDef->intScale +
+						sDef->flatDamage;
+
+					int dmg = damage_after_defense(atk, monster->defense);
+
+					if (sDef->isMagic) {
+						int penDef = (int)(monster->defense * 0.6f);
+						dmg = damage_after_defense(atk, penDef);
+					}
+
+					if (dmg < 1) dmg = 1;
+
+					monster->health -= dmg;
+					combat->threatMap[act.actorId] += dmg;
+					broadcast_to_party(party, "SERVER:COMBAT_LOG:" + pState.playerName + " uses " + skillName + " for " + std::to_string(dmg) + "!");
+
+					if (sDef->appliesStatus) {
+						StatusEffect eff;
+						eff.type = sDef->statusType;
+						eff.magnitude = sDef->statusMagnitude;
+						eff.remainingTurns = sDef->statusDuration;
+						eff.appliedByPlayer = true;
+						monster->activeStatusEffects.push_back(eff);
+						broadcast_to_party(party, "SERVER:COMBAT_LOG:The " + monster->type + " is affected by " + skillName + "!");
+					}
+				}
+				else {
+					broadcast_to_party(party, "SERVER:COMBAT_LOG:" + pState.playerName + " tries to use " + skillName + " but fails!");
+				}
+			}
+		}
+	}
+
+	// 5. Post-Round Updates
+	std::string bossUpdate = "SERVER:COMBAT_UPDATE:" + std::to_string(monster->health);
+	broadcast_to_party(party, bossUpdate);
+
+	// 6. Win Check
+	if (monster->health <= 0) {
+		// Determine the area name for respawn (grab from first participant)
+		std::string combatArea = "";
+		if (!combat->participantIds.empty()) {
+			if (auto s = get_session_by_id(combat->participantIds[0])) {
+				combatArea = s->getPlayerState().currentArea;
+			}
+		}
+
+		int xpShare = monster->xpReward;
+		for (const auto& pid : combat->participantIds) {
+			if (auto s = get_session_by_id(pid)) {
+				s->getPlayerState().isInCombat = false;
+				s->getPlayerState().stats.experience += xpShare;
+				s->check_for_level_up();
+				s->send("SERVER:COMBAT_VICTORY:Defeated");
+				s->send("SERVER:STATUS:Gained " + std::to_string(xpShare) + " XP.");
+				s->send_player_stats();
+			}
+		}
+
+		// Loot Distribution
+		std::vector<std::string> droppedItems;
+		int lootTier = monster->lootTier;
+		int totalLuck = 0;
+		int memberCount = 0;
+		for (const auto& pid : combat->participantIds) {
+			if (auto s = get_session_by_id(pid)) {
+				totalLuck += s->getCalculatedStats().luck;
+				memberCount++;
+			}
+		}
+		int avgLuck = (memberCount > 0) ? totalLuck / memberCount : 5;
+
+		const std::vector<std::string> ALL_SKILL_BOOKS = {
+			 "BOOK_SUNDER_ARMOR", "BOOK_PUMMEL", "BOOK_ENRAGE", "BOOK_WHIRLWIND",
+			 "BOOK_SECOND_WIND", "BOOK_VENOMOUS_SHANK", "BOOK_CRIPPLING_STRIKE",
+			 "BOOK_EVASION", "BOOK_GOUGE", "BOOK_BACKSTAB", "BOOK_FROST_NOVA",
+			 "BOOK_ARCANE_INTELLECT", "BOOK_LESSER_HEAL", "BOOK_MANA_SHIELD", "BOOK_PYROBLAST"
+		};
+
+		if (lootTier >= 2 && (rand() % 1000 < 5)) {
+			droppedItems.push_back(ALL_SKILL_BOOKS[rand() % ALL_SKILL_BOOKS.size()]);
+		}
+
+		if (lootTier != -1) {
+			double luckMult = 1.0 + (std::sqrt(avgLuck) / 15.0);
+			if (luckMult > 1.8) luckMult = 1.8;
+			double tierMod = 1.0 - (std::max(0, lootTier - 1) * 0.15);
+			if (tierMod < 0.4) tierMod = 0.4;
+			double chance = monster->dropChance * luckMult * tierMod;
+			if (chance < 5.0) chance = 5.0; if (chance > 75.0) chance = 75.0;
+
+			if ((rand() % 100) < chance) {
+				std::vector<std::string> tierItems;
+				for (const auto& [id, def] : itemDatabase) { if (def.item_tier == lootTier) tierItems.push_back(id); }
+				if (!tierItems.empty()) droppedItems.push_back(tierItems[rand() % tierItems.size()]);
+			}
+		}
+
+		if (!droppedItems.empty() && !combat->participantIds.empty()) {
+			for (const auto& itemId : droppedItems) {
+				std::string winnerId = combat->participantIds[rand() % combat->participantIds.size()];
+				if (auto winnerSess = get_session_by_id(winnerId)) {
+					winnerSess->addItemToInventory(itemId, 1);
+					std::string itemName = itemId;
+					if (itemDatabase.count(itemId)) itemName = itemDatabase.at(itemId).name;
+					broadcast_to_party(party, "SERVER:STATUS:" + winnerSess->getPlayerState().playerName + " won the " + itemName + "!");
+				}
+			}
+		}
+
+		party->activeCombat = nullptr;
+
+		// FIX: Use the combatArea we captured, NOT assetKey
+		if (!combatArea.empty()) {
+			set_monster_respawn_timer(combatArea, monster->id, 15);
+			broadcast_monster_list(combatArea);
+		}
+	}
+	else {
+		combat->pendingActions.clear();
+		combat->roundStartTime = std::chrono::steady_clock::now();
+		broadcast_to_party(party, "SERVER:COMBAT_TURN:Your turn.");
+	}
+}
+/**
+ * @brief Respawns a monster immediately (for flee/player death).
+ * @param areaName The area the monster is in.
+ * @param spawn_id The monster's ID.
+ */
+void respawn_monster_immediately(const std::string& areaName, int spawn_id) {
+	auto areaIt = g_areas.find(areaName);
+	if (areaIt == g_areas.end()) return;
+
+	AreaData& area = areaIt->second;
+	bool found = false;
+
+	{
+		std::lock_guard<std::mutex> lock(area.monster_mutex);
+		auto monsterIt = area.live_monsters.find(spawn_id);
+		if (monsterIt != area.live_monsters.end()) {
+			monsterIt->second.is_alive = true;
+			monsterIt->second.respawn_time = std::chrono::steady_clock::time_point::max();
+			monsterIt->second.position = monsterIt->second.original_spawn_point;
+			// No need to copy the monster, just set the flag
+			found = true;
+		}
+	}
+
+	if (found) {
+		// --- THIS IS THE FIX ---
+		// We no longer broadcast just one monster, we broadcast the
+		// entire new list for the area to ensure everyone is in sync.
+		broadcast_monster_list(areaName);
+		// --- END FIX ---
+	}
+}
+// Helper function to safely end a trade and reset player states
+void cleanup_trade_session(std::string playerAId, std::string playerBId) {
+	// 1. Remove the trade from the global map
+	{
+		std::lock_guard<std::mutex> lock(g_active_trades_mutex);
+		g_active_trades.erase(playerAId);
+		g_active_trades.erase(playerBId);
+	}
+
+	// 2. Find sessions (if they are still online) and reset their flags
+	if (auto sessionA = get_session_by_id(playerAId)) {
+		sessionA->getPlayerState().isTrading = false;
+		sessionA->getPlayerState().tradePartnerId.clear();
+	}
+	if (auto sessionB = get_session_by_id(playerBId)) {
+		sessionB->getPlayerState().isTrading = false;
+		sessionB->getPlayerState().tradePartnerId.clear();
+	}
+}
+
+// Helper function to send the current trade state to both players
+void send_trade_update(std::shared_ptr<TradeSession> trade) {
+	if (!trade) return;
+
+	// Find both sessions
+	auto sessionA = get_session_by_id(trade->playerAId);
+	auto sessionB = get_session_by_id(trade->playerBId);
+
+	// Build the JSON payload
+	using json = nlohmann::json;
+	json j;
+
+	// --- Player A's Offer ---
+	json offerA;
+	json itemsA = json::array();
+	if (sessionA) { // Need sessionA to get item details
+		PlayerState& playerA = sessionA->getPlayerState();
+		for (auto const& [instanceId, quantity] : trade->offerAItems) {
+			if (playerA.inventory.count(instanceId)) {
+				const auto& item = playerA.inventory.at(instanceId);
+				itemsA.push_back({
+					{"instanceId", instanceId},
+					{"name", item.getDefinition().name}, // Get name from definition
+					{"quantity", quantity}
+					});
+			}
+		}
+	}
+	offerA["items"] = itemsA;
+	offerA["gold"] = trade->offerAGold;
+	offerA["confirmed"] = trade->confirmA;
+
+	// --- Player B's Offer ---
+	json offerB;
+	json itemsB = json::array();
+	if (sessionB) { // Need sessionB to get item details
+		PlayerState& playerB = sessionB->getPlayerState();
+		for (auto const& [instanceId, quantity] : trade->offerBItems) {
+			if (playerB.inventory.count(instanceId)) {
+				const auto& item = playerB.inventory.at(instanceId);
+				itemsB.push_back({
+					{"instanceId", instanceId},
+					{"name", item.getDefinition().name}, // Get name from definition
+					{"quantity", quantity}
+					});
+			}
+		}
+	}
+	offerB["items"] = itemsB;
+	offerB["gold"] = trade->offerBGold;
+	offerB["confirmed"] = trade->confirmB;
+
+	j["offerA"] = offerA;
+	j["offerB"] = offerB;
+
+	std::string payload = "SERVER:TRADE_UPDATE:" + j.dump();
+
+	// Send to both players (if they are still online)
+	if (sessionA) sessionA->send(payload);
+	if (sessionB) sessionB->send(payload);
+}
+// --- Combat math helpers ---
+
+
 // Forward declaration – implemented later in this file
 void SyncPlayerMonsters(PlayerState& player);
 
@@ -3485,7 +4015,7 @@ void AsyncSession::handle_message(const string& message)
 				}
 			}
 		}
-		// --- END MODIFICATION ---
+
 
 		// --- 2. Build "PLAYER_SPAWNED" message (for others) ---
 		std::ostringstream oss_spawn;
@@ -3654,6 +4184,182 @@ void AsyncSession::handle_message(const string& message)
 				}
 				});
 		}
+	}
+	   else if (message.rfind("PARTY_INVITE:", 0) == 0) {
+		std::string targetName = message.substr(13);
+		if (targetName == player.playerName) {
+			send("SERVER:ERROR:Cannot invite yourself.");
+			return;
+		}
+
+		// Find target session
+		std::shared_ptr<AsyncSession> targetSession = nullptr;
+		{
+			std::lock_guard<std::mutex> lock(g_session_registry_mutex);
+			for (auto const& [id, weak] : g_session_registry) {
+				if (auto s = weak.lock()) {
+					if (s->getPlayerState().playerName == targetName) {
+						targetSession = s;
+						break;
+					}
+				}
+			}
+		}
+
+		if (targetSession) {
+			// Send Invite Request
+			targetSession->getPlayerState().pendingPartyInviteId = player.partyId.empty() ? "NEW:" + player.userId : player.partyId;
+			targetSession->send("SERVER:PARTY_INVITE_REQ:" + player.playerName);
+			send("SERVER:STATUS:Invite sent to " + targetName);
+		}
+		else {
+			send("SERVER:ERROR:Player not found.");
+		}
+	}
+	   else if (message.rfind("PARTY_ACCEPT:", 0) == 0) {
+		if (player.pendingPartyInviteId.empty()) {
+			send("SERVER:ERROR:No pending invite.");
+			return;
+		}
+
+		std::string inviterName = message.substr(13);
+
+		std::lock_guard<std::mutex> lock(g_parties_mutex);
+
+		// CASE 1: Create New Party
+		if (player.pendingPartyInviteId.rfind("NEW:", 0) == 0) {
+			std::string inviterId = player.pendingPartyInviteId.substr(4);
+			auto inviterSession = get_session_by_id(inviterId);
+
+			if (inviterSession && inviterSession->getPlayerState().partyId.empty()) {
+				auto newParty = std::make_shared<Party>();
+				newParty->partyId = "PARTY_" + inviterId;
+				newParty->leaderId = inviterId;
+				newParty->memberIds.push_back(inviterId);
+				newParty->memberIds.push_back(player.userId);
+
+				g_parties[newParty->partyId] = newParty;
+
+				inviterSession->getPlayerState().partyId = newParty->partyId;
+				player.partyId = newParty->partyId;
+
+				// Broadcast the DATA (for UI) and the STATUS (for Chat)
+				broadcast_party_update(newParty);
+				broadcast_to_party(newParty, "SERVER:STATUS:Party Formed!");
+			}
+		}
+		// CASE 2: Join Existing Party
+		else {
+			std::string pId = player.pendingPartyInviteId;
+			if (g_parties.count(pId)) {
+				auto party = g_parties[pId];
+				if (party->memberIds.size() < 4) {
+					party->memberIds.push_back(player.userId);
+					player.partyId = pId;
+
+					// Broadcast the DATA (for UI) and the STATUS (for Chat)
+					broadcast_party_update(party);
+					broadcast_to_party(party, "SERVER:STATUS:" + player.playerName + " joined the party.");
+				}
+				else {
+					send("SERVER:ERROR:Party is full.");
+				}
+			}
+		}
+		player.pendingPartyInviteId = "";
+	}
+	   else if (message == "PARTY_LEAVE") {
+		if (player.partyId.empty()) {
+			send("SERVER:ERROR:You are not in a party.");
+			return;
+		}
+
+		std::lock_guard<std::mutex> lock(g_parties_mutex);
+		auto it = g_parties.find(player.partyId);
+
+		if (it != g_parties.end()) {
+			auto party = it->second;
+
+			// 1. Remove YOU (The Leaver) from Member List
+			auto& mems = party->memberIds;
+			mems.erase(std::remove(mems.begin(), mems.end(), player.userId), mems.end());
+
+			// 2. Remove YOU from Active Combat (if applicable)
+			if (party->activeCombat) {
+				auto& parts = party->activeCombat->participantIds;
+				parts.erase(std::remove(parts.begin(), parts.end(), player.userId), parts.end());
+				party->activeCombat->pendingActions.erase(player.userId);
+				party->activeCombat->threatMap.erase(player.userId);
+
+				// If you were the last real person in the fight, kill the combat instance
+				if (parts.empty()) {
+					// Respawn monster if needed so it doesn't disappear forever
+					if (party->activeCombat->monster) {
+						respawn_monster_immediately(player.currentArea, party->activeCombat->monster->id);
+					}
+					party->activeCombat = nullptr;
+				}
+			}
+
+			// 3. Check State of Remaining Party
+			if (mems.empty()) {
+				// Case A: Party is now empty -> Delete it
+				g_parties.erase(player.partyId);
+			}
+			else if (mems.size() == 1) {
+				// Case B: Only 1 person left -> AUTO-DISBAND
+				// Leaving a party of 1 is pointless, so we free the survivor.
+				std::string lastMemberId = mems[0];
+
+				if (auto lastSess = get_session_by_id(lastMemberId)) {
+					PlayerState& lastP = lastSess->getPlayerState();
+
+					// Clear their party data
+					lastP.partyId = "";
+
+					// If they were in combat, force end it so they aren't stuck
+					if (lastP.isInCombat) {
+						lastP.isInCombat = false;
+						lastSess->send("SERVER:COMBAT_VICTORY:Party Disbanded"); // Closes combat UI
+						lastSess->send_current_monsters_list(); // Refresh map
+					}
+
+					// Notify client to clear HUD
+					lastSess->send("SERVER:PARTY_LEFT");
+					lastSess->send("SERVER:STATUS:The party has been disbanded.");
+				}
+
+				// Finally, delete the party object
+				g_parties.erase(player.partyId);
+			}
+			else {
+				// Case C: Party still valid (2+ people) -> Assign new leader if needed
+				if (party->leaderId == player.userId) {
+					party->leaderId = mems[0];
+					std::string newLeaderName = "Unknown";
+					if (auto s = get_session_by_id(mems[0])) {
+						newLeaderName = s->getPlayerState().playerName;
+					}
+					broadcast_to_party(party, "SERVER:STATUS:" + player.playerName + " left. " + newLeaderName + " is now leader.");
+				}
+				else {
+					broadcast_to_party(party, "SERVER:STATUS:" + player.playerName + " left the party.");
+				}
+				// Update HUD for remaining members
+				broadcast_party_update(party);
+			}
+		}
+
+		// 4. Reset YOUR (The Leaver) State
+		player.partyId = "";
+		player.isInCombat = false; // Ensure you drop out of combat state
+
+		// Refresh your view (in case you were in combat)
+		if (player.currentOpponent) {
+			player.currentOpponent.reset();
+		}
+		send_current_monsters_list();
+		send("SERVER:PARTY_LEFT");
 	}
 	   else if (message.rfind("INTERACT_AT:", 0) == 0) {
 		if (player.isInCombat) {
@@ -4024,152 +4730,208 @@ void AsyncSession::handle_message(const string& message)
 			try {
 				int selected_spawn_id = stoi(message.substr(17));
 
-				// --- MODIFICATION: Check the GLOBAL list, not the player's local list ---
+				// --- PARTY CHECK ---
+				std::shared_ptr<Party> party = (!player.partyId.empty()) ? get_party_by_id(player.partyId) : nullptr;
 
-				// 1. Find and claim the monster from the GLOBAL list
-				auto areaIt = g_areas.find(player.currentArea);
-				if (areaIt == g_areas.end()) {
-					send("SERVER:ERROR:Invalid area state.");
-					return;
-				}
-				AreaData& area = areaIt->second;
-				bool engaged = false;
-				std::string monster_type; // We'll get this from the global list
+				if (party) {
+					// ==============================
+					//        PARTY COMBAT PATH
+					// ==============================
+					std::lock_guard<std::mutex> lock(g_parties_mutex); // Safety
 
-				{
-					std::lock_guard<std::mutex> lock(area.monster_mutex);
-					auto monsterIt = area.live_monsters.find(selected_spawn_id);
+					// 1. Initialize Combat if not started
+					if (!party->activeCombat) {
+						// Find monster type from Global Area Data
+						auto areaIt = g_areas.find(player.currentArea);
+						if (areaIt == g_areas.end()) return;
 
-					if (monsterIt != area.live_monsters.end() && monsterIt->second.is_alive) {
-						// SUCCESS! Claim the monster.
-						monsterIt->second.is_alive = false; // Mark as "dead"/engaged
-						monster_type = monsterIt->second.monster_type; // Get the type
-						engaged = true;
-					}
-				} // Mutex unlocks here
-
-				// --- END MODIFICATION ---
-
-				if (engaged) {
-					// 3. Start combat
-					player.isInCombat = true;
-					player.currentOpponent = create_monster(selected_spawn_id, monster_type);
-					player.isDefending = false;
-
-					// 4. Remove from player's *local* list (this is still good practice)
-					auto it_local = std::find_if(
-						player.currentMonsters.begin(),
-						player.currentMonsters.end(),
-						[selected_spawn_id](const MonsterState& m) { return m.id == selected_spawn_id; }
-					);
-					if (it_local != player.currentMonsters.end()) {
-						player.currentMonsters.erase(it_local);
-					}
-					// No need to send_current_monsters_list, combat start does this implicitly
-
-					if (!player.currentOpponent) {
-						player.isInCombat = false;
-						std::cerr << "CRITICAL: Failed to create monster instance for combat." << std::endl;
-						send("SERVER:ERROR:Internal error starting combat.");
-						// Put it back in the global list
-						respawn_monster_immediately(player.currentArea, selected_spawn_id);
-						return;
-					}
-
-					// 5. Broadcast despawn to all OTHER players (This fixes the sync issue)
-					broadcast_monster_despawn(player.currentArea, selected_spawn_id, player.userId);
-
-					std::cout << "[" << client_address << "] --- COMBAT STARTED vs "
-						<< player.currentOpponent->type << " ---" << std::endl;
-
-					std::ostringstream oss;
-					oss << "SERVER:COMBAT_START:"
-						<< "{\"id\":" << player.currentOpponent->id
-						<< ",\"name\":" << nlohmann::json(player.currentOpponent->type).dump()
-						<< ",\"asset\":" << nlohmann::json(player.currentOpponent->assetKey).dump()
-						<< ",\"health\":" << player.currentOpponent->health
-						<< ",\"maxHealth\":" << player.currentOpponent->maxHealth << "}";
-					std::string combat_start_message = oss.str();
-					send(combat_start_message);
-					send("SERVER:COMBAT_LOG:You engaged the " + player.currentOpponent->type + "!");
-
-					PlayerStats finalStats = getCalculatedStats();
-
-					// Speed check: who acts first?
-					if (finalStats.speed >= player.currentOpponent->speed) {
-						send("SERVER:COMBAT_LOG:You are faster! You attack first.");
-						send("SERVER:COMBAT_TURN:Your turn.");
-					}
-					else {
-						send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " is faster! It attacks first.");
-
-						// --- Monster attacks first using new combat math ---
-
-						float monsterAttackPower = attack_power_for_monster(*player.currentOpponent);
-						int player_defense = finalStats.defense;
-						int base_monster_damage = damage_after_defense(monsterAttackPower, player_defense);
-
-						float variance = 0.85f + ((float)(rand() % 31) / 100.0f); // 0.85–1.15
-						int monster_damage = std::max(1, (int)std::round(base_monster_damage * variance));
-
-						float monster_crit_chance = crit_chance_for_monster(*player.currentOpponent);
-						if (((float)rand() / RAND_MAX) < monster_crit_chance) {
-							monster_damage = (int)std::round(monster_damage * 1.6f);
-							send(
-								"SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " lands a critical hit!"
-							);
+						std::string mType = "";
+						{
+							std::lock_guard<std::mutex> mLock(areaIt->second.monster_mutex);
+							auto mIt = areaIt->second.live_monsters.find(selected_spawn_id);
+							if (mIt != areaIt->second.live_monsters.end() && mIt->second.is_alive) {
+								mType = mIt->second.monster_type;
+								// Mark engaged globally so others can't take it
+								mIt->second.is_alive = false;
+								broadcast_monster_despawn(player.currentArea, selected_spawn_id, "PARTY_ENGAGEMENT");
+							}
+							else {
+								send("SERVER:ERROR:That monster is gone.");
+								return;
+							}
 						}
 
-						player.stats.health -= monster_damage;
-						send(
-							"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
-							" attacks you for " + std::to_string(monster_damage) + " damage!"
-						);
-						send_player_stats();
+						auto monsterOpt = create_monster(selected_spawn_id, mType);
+						if (!monsterOpt) return;
 
-						if (player.stats.health <= 0) {
-							player.stats.health = 0;
-							send("SERVER:COMBAT_DEFEAT:You have been defeated!");
-							player.isInCombat = false;
+						auto combat = std::make_shared<PartyCombat>();
+						combat->monster = std::make_shared<MonsterInstance>(*monsterOpt);
 
-							// --- MODIFICATION: Respawn monster on player death ---
-							respawn_monster_immediately(player.currentArea, player.currentOpponent->id);
+						// --- FIX START: Only add party members in the SAME AREA ---
+						std::vector<std::string> validParticipants;
+						std::string combatArea = player.currentArea;
 
-							player.currentOpponent.reset();
-							player.currentArea = "TOWN";
-							player.currentMonsters.clear();
-							player.stats.health = player.stats.maxHealth / 2;
-							player.stats.mana = player.stats.maxMana;
-							player.posX = 26;
-							player.posY = 12;
-							player.currentPath.clear();
+						for (const auto& memId : party->memberIds) {
+							auto memSess = get_session_by_id(memId);
+							// Check if online AND in the same area
+							if (memSess && memSess->getPlayerState().currentArea == combatArea) {
+								validParticipants.push_back(memId);
+								memSess->getPlayerState().isInCombat = true; // Set state immediately
+							}
+						}
+						combat->participantIds = validParticipants;
+						// --- FIX END ---
 
-							broadcast_data.currentArea = "TOWN";
-							{
-								std::lock_guard<std::mutex> lock(g_player_registry_mutex);
-								g_player_registry[player.userId] = broadcast_data;
+						combat->roundStartTime = std::chrono::steady_clock::now();
+						party->activeCombat = combat;
+
+						// Prepare Combat Start Message
+						std::ostringstream oss;
+						oss << "SERVER:COMBAT_START:{"
+							<< "\"id\":" << combat->monster->id
+							<< ",\"name\":" << nlohmann::json(combat->monster->type).dump()
+							<< ",\"asset\":" << nlohmann::json(combat->monster->assetKey).dump()
+							<< ",\"health\":" << combat->monster->health
+							<< ",\"maxHealth\":" << combat->monster->maxHealth << "}";
+
+						std::string startMsg = oss.str();
+
+						// --- NEW MESSAGING LOGIC ---
+						// Iterate all party members. 
+						// If they are in validParticipants -> Send Combat Start + Turn.
+						// If NOT -> Send a status update.
+						for (const auto& memId : party->memberIds) {
+							auto sess = get_session_by_id(memId);
+							if (!sess) continue;
+
+							bool isParticipant = false;
+							for (const auto& pId : validParticipants) {
+								if (pId == memId) { isParticipant = true; break; }
 							}
 
-							send("SERVER:AREA_CHANGED:TOWN");
-							send_area_map_data(player.currentArea);
-							SyncPlayerMonsters(player); // Syncs to TOWN
-							send_current_monsters_list();
-							send_available_areas();
-							send_player_stats();
-							broadcast_data.posX = player.posX;
-							broadcast_data.posY = player.posY;
+							if (isParticipant) {
+								sess->send(startMsg);
+								sess->send("SERVER:COMBAT_TURN:Your turn.");
+							}
+							else {
+								sess->send("SERVER:STATUS:Your party engaged a " + mType + " in " + combatArea + ", but you are too far away!");
+							}
+						}
+					}
+					else {
+						// --- JOINING EXISTING COMBAT ---
+						bool canJoin = false;
+						if (!party->activeCombat->participantIds.empty()) {
+							// Check area against the first participant (usually the leader/initiator)
+							auto leaderSess = get_session_by_id(party->activeCombat->participantIds[0]);
+							if (leaderSess && leaderSess->getPlayerState().currentArea == player.currentArea) {
+								canJoin = true;
+							}
+						}
+
+						if (canJoin) {
+							// Add self to combat if not already there
+							bool alreadyIn = false;
+							for (const auto& pid : party->activeCombat->participantIds) {
+								if (pid == player.userId) { alreadyIn = true; break; }
+							}
+
+							if (!alreadyIn) {
+								party->activeCombat->participantIds.push_back(player.userId);
+							}
+							player.isInCombat = true;
+
+							// Send current combat state to the joiner
+							std::ostringstream oss;
+							oss << "SERVER:COMBAT_START:{"
+								<< "\"id\":" << party->activeCombat->monster->id
+								<< ",\"name\":" << nlohmann::json(party->activeCombat->monster->type).dump()
+								<< ",\"asset\":" << nlohmann::json(party->activeCombat->monster->assetKey).dump()
+								<< ",\"health\":" << party->activeCombat->monster->health
+								<< ",\"maxHealth\":" << party->activeCombat->monster->maxHealth << "}";
+							send(oss.str());
+
+							// Let the joiner know the current turn state immediately
+							send("SERVER:COMBAT_TURN:Your turn.");
 						}
 						else {
-							send("SERVER:COMBAT_TURN:Your turn.");
+							send("SERVER:ERROR:You are too far away to join this battle!");
 						}
 					}
 				}
 				else {
-					// Someone else got it first, or it was dead
-					send("SERVER:ERROR:That monster is no longer available.");
-					// Re-sync the player's list to remove the stale monster
-					SyncPlayerMonsters(player);
-					send_current_monsters_list();
+					// ==============================
+					//    SOLO COMBAT PATH (Unchanged)
+					// ==============================
+					auto areaIt = g_areas.find(player.currentArea);
+					if (areaIt == g_areas.end()) return;
+					AreaData& area = areaIt->second;
+					bool engaged = false;
+					std::string monster_type;
+
+					{
+						std::lock_guard<std::mutex> lock(area.monster_mutex);
+						auto monsterIt = area.live_monsters.find(selected_spawn_id);
+						if (monsterIt != area.live_monsters.end() && monsterIt->second.is_alive) {
+							monsterIt->second.is_alive = false;
+							monster_type = monsterIt->second.monster_type;
+							engaged = true;
+						}
+					}
+
+					if (engaged) {
+						player.isInCombat = true;
+						player.currentOpponent = create_monster(selected_spawn_id, monster_type);
+						player.isDefending = false;
+
+						// Clean local list
+						auto it_local = std::find_if(player.currentMonsters.begin(), player.currentMonsters.end(),
+							[selected_spawn_id](const MonsterState& m) { return m.id == selected_spawn_id; });
+						if (it_local != player.currentMonsters.end()) player.currentMonsters.erase(it_local);
+
+						broadcast_monster_despawn(player.currentArea, selected_spawn_id, player.userId);
+
+						std::ostringstream oss;
+						oss << "SERVER:COMBAT_START:"
+							<< "{\"id\":" << player.currentOpponent->id
+							<< ",\"name\":" << nlohmann::json(player.currentOpponent->type).dump()
+							<< ",\"asset\":" << nlohmann::json(player.currentOpponent->assetKey).dump()
+							<< ",\"health\":" << player.currentOpponent->health
+							<< ",\"maxHealth\":" << player.currentOpponent->maxHealth << "}";
+						send(oss.str());
+						send("SERVER:COMBAT_LOG:You engaged the " + player.currentOpponent->type + "!");
+
+						// Solo Speed Check
+						PlayerStats finalStats = getCalculatedStats();
+						if (finalStats.speed >= player.currentOpponent->speed) {
+							send("SERVER:COMBAT_LOG:You are faster! You attack first.");
+							send("SERVER:COMBAT_TURN:Your turn.");
+						}
+						else {
+							// Monster Attacks First
+							send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " is faster! It attacks first.");
+							float pwr = attack_power_for_monster(*player.currentOpponent);
+							int dmg = damage_after_defense(pwr, finalStats.defense);
+							player.stats.health -= dmg;
+							send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " attacks you for " + std::to_string(dmg) + " damage!");
+							send_player_stats();
+							if (player.stats.health <= 0) {
+								send("SERVER:COMBAT_DEFEAT:You have been defeated!");
+								player.isInCombat = false;
+								respawn_monster_immediately(player.currentArea, player.currentOpponent->id);
+								player.currentOpponent.reset();
+								handle_message("GO_TO:TOWN");
+							}
+							else {
+								send("SERVER:COMBAT_TURN:Your turn.");
+							}
+						}
+					}
+					else {
+						send("SERVER:ERROR:That monster is no longer available.");
+						SyncPlayerMonsters(player);
+						send_current_monsters_list();
+					}
 				}
 			}
 			catch (const std::exception&) {
@@ -4178,951 +4940,1005 @@ void AsyncSession::handle_message(const string& message)
 		}
 	}
 	   else if (message.rfind("COMBAT_ACTION:", 0) == 0) {
-		if (!player.isInCombat || !player.currentOpponent) {
-			send("SERVER:ERROR:You are not in combat.");
-			return; // Return early
-		}
 
-		// --- Get the ID of the monster you are fighting ---
-		int current_monster_spawn_id = player.currentOpponent->id;
+		// --- 1. Check if Player is in a Party Combat ---
+		std::shared_ptr<Party> party = (!player.partyId.empty()) ? get_party_by_id(player.partyId) : nullptr;
 
-		int extraDefFromBuffs = 0;
-		bool monsterStunnedThisTurn = false;
+		if (party && party->activeCombat) {
 
-		// This lambda replaces the logic you removed from getCalculatedStats
-		auto apply_statuses_to_player_and_get_stats = [&]() -> PlayerStats {
-			// 1. Get base stats + equipment stats
-			PlayerStats stats = getCalculatedStats();
+			// Parse the command
+			std::string action_command = message.substr(14);
+			std::string action_type;
+			std::string action_param;
 
-			int totalDefBuff = 0;
-			int totalDot = 0;
-
-			// 2. Iterate the list ONCE
-			auto& effects = player.activeStatusEffects;
-			for (auto it = effects.begin(); it != effects.end(); ) {
-				StatusEffect& eff = *it;
-
-				// 3. Apply all buffs/debuffs/DoTs in one place
-				switch (eff.type) {
-				case StatusType::BURN:
-				case StatusType::BLEED: {
-					int dmg = eff.magnitude;
-					if (eff.type == StatusType::BURN) { dmg += stats.intellect / 20; }
-					else { dmg += stats.dexterity / 25; }
-					if (dmg < 1) dmg = 1;
-					totalDot += dmg;
-
-					// --- FIX: Allow health to go to 0 or below ---
-					player.stats.health -= dmg;
-					// --- END FIX ---
-
-					break;
-				}
-				case StatusType::DEFENSE_UP: {
-					totalDefBuff += eff.magnitude;
-					break;
-				}
-				case StatusType::ATTACK_UP: {
-					stats.strength += eff.magnitude;
-					stats.dexterity += eff.magnitude;
-					break;
-				}
-				case StatusType::ATTACK_DOWN: {
-					stats.strength -= eff.magnitude;
-					stats.dexterity -= eff.magnitude;
-					break;
-				}
-				case StatusType::DEFENSE_DOWN: {
-					stats.defense -= eff.magnitude;
-					break;
-				}
-				case StatusType::SPEED_UP: {
-					stats.speed += eff.magnitude;
-					break;
-				}
-				case StatusType::SPEED_DOWN: {
-					stats.speed -= eff.magnitude;
-					break;
-				}
-										   // MANA_UP/DOWN are primarily handled during the combat tick, but can affect max mana/regen here if needed.
-										   // Assuming magnitude applies to mana pool or regen over time (leaving base stats unchanged here).
-				case StatusType::MANA_UP: {
-					player.stats.mana = std::min(stats.maxMana, player.stats.mana + eff.magnitude);
-					break;
-				}
-				case StatusType::MANA_DOWN: {
-					player.stats.mana = std::max(0, player.stats.mana - eff.magnitude);
-					break;
-				}
-				default:
-					break;
-				}
-
-				// 4. Tick down duration and erase if expired
-				eff.remainingTurns--;
-				if (eff.remainingTurns <= 0) {
-					it = effects.erase(it); // Safe to erase here
-				}
-				else {
-					++it;
-				}
-			}
-
-			if (totalDot > 0) {
-				send("SERVER:COMBAT_LOG:You suffer " + std::to_string(totalDot) +
-					" damage from ongoing effects!");
-				send_player_stats(); // Now safe, getCalculatedStats() doesn't loop
-			}
-
-			extraDefFromBuffs = totalDefBuff;
-
-			// 5. Clamp stats and return them
-			stats.strength = std::max(0, stats.strength);
-			stats.dexterity = std::max(0, stats.dexterity);
-			stats.defense = std::max(0, stats.defense);
-			stats.speed = std::max(0, stats.speed);
-
-			return stats;
-			};
-
-		// This lambda for the monster is mostly unchanged and safe
-		auto apply_statuses_to_monster = [&]() {
-			if (!player.currentOpponent) return;
-			int totalDot = 0;
-			auto& effects = player.currentOpponent->activeStatusEffects;
-
-			for (auto it = effects.begin(); it != effects.end(); ) {
-				StatusEffect& eff = *it;
-				switch (eff.type) {
-				case StatusType::BURN:
-				case StatusType::BLEED: {
-					int dmg = eff.magnitude;
-					if (dmg < 1) dmg = 1;
-					totalDot += dmg;
-					player.currentOpponent->health =
-						std::max(1, player.currentOpponent->health - dmg);
-					break;
-				}
-				case StatusType::STUN: {
-					monsterStunnedThisTurn = true;
-					break;
-				}
-				default:
-					break;
-				}
-				eff.remainingTurns--;
-				if (eff.remainingTurns <= 0) {
-					it = effects.erase(it);
-				}
-				else {
-					++it;
-				}
-			}
-			if (totalDot > 0) {
-				send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
-					" suffers " + std::to_string(totalDot) + " damage!");
-				std::string update = "SERVER:COMBAT_UPDATE:" + std::to_string(player.currentOpponent->health);
-				send(update);
-			}
-			};
-
-		// --- START OF COMBAT TURN ---
-		// This is the variable you will use for all combat math this turn:
-		PlayerStats finalStats = apply_statuses_to_player_and_get_stats();
-
-		apply_statuses_to_monster(); // Apply monster DoTs/Stuns
-
-		// --- NEW FIX: Check for player death from DoTs ---
-		if (player.stats.health <= 0) {
-			player.stats.health = 0;
-			send("SERVER:COMBAT_DEFEAT:You have been defeated by your wounds!");
-			player.isInCombat = false;
-
-			// Respawn monster
-			respawn_monster_immediately(player.currentArea, current_monster_spawn_id);
-
-			player.currentOpponent.reset();
-			player.currentArea = "TOWN"; player.currentMonsters.clear();
-			player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
-			player.posX = 26; player.posY = 12; player.currentPath.clear();
-			broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
-			{ lock_guard<mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
-
-			send("SERVER:AREA_CHANGED:TOWN");
-			send_area_map_data(player.currentArea);
-			SyncPlayerMonsters(player); // Syncs to TOWN
-			send_current_monsters_list();
-			send_available_areas();
-			send_player_stats();
-			return; // Exit combat action
-		}
-		// --- END NEW FIX ---
-
-
-		// --- (Rest of your combat logic begins here) ---
-		string action_command = message.substr(14);
-		string action_type; string action_param;
-		size_t colon_pos = action_command.find(':');
-		if (colon_pos != string::npos) { action_type = action_command.substr(0, colon_pos); action_param = action_command.substr(colon_pos + 1); }
-		else { action_type = action_command; }
-
-		int player_damage = 0; int mana_cost = 0; bool fled = false;
-		if (action_type == "ATTACK") {
-			float attackPower = attack_power_for_player(finalStats, player.currentClass);
-			int base_damage = damage_after_defense(attackPower, player.currentOpponent->defense);
-
-			float variance = 0.85f + ((float)(rand() % 31) / 100.0f); // 0.85–1.15
-			int dmg = std::max(1, (int)(base_damage * variance));
-
-			float crit_chance = crit_chance_for_player(finalStats, player.currentClass);
-			if (((float)rand() / RAND_MAX) < crit_chance) {
-				ClassCritTuning t = getCritTuning(player.currentClass);
-				dmg = (int)std::round(dmg * t.critMultiplier);
-				send("SERVER:COMBAT_LOG:A critical hit!");
-			}
-
-			player_damage = dmg; // then use your existing code that subtracts HP and logs
-			std::string log_msg =
-				"SERVER:COMBAT_LOG:You attack the " + player.currentOpponent->type +
-				" for " + std::to_string(player_damage) + " damage!";
-			send(log_msg);
-		}
-		else if (action_type == "SPELL") {
-			std::string spellName = action_param;
-
-			// Look up the spell definition
-			auto itSkill = g_skill_defs.find(spellName);
-			if (itSkill == g_skill_defs.end() || itSkill->second.type != SkillType::SPELL) {
-				send("SERVER:COMBAT_LOG:Unknown spell: " + spellName);
-				return;
-			}
-			const SkillDefinition& spell = itSkill->second;
-
-			// Make sure the player actually knows this spell
-			bool knows_spell = false;
-			for (const auto& s : player.temporary_spells_list) {
-				if (s == spellName) {
-					knows_spell = true;
-					break;
-				}
-			}
-			if (!knows_spell) {
-				send("SERVER:COMBAT_LOG:You don't know that spell!");
-				return;
-			}
-
-			// Class requirement check
-			SkillClass playerSkillClass = SkillClass::ANY;
-			switch (player.currentClass) {
-			case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
-			case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
-			case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
-			default:                   playerSkillClass = SkillClass::ANY;     break;
-			}
-
-			if (spell.requiredClass != SkillClass::ANY &&
-				spell.requiredClass != playerSkillClass) {
-				send("SERVER:COMBAT_LOG:You cannot cast that spell with your class.");
-				return;
-			}
-
-			// Mana check
-			if (player.stats.mana < spell.manaCost) {
-				send(
-					"SERVER:COMBAT_LOG:Not enough mana to cast " + spellName +
-					"! (Needs " + std::to_string(spell.manaCost) + ")"
-				);
-				return;
-			}
-
-			player.stats.mana -= spell.manaCost;
-
-			bool targetIsSelf = (spell.target == SkillTarget::SELF);
-
-			// Compute spell power using stat scales
-			float scaledAttack =
-				finalStats.strength * spell.strScale +
-				finalStats.dexterity * spell.dexScale +
-				finalStats.intellect * spell.intScale +
-				spell.flatDamage;
-
-			int base_damage = 0;
-			float variance = 1.0f;
-
-			if (!targetIsSelf) {
-				// Magic partially ignores defense instead of fully ignoring it
-				int targetDefense = player.currentOpponent->defense;
-				if (spell.isMagic) {
-					// 40% defense penetration: spells feel good vs tanky enemies
-					targetDefense = static_cast<int>(std::round(targetDefense * 0.4f));
-				}
-
-				base_damage = damage_after_defense(scaledAttack, targetDefense);
-
-				// Tight-ish variance for consistency (0.9–1.1)
-				variance = 0.9f + (static_cast<float>(rand() % 21) / 100.0f);
-
-				int dmg = std::max(1, static_cast<int>(std::round(base_damage * variance)));
-
-				// Spells can crit too (fun!)
-				float critChance = crit_chance_for_player(finalStats, player.currentClass);
-				if (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) < critChance) {
-					ClassCritTuning t = getCritTuning(player.currentClass);
-					dmg = static_cast<int>(std::round(dmg * t.critMultiplier));
-					send("SERVER:COMBAT_LOG:Your " + spellName + " critically hits!");
-				}
-
-				player_damage = dmg;
-
-				std::string log_msg =
-					"SERVER:COMBAT_LOG:You cast " + spellName +
-					" for " + std::to_string(player_damage) + " damage!";
-				send(log_msg);
+			size_t colon_pos = action_command.find(':');
+			if (colon_pos != std::string::npos) {
+				action_type = action_command.substr(0, colon_pos);
+				action_param = action_command.substr(colon_pos + 1);
 			}
 			else {
-				// Self-target spells (none for wizard yet, but future-proof)
-				player_damage = 0;
-				send("SERVER:COMBAT_LOG:You cast " + spellName + " on yourself.");
+				action_type = action_command;
 			}
 
-			// Apply status effects from the spell definition
-			if (spell.appliesStatus) {
-				bool applyStatus = true;
+			// Build the action struct
+			CombatAction action;
+			action.actorId = player.userId;
+			action.type = action_type;
+			action.param = action_param;
+			action.speed = getCalculatedStats().speed; // Used for sorting turn order later
 
-				StatusEffect eff;
-				eff.type = spell.statusType;
-				eff.magnitude = spell.statusMagnitude;
-				eff.remainingTurns = spell.statusDuration;
-				eff.appliedByPlayer = true;
+			// Queue the action in the shared party state
+			{
+				// Lock needed if multiple players write to pendingActions simultaneously
+				// (g_parties_mutex is usually coarse, ideally Party has its own mutex, 
+				// but for now we rely on the single-thread nature of the session logic 
+				std::lock_guard<std::mutex> lock(g_parties_mutex);
+				party->activeCombat->pendingActions[player.userId] = action;
+			}
 
-				// Special behavior: Lightning stun is chance-based
-				if (spellName == "Lightning" && spell.statusType == StatusType::STUN) {
-					int baseChance = 20;                   // 20% base
-					int fromLuck = finalStats.luck / 2;  // +0.5% per LUCK
-					int finalChance = baseChance + fromLuck;
-					if (finalChance > 70) finalChance = 70;
-					if (finalChance < 20) finalChance = 20;
+			send("SERVER:COMBAT_LOG:Action queued. Waiting for party...");
 
-					int roll = rand() % 100;
-					if (roll >= finalChance) {
-						applyStatus = false;
-						send("SERVER:COMBAT_LOG:The lightning crackles, but fails to stun.");
+			// Check if everyone has acted
+			bool all_acted = false;
+			{
+				std::lock_guard<std::mutex> lock(g_parties_mutex);
+				if (party->activeCombat->pendingActions.size() >= party->activeCombat->participantIds.size()) {
+					all_acted = true;
+				}
+			}
+
+			// If everyone is ready, resolve the round immediately
+			if (all_acted) {
+				resolve_party_round(party);
+			}
+		}
+		else {
+
+
+			if (!player.isInCombat || !player.currentOpponent) {
+				send("SERVER:ERROR:You are not in combat.");
+				return; // Return early
+			}
+
+			// --- Get the ID of the monster you are fighting ---
+			int current_monster_spawn_id = player.currentOpponent->id;
+
+			int extraDefFromBuffs = 0;
+			bool monsterStunnedThisTurn = false;
+
+			// This lambda replaces the logic you removed from getCalculatedStats
+			auto apply_statuses_to_player_and_get_stats = [&]() -> PlayerStats {
+				// 1. Get base stats + equipment stats
+				PlayerStats stats = getCalculatedStats();
+
+				int totalDefBuff = 0;
+				int totalDot = 0;
+
+				// 2. Iterate the list ONCE
+				auto& effects = player.activeStatusEffects;
+				for (auto it = effects.begin(); it != effects.end(); ) {
+					StatusEffect& eff = *it;
+
+					// 3. Apply all buffs/debuffs/DoTs in one place
+					switch (eff.type) {
+					case StatusType::BURN:
+					case StatusType::BLEED: {
+						int dmg = eff.magnitude;
+						if (eff.type == StatusType::BURN) { dmg += stats.intellect / 20; }
+						else { dmg += stats.dexterity / 25; }
+						if (dmg < 1) dmg = 1;
+						totalDot += dmg;
+
+						// --- FIX: Allow health to go to 0 or below ---
+						player.stats.health -= dmg;
+						// --- END FIX ---
+
+						break;
+					}
+					case StatusType::DEFENSE_UP: {
+						totalDefBuff += eff.magnitude;
+						break;
+					}
+					case StatusType::ATTACK_UP: {
+						stats.strength += eff.magnitude;
+						stats.dexterity += eff.magnitude;
+						break;
+					}
+					case StatusType::ATTACK_DOWN: {
+						stats.strength -= eff.magnitude;
+						stats.dexterity -= eff.magnitude;
+						break;
+					}
+					case StatusType::DEFENSE_DOWN: {
+						stats.defense -= eff.magnitude;
+						break;
+					}
+					case StatusType::SPEED_UP: {
+						stats.speed += eff.magnitude;
+						break;
+					}
+					case StatusType::SPEED_DOWN: {
+						stats.speed -= eff.magnitude;
+						break;
+					}
+											   // MANA_UP/DOWN are primarily handled during the combat tick, but can affect max mana/regen here if needed.
+											   // Assuming magnitude applies to mana pool or regen over time (leaving base stats unchanged here).
+					case StatusType::MANA_UP: {
+						player.stats.mana = std::min(stats.maxMana, player.stats.mana + eff.magnitude);
+						break;
+					}
+					case StatusType::MANA_DOWN: {
+						player.stats.mana = std::max(0, player.stats.mana - eff.magnitude);
+						break;
+					}
+					default:
+						break;
+					}
+
+					// 4. Tick down duration and erase if expired
+					eff.remainingTurns--;
+					if (eff.remainingTurns <= 0) {
+						it = effects.erase(it); // Safe to erase here
+					}
+					else {
+						++it;
 					}
 				}
 
-				// Fireball burn scales a bit with INT
-				if (spellName == "Fireball" && spell.statusType == StatusType::BURN) {
-					eff.magnitude += std::max(1, finalStats.intellect / 10);
+				if (totalDot > 0) {
+					send("SERVER:COMBAT_LOG:You suffer " + std::to_string(totalDot) +
+						" damage from ongoing effects!");
+					send_player_stats(); // Now safe, getCalculatedStats() doesn't loop
 				}
 
-				if (applyStatus) {
+				extraDefFromBuffs = totalDefBuff;
+
+				// 5. Clamp stats and return them
+				stats.strength = std::max(0, stats.strength);
+				stats.dexterity = std::max(0, stats.dexterity);
+				stats.defense = std::max(0, stats.defense);
+				stats.speed = std::max(0, stats.speed);
+
+				return stats;
+				};
+
+			// This lambda for the monster is mostly unchanged and safe
+			auto apply_statuses_to_monster = [&]() {
+				if (!player.currentOpponent) return;
+				int totalDot = 0;
+				auto& effects = player.currentOpponent->activeStatusEffects;
+
+				for (auto it = effects.begin(); it != effects.end(); ) {
+					StatusEffect& eff = *it;
+					switch (eff.type) {
+					case StatusType::BURN:
+					case StatusType::BLEED: {
+						int dmg = eff.magnitude;
+						if (dmg < 1) dmg = 1;
+						totalDot += dmg;
+						player.currentOpponent->health =
+							std::max(1, player.currentOpponent->health - dmg);
+						break;
+					}
+					case StatusType::STUN: {
+						monsterStunnedThisTurn = true;
+						break;
+					}
+					default:
+						break;
+					}
+					eff.remainingTurns--;
+					if (eff.remainingTurns <= 0) {
+						it = effects.erase(it);
+					}
+					else {
+						++it;
+					}
+				}
+				if (totalDot > 0) {
+					send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
+						" suffers " + std::to_string(totalDot) + " damage!");
+					std::string update = "SERVER:COMBAT_UPDATE:" + std::to_string(player.currentOpponent->health);
+					send(update);
+				}
+				};
+
+
+			PlayerStats finalStats = apply_statuses_to_player_and_get_stats();
+
+			apply_statuses_to_monster(); // Apply monster DoTs/Stuns
+
+			// --- NEW FIX: Check for player death from DoTs ---
+			if (player.stats.health <= 0) {
+				player.stats.health = 0;
+				send("SERVER:COMBAT_DEFEAT:You have been defeated by your wounds!");
+				player.isInCombat = false;
+
+				// Respawn monster
+				respawn_monster_immediately(player.currentArea, current_monster_spawn_id);
+
+				player.currentOpponent.reset();
+				player.currentArea = "TOWN"; player.currentMonsters.clear();
+				player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
+				player.posX = 26; player.posY = 12; player.currentPath.clear();
+				broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
+				{ std::lock_guard<std::mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
+
+				send("SERVER:AREA_CHANGED:TOWN");
+				send_area_map_data(player.currentArea);
+				SyncPlayerMonsters(player); // Syncs to TOWN
+				send_current_monsters_list();
+				send_available_areas();
+				send_player_stats();
+				return; // Exit combat action
+			}
+			// --- END NEW FIX ---
+
+
+			// --- (Rest of your combat logic begins here) ---
+			std::string action_command = message.substr(14);
+			std::string action_type; std::string action_param;
+			size_t colon_pos = action_command.find(':');
+			if (colon_pos != std::string::npos) { action_type = action_command.substr(0, colon_pos); action_param = action_command.substr(colon_pos + 1); }
+			else { action_type = action_command; }
+
+			int player_damage = 0; int mana_cost = 0; bool fled = false;
+			if (action_type == "ATTACK") {
+				float attackPower = attack_power_for_player(finalStats, player.currentClass);
+				int base_damage = damage_after_defense(attackPower, player.currentOpponent->defense);
+
+				float variance = 0.85f + ((float)(rand() % 31) / 100.0f); // 0.85–1.15
+				int dmg = std::max(1, (int)(base_damage * variance));
+
+				float crit_chance = crit_chance_for_player(finalStats, player.currentClass);
+				if (((float)rand() / RAND_MAX) < crit_chance) {
+					ClassCritTuning t = getCritTuning(player.currentClass);
+					dmg = (int)std::round(dmg * t.critMultiplier);
+					send("SERVER:COMBAT_LOG:A critical hit!");
+				}
+
+				player_damage = dmg; // then use your existing code that subtracts HP and logs
+				std::string log_msg =
+					"SERVER:COMBAT_LOG:You attack the " + player.currentOpponent->type +
+					" for " + std::to_string(player_damage) + " damage!";
+				send(log_msg);
+			}
+			else if (action_type == "SPELL") {
+				std::string spellName = action_param;
+
+				// Look up the spell definition
+				auto itSkill = g_skill_defs.find(spellName);
+				if (itSkill == g_skill_defs.end() || itSkill->second.type != SkillType::SPELL) {
+					send("SERVER:COMBAT_LOG:Unknown spell: " + spellName);
+					return;
+				}
+				const SkillDefinition& spell = itSkill->second;
+
+				// Make sure the player actually knows this spell
+				bool knows_spell = false;
+				for (const auto& s : player.temporary_spells_list) {
+					if (s == spellName) {
+						knows_spell = true;
+						break;
+					}
+				}
+				if (!knows_spell) {
+					send("SERVER:COMBAT_LOG:You don't know that spell!");
+					return;
+				}
+
+				// Class requirement check
+				SkillClass playerSkillClass = SkillClass::ANY;
+				switch (player.currentClass) {
+				case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
+				case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
+				case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
+				default:                   playerSkillClass = SkillClass::ANY;     break;
+				}
+
+				if (spell.requiredClass != SkillClass::ANY &&
+					spell.requiredClass != playerSkillClass) {
+					send("SERVER:COMBAT_LOG:You cannot cast that spell with your class.");
+					return;
+				}
+
+				// Mana check
+				if (player.stats.mana < spell.manaCost) {
+					send(
+						"SERVER:COMBAT_LOG:Not enough mana to cast " + spellName +
+						"! (Needs " + std::to_string(spell.manaCost) + ")"
+					);
+					return;
+				}
+
+				player.stats.mana -= spell.manaCost;
+
+				bool targetIsSelf = (spell.target == SkillTarget::SELF);
+
+				// Compute spell power using stat scales
+				float scaledAttack =
+					finalStats.strength * spell.strScale +
+					finalStats.dexterity * spell.dexScale +
+					finalStats.intellect * spell.intScale +
+					spell.flatDamage;
+
+				int base_damage = 0;
+				float variance = 1.0f;
+
+				if (!targetIsSelf) {
+					// Magic partially ignores defense instead of fully ignoring it
+					int targetDefense = player.currentOpponent->defense;
+					if (spell.isMagic) {
+						// 40% defense penetration: spells feel good vs tanky enemies
+						targetDefense = static_cast<int>(std::round(targetDefense * 0.4f));
+					}
+
+					base_damage = damage_after_defense(scaledAttack, targetDefense);
+
+					// Tight-ish variance for consistency (0.9–1.1)
+					variance = 0.9f + (static_cast<float>(rand() % 21) / 100.0f);
+
+					int dmg = std::max(1, static_cast<int>(std::round(base_damage * variance)));
+
+					// Spells can crit too (fun!)
+					float critChance = crit_chance_for_player(finalStats, player.currentClass);
+					if (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) < critChance) {
+						ClassCritTuning t = getCritTuning(player.currentClass);
+						dmg = static_cast<int>(std::round(dmg * t.critMultiplier));
+						send("SERVER:COMBAT_LOG:Your " + spellName + " critically hits!");
+					}
+
+					player_damage = dmg;
+
+					std::string log_msg =
+						"SERVER:COMBAT_LOG:You cast " + spellName +
+						" for " + std::to_string(player_damage) + " damage!";
+					send(log_msg);
+				}
+				else {
+					// Self-target spells (none for wizard yet, but future-proof)
+					player_damage = 0;
+					send("SERVER:COMBAT_LOG:You cast " + spellName + " on yourself.");
+				}
+
+				// Apply status effects from the spell definition
+				if (spell.appliesStatus) {
+					bool applyStatus = true;
+
+					StatusEffect eff;
+					eff.type = spell.statusType;
+					eff.magnitude = spell.statusMagnitude;
+					eff.remainingTurns = spell.statusDuration;
+					eff.appliedByPlayer = true;
+
+					// Special behavior: Lightning stun is chance-based
+					if (spellName == "Lightning" && spell.statusType == StatusType::STUN) {
+						int baseChance = 20;                    // 20% base
+						int fromLuck = finalStats.luck / 2;  // +0.5% per LUCK
+						int finalChance = baseChance + fromLuck;
+						if (finalChance > 70) finalChance = 70;
+						if (finalChance < 20) finalChance = 20;
+
+						int roll = rand() % 100;
+						if (roll >= finalChance) {
+							applyStatus = false;
+							send("SERVER:COMBAT_LOG:The lightning crackles, but fails to stun.");
+						}
+					}
+
+					// Fireball burn scales a bit with INT
+					if (spellName == "Fireball" && spell.statusType == StatusType::BURN) {
+						eff.magnitude += std::max(1, finalStats.intellect / 10);
+					}
+
+					if (applyStatus) {
+						if (targetIsSelf) {
+							player.activeStatusEffects.push_back(eff);
+						}
+						else {
+							player.currentOpponent->activeStatusEffects.push_back(eff);
+						}
+
+						std::string statusMsg;
+						switch (spell.statusType) {
+						case StatusType::BURN:
+							statusMsg = targetIsSelf
+								? "You are burning!"
+								: "The " + player.currentOpponent->type + " is set ablaze!";
+							break;
+						case StatusType::STUN:
+							statusMsg = targetIsSelf
+								? "You are stunned!"
+								: "The " + player.currentOpponent->type + " is stunned!";
+							break;
+						default:
+							statusMsg = targetIsSelf
+								? "You are affected by a status effect."
+								: "The " + player.currentOpponent->type + " is affected by a status effect.";
+							break;
+						}
+
+						send("SERVER:COMBAT_LOG:" + statusMsg);
+					}
+				}
+			}
+
+			else if (action_type == "SKILL") {
+				std::string skillName = action_param;
+
+				// Look up the skill in the global registry
+				auto itSkill = g_skill_defs.find(skillName);
+				if (itSkill == g_skill_defs.end()) {
+					send("SERVER:COMBAT_LOG:Unknown skill: " + skillName);
+					return;
+				}
+
+				const SkillDefinition& skill = itSkill->second;
+
+				// Optional: require that the player actually "knows" this skill
+				bool knows_skill = false;
+				for (const auto& s : player.temporary_spells_list) {
+					if (s == skillName) {
+						knows_skill = true;
+						break;
+					}
+				}
+				if (!knows_skill) {
+					send("SERVER:COMBAT_LOG:You don't know that skill!");
+					return;
+				}
+
+				// Check class match
+				SkillClass playerSkillClass = SkillClass::ANY;
+				switch (player.currentClass) {
+				case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
+				case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
+				case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
+				default:                   playerSkillClass = SkillClass::ANY;     break;
+				}
+
+				if (skill.requiredClass != SkillClass::ANY &&
+					skill.requiredClass != playerSkillClass) {
+					send("SERVER:COMBAT_LOG:You cannot use that skill with your class.");
+					return;
+				}
+
+				// Check mana cost
+				if (player.stats.mana < skill.manaCost) {
+					send("SERVER:COMBAT_LOG:Not enough mana to use " + skillName + "!");
+					return;
+				}
+
+				player.stats.mana -= skill.manaCost;
+
+				bool targetIsSelf = (skill.target == SkillTarget::SELF);
+
+				// Compute skill-based attack power using player stats and skill scales
+				float scaledAttack =
+					finalStats.strength * skill.strScale +
+					finalStats.dexterity * skill.dexScale +
+					finalStats.intellect * skill.intScale +
+					skill.flatDamage;
+
+				int base_damage = 0;
+
+				if (!targetIsSelf) {
+					// Offensive skill at the opponent
+					int targetDefense = player.currentOpponent->defense;
+					base_damage = damage_after_defense(scaledAttack, targetDefense);
+
+					float variance = 0.9f + ((float)(rand() % 21) / 100.0f); // 0.9–1.1
+					int dmg = std::max(1, (int)std::round(base_damage * variance));
+
+					// Let skills crit like basic attacks
+					float critChance = crit_chance_for_player(finalStats, player.currentClass);
+					if (((float)rand() / RAND_MAX) < critChance) {
+						ClassCritTuning t = getCritTuning(player.currentClass);
+						dmg = (int)std::round(dmg * t.critMultiplier);
+						send("SERVER:COMBAT_LOG:A critical " + skillName + "!");
+					}
+
+					player_damage = dmg;
+
+					std::string log_msg =
+						"SERVER:COMBAT_LOG:You use " + skillName + " on the " +
+						player.currentOpponent->type + " for " +
+						std::to_string(player_damage) + " damage!";
+					send(log_msg);
+				}
+				else {
+					// Defensive / self-target skill (e.g., ShieldWall)
+					player_damage = 0;
+					std::string log_msg =
+						"SERVER:COMBAT_LOG:You use " + skillName + " on yourself.";
+					send(log_msg);
+				}
+
+				// Apply status effect if the skill has one
+				if (skill.appliesStatus) {
+					StatusEffect eff;
+					eff.type = skill.statusType;
+					eff.magnitude = skill.statusMagnitude;
+					eff.appliedByPlayer = true;
+
+					// Base duration from the skill definition
+					int baseDuration = skill.statusDuration;
+					int bonusTurns = 0;
+
+					// Small stat-based chance to extend duration by +1 turn
+					switch (skill.statusType) {
+					case StatusType::BURN: {
+						// Wizards with higher INT get better burns
+						int chance = std::min(50, finalStats.intellect); // 0–50%
+						if ((rand() % 100) < chance) {
+							bonusTurns = 1;
+						}
+						break;
+					}
+					case StatusType::BLEED: {
+						// Rogues with higher DEX get better bleeds
+						int chance = std::min(50, finalStats.dexterity); // 0–50%
+						if ((rand() % 100) < chance) {
+							bonusTurns = 1;
+						}
+						break;
+					}
+					case StatusType::DEFENSE_UP: {
+						// Warriors with higher LUCK might keep their shield up longer
+						int chance = std::min(40, finalStats.luck); // up to 40%
+						if ((rand() % 100) < chance) {
+							bonusTurns = 1;
+						}
+						break;
+					}
+					default:
+						// other status types: no bonus for now
+						break;
+					}
+
+					eff.remainingTurns = baseDuration + bonusTurns;
+					if (eff.remainingTurns < 1) eff.remainingTurns = 1;
+
 					if (targetIsSelf) {
 						player.activeStatusEffects.push_back(eff);
 					}
 					else {
 						player.currentOpponent->activeStatusEffects.push_back(eff);
 					}
+					if (!targetIsSelf &&
+						(skill.statusType == StatusType::BURN || skill.statusType == StatusType::BLEED)) {
+						apply_statuses_to_monster();
+					}
 
+					if (bonusTurns > 0) {
+						send(
+							"SERVER:COMBAT_LOG:The effects of " + skillName +
+							" linger longer than usual!"
+						);
+					}
+
+					// Flavor log about the effect itself
 					std::string statusMsg;
-					switch (spell.statusType) {
-					case StatusType::BURN:
-						statusMsg = targetIsSelf
-							? "You are burning!"
-							: "The " + player.currentOpponent->type + " is set ablaze!";
-						break;
-					case StatusType::STUN:
-						statusMsg = targetIsSelf
-							? "You are stunned!"
-							: "The " + player.currentOpponent->type + " is stunned!";
-						break;
-					default:
-						statusMsg = targetIsSelf
-							? "You are affected by a status effect."
-							: "The " + player.currentOpponent->type + " is affected by a status effect.";
-						break;
+					switch (skill.statusType) {
+					case StatusType::BURN:       statusMsg = "burns";                break;
+					case StatusType::BLEED:      statusMsg = "makes bleed";          break;
+					case StatusType::DEFENSE_UP: statusMsg = "bolsters the defense of"; break;
+					default:                     statusMsg = "affects";              break;
 					}
 
-					send("SERVER:COMBAT_LOG:" + statusMsg);
-				}
-			}
-		}
-
-		else if (action_type == "SKILL") {
-			std::string skillName = action_param;
-
-			// Look up the skill in the global registry
-			auto itSkill = g_skill_defs.find(skillName);
-			if (itSkill == g_skill_defs.end()) {
-				send("SERVER:COMBAT_LOG:Unknown skill: " + skillName);
-				return;
-			}
-
-			const SkillDefinition& skill = itSkill->second;
-
-			// Optional: require that the player actually "knows" this skill
-			bool knows_skill = false;
-			for (const auto& s : player.temporary_spells_list) {
-				if (s == skillName) {
-					knows_skill = true;
-					break;
-				}
-			}
-			if (!knows_skill) {
-				send("SERVER:COMBAT_LOG:You don't know that skill!");
-				return;
-			}
-
-			// Check class match
-			SkillClass playerSkillClass = SkillClass::ANY;
-			switch (player.currentClass) {
-			case PlayerClass::FIGHTER: playerSkillClass = SkillClass::WARRIOR; break;
-			case PlayerClass::ROGUE:   playerSkillClass = SkillClass::ROGUE;   break;
-			case PlayerClass::WIZARD:  playerSkillClass = SkillClass::WIZARD;  break;
-			default:                   playerSkillClass = SkillClass::ANY;     break;
-			}
-
-			if (skill.requiredClass != SkillClass::ANY &&
-				skill.requiredClass != playerSkillClass) {
-				send("SERVER:COMBAT_LOG:You cannot use that skill with your class.");
-				return;
-			}
-
-			// Check mana cost
-			if (player.stats.mana < skill.manaCost) {
-				send("SERVER:COMBAT_LOG:Not enough mana to use " + skillName + "!");
-				return;
-			}
-
-			player.stats.mana -= skill.manaCost;
-
-			bool targetIsSelf = (skill.target == SkillTarget::SELF);
-
-			// Compute skill-based attack power using player stats and skill scales
-			float scaledAttack =
-				finalStats.strength * skill.strScale +
-				finalStats.dexterity * skill.dexScale +
-				finalStats.intellect * skill.intScale +
-				skill.flatDamage;
-
-			int base_damage = 0;
-
-			if (!targetIsSelf) {
-				// Offensive skill at the opponent
-				int targetDefense = player.currentOpponent->defense;
-				base_damage = damage_after_defense(scaledAttack, targetDefense);
-
-				float variance = 0.9f + ((float)(rand() % 21) / 100.0f); // 0.9–1.1
-				int dmg = std::max(1, (int)std::round(base_damage * variance));
-
-				// Let skills crit like basic attacks
-				float critChance = crit_chance_for_player(finalStats, player.currentClass);
-				if (((float)rand() / RAND_MAX) < critChance) {
-					ClassCritTuning t = getCritTuning(player.currentClass);
-					dmg = (int)std::round(dmg * t.critMultiplier);
-					send("SERVER:COMBAT_LOG:A critical " + skillName + "!");
-				}
-
-				player_damage = dmg;
-
-				std::string log_msg =
-					"SERVER:COMBAT_LOG:You use " + skillName + " on the " +
-					player.currentOpponent->type + " for " +
-					std::to_string(player_damage) + " damage!";
-				send(log_msg);
-			}
-			else {
-				// Defensive / self-target skill (e.g., ShieldWall)
-				player_damage = 0;
-				std::string log_msg =
-					"SERVER:COMBAT_LOG:You use " + skillName + " on yourself.";
-				send(log_msg);
-			}
-
-			// Apply status effect if the skill has one
-			if (skill.appliesStatus) {
-				StatusEffect eff;
-				eff.type = skill.statusType;
-				eff.magnitude = skill.statusMagnitude;
-				eff.appliedByPlayer = true;
-
-				// Base duration from the skill definition
-				int baseDuration = skill.statusDuration;
-				int bonusTurns = 0;
-
-				// Small stat-based chance to extend duration by +1 turn
-				switch (skill.statusType) {
-				case StatusType::BURN: {
-					// Wizards with higher INT get better burns
-					int chance = std::min(50, finalStats.intellect); // 0–50%
-					if ((rand() % 100) < chance) {
-						bonusTurns = 1;
-					}
-					break;
-				}
-				case StatusType::BLEED: {
-					// Rogues with higher DEX get better bleeds
-					int chance = std::min(50, finalStats.dexterity); // 0–50%
-					if ((rand() % 100) < chance) {
-						bonusTurns = 1;
-					}
-					break;
-				}
-				case StatusType::DEFENSE_UP: {
-					// Warriors with higher LUCK might keep their shield up longer
-					int chance = std::min(40, finalStats.luck); // up to 40%
-					if ((rand() % 100) < chance) {
-						bonusTurns = 1;
-					}
-					break;
-				}
-				default:
-					// other status types: no bonus for now
-					break;
-				}
-
-				eff.remainingTurns = baseDuration + bonusTurns;
-				if (eff.remainingTurns < 1) eff.remainingTurns = 1;
-
-				if (targetIsSelf) {
-					player.activeStatusEffects.push_back(eff);
-				}
-				else {
-					player.currentOpponent->activeStatusEffects.push_back(eff);
-				}
-				if (!targetIsSelf &&
-					(skill.statusType == StatusType::BURN || skill.statusType == StatusType::BLEED)) {
-					apply_statuses_to_monster();
-				}
-
-				if (bonusTurns > 0) {
-					send(
-						"SERVER:COMBAT_LOG:The effects of " + skillName +
-						" linger longer than usual!"
-					);
-				}
-
-				// Flavor log about the effect itself
-				std::string statusMsg;
-				switch (skill.statusType) {
-				case StatusType::BURN:       statusMsg = "burns";                break;
-				case StatusType::BLEED:      statusMsg = "makes bleed";          break;
-				case StatusType::DEFENSE_UP: statusMsg = "bolsters the defense of"; break;
-				default:                     statusMsg = "affects";              break;
-				}
-
-				if (targetIsSelf) {
-					send(
-						"SERVER:COMBAT_LOG:Your " + skillName + " " + statusMsg + " you."
-					);
-				}
-				else {
-					send(
-						"SERVER:COMBAT_LOG:Your " + skillName + " " + statusMsg +
-						" the " + player.currentOpponent->type + "."
-					);
-				}
-			}
-		}
-		else if (action_type == "DEFEND") {
-			player.isDefending = true;
-			send("SERVER:COMBAT_LOG:You brace for the next attack.");
-		}
-
-		else if (action_type == "FLEE") {
-			// FIX: Use -> access and std::max/min
-			float flee_chance = 0.5f + ((float)finalStats.speed - (float)player.currentOpponent->speed) * 0.05f + ((float)finalStats.luck * 0.01f);
-			flee_chance = std::max(0.1f, std::min(0.9f, flee_chance));
-			if (((float)rand() / RAND_MAX) < flee_chance) { fled = true; }
-			else { send("SERVER:COMBAT_LOG:You failed to flee!"); }
-		}
-
-		if (fled) {
-			// FIX: Store string
-			std::string log_msg = "SERVER:COMBAT_LOG:You successfully fled from the " + player.currentOpponent->type + "!";
-			send(log_msg);
-			player.isInCombat = false;
-
-			// --- MODIFICATION ---
-			respawn_monster_immediately(player.currentArea, current_monster_spawn_id);
-
-			player.currentOpponent.reset();
-			send("SERVER:COMBAT_VICTORY:Fled");
-			//SyncPlayerMonsters(player); // DO NOT SYNC
-			send_current_monsters_list();
-			return;
-		}
-
-		// FIX: Use -> access
-		if (player_damage > 0) { player.currentOpponent->health -= player_damage; }
-		send_player_stats();
-		// FIX: Store string
-		std::string combat_update = "SERVER:COMBAT_UPDATE:" + to_string(player.currentOpponent->health);
-		send(combat_update);
-
-		// FIX: Use -> access
-		if (player.currentOpponent->health <= 0) {
-			std::string log_msg_1 = "SERVER:COMBAT_LOG:You defeated the " + player.currentOpponent->type + "!";
-			send(log_msg_1);
-
-			int xp_gain = player.currentOpponent->xpReward;
-			std::string log_msg_2 = "SERVER:STATUS:Gained " + to_string(xp_gain) + " XP.";
-			send(log_msg_2);
-
-			player.stats.experience += xp_gain;
-			int lootTier = player.currentOpponent->lootTier;
-			const std::vector<std::string> ALL_SKILL_BOOKS = {
-			"BOOK_SUNDER_ARMOR", "BOOK_PUMMEL", "BOOK_ENRAGE", "BOOK_WHIRLWIND", "BOOK_SECOND_WIND",
-			"BOOK_VENOMOUS_SHANK", "BOOK_CRIPPLING_STRIKE", "BOOK_EVASION", "BOOK_GOUGE", "BOOK_BACKSTAB",
-			"BOOK_FROST_NOVA", "BOOK_ARCANE_INTELLECT", "BOOK_LESSER_HEAL", "BOOK_MANA_SHIELD", "BOOK_PYROBLAST"
-			};
-
-			// Check if monster tier is 2 or higher
-			if (player.currentOpponent->lootTier >= 2) {
-				// 0.5% chance = 5 in 1000 roll
-				int skillBookDropChance = 5; // (0.5 * 1000)
-
-				// Roll 0 to 999
-				if ((rand() % 1000) < skillBookDropChance) {
-					// Successful drop! Pick one book at random.
-					int bookIndex = rand() % ALL_SKILL_BOOKS.size();
-					std::string droppedBookId = ALL_SKILL_BOOKS[bookIndex];
-
-					// Add the item to inventory
-					addItemToInventory(droppedBookId, 1);
-
-					send("SERVER:STATUS:A rare tome drops! You found a " + itemDatabase.at(droppedBookId).name + "!");
-
-					std::cout << "[LOOT DEBUG] RARE DROP SUCCESS: Skill Book (" << droppedBookId << ") from Tier "
-						<< player.currentOpponent->lootTier << " monster." << std::endl;
-				}
-			}
-			if (lootTier != -1) {
-				// 1) Base drop chance defined per monster (0–100)
-				int baseDropChance = player.currentOpponent->dropChance;
-
-				// Example: 0 luck = 1.0x, 10 luck ≈ 1.3x, 25 luck ≈ 1.5x, 50 luck ≈ 1.7x
-				double luckMultiplier = 1.0 + (std::sqrt(static_cast<double>(player.stats.luck)) / 15.0);
-				if (luckMultiplier > 1.8) {
-					luckMultiplier = 1.8;
-				}
-
-				// Tier 1 = 1.0, Tier 2 ≈ 0.85, Tier 3 ≈ 0.70, Tier 4 ≈ 0.55, Tier 5 ≈ 0.40 (min)
-				int tierIndex = std::max(0, lootTier - 1);
-				double tierModifier = 1.0 - (tierIndex * 0.15);
-				if (tierModifier < 0.4) {
-					tierModifier = 0.4;
-				}
-
-				// 4) Final chance
-				double finalDropChance = baseDropChance * luckMultiplier * tierModifier;
-
-				// Clamp between 5% and 75% so it never feels impossible or guaranteed
-				if (finalDropChance < 5.0) finalDropChance = 5.0;
-				if (finalDropChance > 75.0) finalDropChance = 75.0;
-
-				// 5) Roll 0–99
-				int roll = rand() % 100;
-
-				std::cout << "[DEBUG] Drop roll: " << roll
-					<< " | Chance: " << finalDropChance
-					<< "% | Luck: " << player.stats.luck
-					<< " | Tier: " << lootTier << std::endl;
-
-				if (roll < finalDropChance) {
-					// 6) Build a candidate list of items for this tier
-					std::vector<std::string> possibleItems;
-					for (const auto& [itemId, def] : itemDatabase) {
-						if (def.item_tier == lootTier) {
-							possibleItems.push_back(itemId);
-						}
-					}
-
-					if (!possibleItems.empty()) {
-						int itemIndex = rand() % static_cast<int>(possibleItems.size());
-						std::string itemId = possibleItems[itemIndex];
-
-						addItemToInventory(itemId, 1);
-
-						const ItemDefinition& def = itemDatabase.at(itemId);
-						std::string log_msg_3 =
-							"SERVER:STATUS:The " + player.currentOpponent->type +
-							" dropped: " + def.name + "!";
-						send(log_msg_3);
-
-						std::cout << "[LOOT DEBUG] roll=" << roll
-							<< " finalDropChance=" << finalDropChance
-							<< " possibleItems=" << possibleItems.size()
-							<< " item=" << itemId
-							<< std::endl;
+					if (targetIsSelf) {
+						send(
+							"SERVER:COMBAT_LOG:Your " + skillName + " " + statusMsg + " you."
+						);
 					}
 					else {
-						std::cout << "[LOOT DEBUG] No items defined for tier "
-							<< lootTier << std::endl;
+						send(
+							"SERVER:COMBAT_LOG:Your " + skillName + " " + statusMsg +
+							" the " + player.currentOpponent->type + "."
+						);
 					}
 				}
 			}
+			else if (action_type == "DEFEND") {
+				player.isDefending = true;
+				send("SERVER:COMBAT_LOG:You brace for the next attack.");
+			}
 
-			send("SERVER:COMBAT_VICTORY:Defeated");
-			player.isInCombat = false;
+			else if (action_type == "FLEE") {
+				// FIX: Use -> access and std::max/min
+				float flee_chance = 0.5f + ((float)finalStats.speed - (float)player.currentOpponent->speed) * 0.05f + ((float)finalStats.luck * 0.01f);
+				flee_chance = std::max(0.1f, std::min(0.9f, flee_chance));
+				if (((float)rand() / RAND_MAX) < flee_chance) { fled = true; }
+				else { send("SERVER:COMBAT_LOG:You failed to flee!"); }
+			}
 
-			// --- MODIFICATION ---
-			const int RESPAWN_TIME_SECONDS = 15; // <-- CHANGED FROM 60
-			set_monster_respawn_timer(player.currentArea, current_monster_spawn_id, RESPAWN_TIME_SECONDS);
+			if (fled) {
+				// FIX: Store string
+				std::string log_msg = "SERVER:COMBAT_LOG:You successfully fled from the " + player.currentOpponent->type + "!";
+				send(log_msg);
+				player.isInCombat = false;
 
-			player.currentOpponent.reset();
-			check_for_level_up();
+				// --- MODIFICATION ---
+				respawn_monster_immediately(player.currentArea, current_monster_spawn_id);
 
-			// --- THIS IS THE FIX ---
-			// DELETE this line: send_current_monsters_list();
-			// ADD this line:
-			broadcast_monster_list(player.currentArea);
-			// --- END FIX ---
+				player.currentOpponent.reset();
+				send("SERVER:COMBAT_VICTORY:Fled");
+				//SyncPlayerMonsters(player); // DO NOT SYNC
+				send_current_monsters_list();
+				return;
+			}
 
+			// FIX: Use -> access
+			if (player_damage > 0) { player.currentOpponent->health -= player_damage; }
 			send_player_stats();
-			// DELETE this line (it was a duplicate): send_curre
-			return;
-		}
+			// FIX: Store string
+			std::string combat_update = "SERVER:COMBAT_UPDATE:" + to_string(player.currentOpponent->health);
+			send(combat_update);
 
-		// --- Start of Monster Turn ---
+			// FIX: Use -> access
+			if (player.currentOpponent->health <= 0) {
+				std::string log_msg_1 = "SERVER:COMBAT_LOG:You defeated the " + player.currentOpponent->type + "!";
+				send(log_msg_1);
 
-		if (monsterStunnedThisTurn) {
-			send(
-				"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
-				" is stunned and cannot act!"
-			);
-			send("SERVER:COMBAT_TURN:Your turn.");
-			return;
-		}
+				int xp_gain = player.currentOpponent->xpReward;
+				std::string log_msg_2 = "SERVER:STATUS:Gained " + to_string(xp_gain) + " XP.";
+				send(log_msg_2);
 
-		// --- NEW: DODGE CHECK ---
-		float dodge_chance = dodge_chance_for_player(finalStats, player.currentClass);
-		if (((float)rand() / RAND_MAX) < dodge_chance) {
-			// The player dodged the attack!
-			player.isDefending = false; // Reset defend state
-			send("SERVER:COMBAT_LOG:You swiftly dodged the " + player.currentOpponent->type + "'s attack!");
-			send("SERVER:COMBAT_TURN:Your turn.");
-			return;
-		}
-		// --- END DODGE CHECK ---
+				player.stats.experience += xp_gain;
+				int lootTier = player.currentOpponent->lootTier;
+				const std::vector<std::string> ALL_SKILL_BOOKS = {
+				"BOOK_SUNDER_ARMOR", "BOOK_PUMMEL", "BOOK_ENRAGE", "BOOK_WHIRLWIND", "BOOK_SECOND_WIND",
+				"BOOK_VENOMOUS_SHANK", "BOOK_CRIPPLING_STRIKE", "BOOK_EVASION", "BOOK_GOUGE", "BOOK_BACKSTAB",
+				"BOOK_FROST_NOVA", "BOOK_ARCANE_INTELLECT", "BOOK_LESSER_HEAL", "BOOK_MANA_SHIELD", "BOOK_PYROBLAST"
+				};
 
-		int monster_damage = 0;
-		std::string action_log;
-		int healingDone = 0; // Tracks self-healing/lifesteal amount
+				// Check if monster tier is 2 or higher
+				if (player.currentOpponent->lootTier >= 2) {
+					// 0.5% chance = 5 in 1000 roll
+					int skillBookDropChance = 5; // (0.5 * 1000)
 
-		// --- MONSTER ACTION LOGIC: Attack vs. Spell/Ability ---
-		bool usedSkill = false;
+					// Roll 0 to 999
+					if ((rand() % 1000) < skillBookDropChance) {
+						// Successful drop! Pick one book at random.
+						int bookIndex = rand() % ALL_SKILL_BOOKS.size();
+						std::string droppedBookId = ALL_SKILL_BOOKS[bookIndex];
 
-		// Calculate a spell chance based on Intellect dominance
-		int primary_physical_stat = std::max(player.currentOpponent->strength, player.currentOpponent->dexterity);
-		int magic_stat = player.currentOpponent->intellect;
-		float int_diff = (float)magic_stat - (float)primary_physical_stat;
+						// Add the item to inventory
+						addItemToInventory(droppedBookId, 1);
 
-		// Base chance for a non-physical monster is 30%. Add 2% per point of Int lead.
-		int spellChance = 30 + static_cast<int>(int_diff * 2.0f);
-		spellChance = std::min(70, spellChance);
-		spellChance = std::max(30, spellChance); // Min 30% if it has skills
+						send("SERVER:STATUS:A rare tome drops! You found a " + itemDatabase.at(droppedBookId).name + "!");
 
-		// Decide between skill and attack (skill attempt only; fallback handled below)
-		if (!player.currentOpponent->skills.empty() && (rand() % 100 < spellChance)) {
-
-			// --- MONSTER ATTEMPTS SKILL ---
-
-			// Pick a random skill from the monster's list
-			int skillIndex = rand() % player.currentOpponent->skills.size();
-			std::string skillName = player.currentOpponent->skills[skillIndex];
-
-			// --- [START] CRASH FIX ---
-			const SkillDefinition* skill_ptr = nullptr; // Use a pointer
-			bool skill_found = false;
-
-			// 1. LOOKUP: Check Monster Spell Map first
-			auto itMonsterSkill = g_monster_spell_defs.find(skillName);
-			if (itMonsterSkill != g_monster_spell_defs.end()) {
-				skill_ptr = &itMonsterSkill->second;
-				skill_found = true;
-			}
-			// 2. Fallback: Check Player Spell Map
-			else {
-				auto itPlayerSkill = g_skill_defs.find(skillName);
-				if (itPlayerSkill != g_skill_defs.end()) {
-					skill_ptr = &itPlayerSkill->second;
-					skill_found = true;
+						std::cout << "[LOOT DEBUG] RARE DROP SUCCESS: Skill Book (" << droppedBookId << ") from Tier "
+							<< player.currentOpponent->lootTier << " monster." << std::endl;
+					}
 				}
-			}
+				if (lootTier != -1) {
+					// 1) Base drop chance defined per monster (0–100)
+					int baseDropChance = player.currentOpponent->dropChance;
 
-			// 3. THE REAL FIX: Check the boolean flag, not a mixed-up iterator
-			if (skill_found && skill_ptr != nullptr) {
-				const SkillDefinition& skill = *skill_ptr; // Dereference the pointer
-				// --- [END] CRASH FIX ---
+					// Example: 0 luck = 1.0x, 10 luck ≈ 1.3x, 25 luck ≈ 1.5x, 50 luck ≈ 1.7x
+					double luckMultiplier = 1.0 + (std::sqrt(static_cast<double>(player.stats.luck)) / 15.0);
+					if (luckMultiplier > 1.8) {
+						luckMultiplier = 1.8;
+					}
 
-				bool targetIsSelf = (skill.target == SkillTarget::SELF);
+					// Tier 1 = 1.0, Tier 2 ≈ 0.85, Tier 3 ≈ 0.70, Tier 4 ≈ 0.55, Tier 5 ≈ 0.40 (min)
+					int tierIndex = std::max(0, lootTier - 1);
+					double tierModifier = 1.0 - (tierIndex * 0.15);
+					if (tierModifier < 0.4) {
+						tierModifier = 0.4;
+					}
 
-				// --- VALIDATION AND ACTION ---
+					// 4) Final chance
+					double finalDropChance = baseDropChance * luckMultiplier * tierModifier;
 
-				if (skill.target == SkillTarget::ENEMY || targetIsSelf) {
-					usedSkill = true;
+					// Clamp between 5% and 75% so it never feels impossible or guaranteed
+					if (finalDropChance < 5.0) finalDropChance = 5.0;
+					if (finalDropChance > 75.0) finalDropChance = 75.0;
 
-					// --- A. OFFENSIVE SKILLS (TARGET ENEMY) ---
-					if (skill.target == SkillTarget::ENEMY) {
+					// 5) Roll 0–99
+					int roll = rand() % 100;
 
-						float scaledAttack =
-							player.currentOpponent->strength * skill.strScale +
-							player.currentOpponent->dexterity * skill.dexScale +
-							player.currentOpponent->intellect * skill.intScale +
-							skill.flatDamage;
+					std::cout << "[DEBUG] Drop roll: " << roll
+						<< " | Chance: " << finalDropChance
+						<< "% | Luck: " << player.stats.luck
+						<< " | Tier: " << lootTier << std::endl;
 
-						int base_damage = static_cast<int>(std::round(scaledAttack));
-
-						// Magic Resistance Check
-						if (skill.isMagic) {
-							float resistance_multiplier = 1.0f - magic_resistance_for_player(finalStats);
-							base_damage = static_cast<int>(std::round(base_damage * resistance_multiplier));
-
-							if (resistance_multiplier < 1.0f) {
-								send("SERVER:COMBAT_LOG:You resist some of the " + skillName + "'s magic!");
+					if (roll < finalDropChance) {
+						// 6) Build a candidate list of items for this tier
+						std::vector<std::string> possibleItems;
+						for (const auto& [itemId, def] : itemDatabase) {
+							if (def.item_tier == lootTier) {
+								possibleItems.push_back(itemId);
 							}
 						}
 
-						float variance = 0.9f + ((float)(rand() % 21) / 100.0f); // 0.9–1.1
-						monster_damage = std::max(1, (int)std::round(base_damage * variance));
+						if (!possibleItems.empty()) {
+							int itemIndex = rand() % static_cast<int>(possibleItems.size());
+							std::string itemId = possibleItems[itemIndex];
 
-						action_log = "The " + player.currentOpponent->type + " uses " + skillName +
-							" for " + std::to_string(monster_damage) + " damage!";
+							addItemToInventory(itemId, 1);
 
-						// Lifesteal/Self-Heal from Damage Dealt
-						if (skillName == "BLOOD_LEECH" || skillName == "SOUL_DRAIN" || skillName == "LIFE_SIPHON") {
-							healingDone += (int)std::round(monster_damage * 0.5f);
+							const ItemDefinition& def = itemDatabase.at(itemId);
+							std::string log_msg_3 =
+								"SERVER:STATUS:The " + player.currentOpponent->type +
+								" dropped: " + def.name + "!";
+							send(log_msg_3);
+
+							std::cout << "[LOOT DEBUG] roll=" << roll
+								<< " finalDropChance=" << finalDropChance
+								<< " possibleItems=" << possibleItems.size()
+								<< " item=" << itemId
+								<< std::endl;
+						}
+						else {
+							std::cout << "[LOOT DEBUG] No items defined for tier "
+								<< lootTier << std::endl;
 						}
 					}
-
-					// --- B. DEFENSIVE/SELF SKILLS (TARGET SELF) ---
-					else if (targetIsSelf) {
-						action_log = "The " + player.currentOpponent->type + " uses " + skillName + " on itself.";
-
-						// Direct Healing Logic (REGENERATE)
-						if (skillName == "REGENERATE") {
-							healingDone += std::abs((int)std::round(skill.flatDamage + (player.currentOpponent->intellect * skill.intScale)));
-						}
-
-						// Special Berserk/Sacrificial Logic (Dual effect, applies debuff to self)
-						if (skillName == "BERSERK") {
-							// BERSERK applies ATK_UP via status below. Manually apply DEF_DOWN to monster.
-							StatusEffect defDown;
-							defDown.type = StatusType::DEFENSE_DOWN;
-							defDown.magnitude = 5; // Example: -5 Def
-							defDown.remainingTurns = skill.statusDuration;
-							player.currentOpponent->activeStatusEffects.push_back(defDown);
-						}
-						if (skillName == "SACRIFICIAL_BITE") {
-							// SACRIFICIAL_BITE deals damage to player above, but requires a self-burn.
-							StatusEffect selfBurn;
-							selfBurn.type = StatusType::BURN;
-							selfBurn.magnitude = 5;
-							selfBurn.remainingTurns = 2;
-							player.currentOpponent->activeStatusEffects.push_back(selfBurn);
-							send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " burns itself with dark energy!");
-						}
-						// Note: SUMMON_MINION/TERRIFY require complex handler logic not implemented here.
-					}
-
-					// --- C. APPLY STATUS EFFECTS (BOTH TARGETS) ---
-					if (skill.appliesStatus) {
-						StatusEffect eff;
-						eff.type = skill.statusType;
-						eff.magnitude = skill.statusMagnitude;
-						eff.remainingTurns = skill.statusDuration;
-						eff.appliedByPlayer = false;
-
-						if (skill.target == SkillTarget::ENEMY) {
-							player.activeStatusEffects.push_back(eff);
-							send("SERVER:COMBAT_LOG:You are afflicted by " + skillName + "!");
-						}
-						else if (skill.target == SkillTarget::SELF) {
-							// Buffs/Debuffs on monster
-							player.currentOpponent->activeStatusEffects.push_back(eff);
-							send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " is affected by " + skillName + "!");
-						}
-					}
-
 				}
+
+				send("SERVER:COMBAT_VICTORY:Defeated");
+				player.isInCombat = false;
+
+				// --- MODIFICATION ---
+				const int RESPAWN_TIME_SECONDS = 15; // <-- CHANGED FROM 60
+				set_monster_respawn_timer(player.currentArea, current_monster_spawn_id, RESPAWN_TIME_SECONDS);
+
+				player.currentOpponent.reset();
+				check_for_level_up();
+
+				// --- THIS IS THE FIX ---
+				// DELETE this line: send_current_monsters_list();
+				// ADD this line:
+				broadcast_monster_list(player.currentArea);
+				// --- END FIX ---
+
+				send_player_stats();
+				// DELETE this line (it was a duplicate): send_curre
+				return;
+			}
+
+			// --- Start of Monster Turn ---
+
+			if (monsterStunnedThisTurn) {
+				send(
+					"SERVER:COMBAT_LOG:The " + player.currentOpponent->type +
+					" is stunned and cannot act!"
+				);
+				send("SERVER:COMBAT_TURN:Your turn.");
+				return;
+			}
+
+			// --- NEW: DODGE CHECK ---
+			float dodge_chance = dodge_chance_for_player(finalStats, player.currentClass);
+			if (((float)rand() / RAND_MAX) < dodge_chance) {
+				// The player dodged the attack!
+				player.isDefending = false; // Reset defend state
+				send("SERVER:COMBAT_LOG:You swiftly dodged the " + player.currentOpponent->type + "'s attack!");
+				send("SERVER:COMBAT_TURN:Your turn.");
+				return;
+			}
+			// --- END DODGE CHECK ---
+
+			int monster_damage = 0;
+			std::string action_log;
+			int healingDone = 0; // Tracks self-healing/lifesteal amount
+
+			// --- MONSTER ACTION LOGIC: Attack vs. Spell/Ability ---
+			bool usedSkill = false;
+
+			// Calculate a spell chance based on Intellect dominance
+			int primary_physical_stat = std::max(player.currentOpponent->strength, player.currentOpponent->dexterity);
+			int magic_stat = player.currentOpponent->intellect;
+			float int_diff = (float)magic_stat - (float)primary_physical_stat;
+
+			// Base chance for a non-physical monster is 30%. Add 2% per point of Int lead.
+			int spellChance = 30 + static_cast<int>(int_diff * 2.0f);
+			spellChance = std::min(70, spellChance);
+			spellChance = std::max(30, spellChance); // Min 30% if it has skills
+
+			// Decide between skill and attack (skill attempt only; fallback handled below)
+			if (!player.currentOpponent->skills.empty() && (rand() % 100 < spellChance)) {
+
+				// --- MONSTER ATTEMPTS SKILL ---
+
+				// Pick a random skill from the monster's list
+				int skillIndex = rand() % player.currentOpponent->skills.size();
+				std::string skillName = player.currentOpponent->skills[skillIndex];
+
+				// --- [START] CRASH FIX ---
+				const SkillDefinition* skill_ptr = nullptr; // Use a pointer
+				bool skill_found = false;
+
+				// 1. LOOKUP: Check Monster Spell Map first
+				auto itMonsterSkill = g_monster_spell_defs.find(skillName);
+				if (itMonsterSkill != g_monster_spell_defs.end()) {
+					skill_ptr = &itMonsterSkill->second;
+					skill_found = true;
+				}
+				// 2. Fallback: Check Player Spell Map
 				else {
-					// Unusable skill (e.g., targets SELF but has no self-effect, or invalid skill definition)
-					usedSkill = false;
+					auto itPlayerSkill = g_skill_defs.find(skillName);
+					if (itPlayerSkill != g_skill_defs.end()) {
+						skill_ptr = &itPlayerSkill->second;
+						skill_found = true;
+					}
+				}
+
+				// 3. THE REAL FIX: Check the boolean flag, not a mixed-up iterator
+				if (skill_found && skill_ptr != nullptr) {
+					const SkillDefinition& skill = *skill_ptr; // Dereference the pointer
+					// --- [END] CRASH FIX ---
+
+					bool targetIsSelf = (skill.target == SkillTarget::SELF);
+
+					// --- VALIDATION AND ACTION ---
+
+					if (skill.target == SkillTarget::ENEMY || targetIsSelf) {
+						usedSkill = true;
+
+						// --- A. OFFENSIVE SKILLS (TARGET ENEMY) ---
+						if (skill.target == SkillTarget::ENEMY) {
+
+							float scaledAttack =
+								player.currentOpponent->strength * skill.strScale +
+								player.currentOpponent->dexterity * skill.dexScale +
+								player.currentOpponent->intellect * skill.intScale +
+								skill.flatDamage;
+
+							int base_damage = static_cast<int>(std::round(scaledAttack));
+
+							// Magic Resistance Check
+							if (skill.isMagic) {
+								float resistance_multiplier = 1.0f - magic_resistance_for_player(finalStats);
+								base_damage = static_cast<int>(std::round(base_damage * resistance_multiplier));
+
+								if (resistance_multiplier < 1.0f) {
+									send("SERVER:COMBAT_LOG:You resist some of the " + skillName + "'s magic!");
+								}
+							}
+
+							float variance = 0.9f + ((float)(rand() % 21) / 100.0f); // 0.9–1.1
+							monster_damage = std::max(1, (int)std::round(base_damage * variance));
+
+							action_log = "The " + player.currentOpponent->type + " uses " + skillName +
+								" for " + std::to_string(monster_damage) + " damage!";
+
+							// Lifesteal/Self-Heal from Damage Dealt
+							if (skillName == "BLOOD_LEECH" || skillName == "SOUL_DRAIN" || skillName == "LIFE_SIPHON") {
+								healingDone += (int)std::round(monster_damage * 0.5f);
+							}
+						}
+
+						// --- B. DEFENSIVE/SELF SKILLS (TARGET SELF) ---
+						else if (targetIsSelf) {
+							action_log = "The " + player.currentOpponent->type + " uses " + skillName + " on itself.";
+
+							// Direct Healing Logic (REGENERATE)
+							if (skillName == "REGENERATE") {
+								healingDone += std::abs((int)std::round(skill.flatDamage + (player.currentOpponent->intellect * skill.intScale)));
+							}
+
+							// Special Berserk/Sacrificial Logic (Dual effect, applies debuff to self)
+							if (skillName == "BERSERK") {
+								// BERSERK applies ATK_UP via status below. Manually apply DEF_DOWN to monster.
+								StatusEffect defDown;
+								defDown.type = StatusType::DEFENSE_DOWN;
+								defDown.magnitude = 5; // Example: -5 Def
+								defDown.remainingTurns = skill.statusDuration;
+								player.currentOpponent->activeStatusEffects.push_back(defDown);
+							}
+							if (skillName == "SACRIFICIAL_BITE") {
+								// SACRIFICIAL_BITE deals damage to player above, but requires a self-burn.
+								StatusEffect selfBurn;
+								selfBurn.type = StatusType::BURN;
+								selfBurn.magnitude = 5;
+								selfBurn.remainingTurns = 2;
+								player.currentOpponent->activeStatusEffects.push_back(selfBurn);
+								send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " burns itself with dark energy!");
+							}
+							// Note: SUMMON_MINION/TERRIFY require complex handler logic not implemented here.
+						}
+
+						// --- C. APPLY STATUS EFFECTS (BOTH TARGETS) ---
+						if (skill.appliesStatus) {
+							StatusEffect eff;
+							eff.type = skill.statusType;
+							eff.magnitude = skill.statusMagnitude;
+							eff.remainingTurns = skill.statusDuration;
+							eff.appliedByPlayer = false;
+
+							if (skill.target == SkillTarget::ENEMY) {
+								player.activeStatusEffects.push_back(eff);
+								send("SERVER:COMBAT_LOG:You are afflicted by " + skillName + "!");
+							}
+							else if (skill.target == SkillTarget::SELF) {
+								// Buffs/Debuffs on monster
+								player.currentOpponent->activeStatusEffects.push_back(eff);
+								send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " is affected by " + skillName + "!");
+							}
+						}
+
+					}
+					else {
+						// Unusable skill (e.g., targets SELF but has no self-effect, or invalid skill definition)
+						usedSkill = false;
+					}
 				}
 			}
-		}
 
-		// --- If skill failed or if it was ignored, execute BASIC ATTACK ---
-		if (!usedSkill) {
+			// --- If skill failed or if it was ignored, execute BASIC ATTACK ---
+			if (!usedSkill) {
 
-			int player_defense = finalStats.defense + extraDefFromBuffs;
+				int player_defense = finalStats.defense + extraDefFromBuffs;
 
-			if (player.isDefending) {
-				player_defense *= 2;
-				player.isDefending = false;
+				if (player.isDefending) {
+					player_defense *= 2;
+					player.isDefending = false;
+				}
+
+				// Use shared monster helpers (Basic Attack Logic)
+				float monsterAttackPower = attack_power_for_monster(*player.currentOpponent);
+				int base_monster_damage = damage_after_defense(monsterAttackPower, player_defense);
+
+				float monster_variance = 0.85f + ((float)(rand() % 31) / 100.0f);
+				monster_damage = std::max(1, (int)std::round(base_monster_damage * monster_variance));
+
+				float monster_crit_chance = crit_chance_for_monster(*player.currentOpponent);
+				if (((float)rand() / RAND_MAX) < monster_crit_chance) {
+					monster_damage = (int)std::round(monster_damage * 1.6f);
+					action_log = "The " + player.currentOpponent->type + " lands a critical hit!";
+					send("SERVER:COMBAT_LOG:" + action_log);
+				}
+
+				action_log = "The " + player.currentOpponent->type + " attacks you for " + std::to_string(monster_damage) + " damage!";
+			}
+			// --- END MONSTER ACTION LOGIC ---
+
+			// --- Apply Damage to Player ---
+			player.stats.health -= monster_damage;
+			send("SERVER:COMBAT_LOG:" + action_log);
+
+			// --- Apply Monster Healing (after damage calculation) ---
+			if (healingDone > 0) {
+				player.currentOpponent->health =
+					std::min(player.currentOpponent->maxHealth, player.currentOpponent->health + healingDone);
+				send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " heals for " + std::to_string(healingDone) + " health!");
+				std::string update = "SERVER:COMBAT_UPDATE:" + std::to_string(player.currentOpponent->health);
+				send(update);
 			}
 
-			// Use shared monster helpers (Basic Attack Logic)
-			float monsterAttackPower = attack_power_for_monster(*player.currentOpponent);
-			int base_monster_damage = damage_after_defense(monsterAttackPower, player_defense);
-
-			float monster_variance = 0.85f + ((float)(rand() % 31) / 100.0f);
-			monster_damage = std::max(1, (int)std::round(base_monster_damage * monster_variance));
-
-			float monster_crit_chance = crit_chance_for_monster(*player.currentOpponent);
-			if (((float)rand() / RAND_MAX) < monster_crit_chance) {
-				monster_damage = (int)std::round(monster_damage * 1.6f);
-				action_log = "The " + player.currentOpponent->type + " lands a critical hit!";
-				send("SERVER:COMBAT_LOG:" + action_log);
-			}
-
-			action_log = "The " + player.currentOpponent->type + " attacks you for " + std::to_string(monster_damage) + " damage!";
-		}
-		// --- END MONSTER ACTION LOGIC ---
-
-		// --- Apply Damage to Player ---
-		player.stats.health -= monster_damage;
-		send("SERVER:COMBAT_LOG:" + action_log);
-
-		// --- Apply Monster Healing (after damage calculation) ---
-		if (healingDone > 0) {
-			player.currentOpponent->health =
-				std::min(player.currentOpponent->maxHealth, player.currentOpponent->health + healingDone);
-			send("SERVER:COMBAT_LOG:The " + player.currentOpponent->type + " heals for " + std::to_string(healingDone) + " health!");
-			std::string update = "SERVER:COMBAT_UPDATE:" + std::to_string(player.currentOpponent->health);
-			send(update);
-		}
-
-		send_player_stats();
-
-		// --- Check for Player Defeat ---
-		if (player.stats.health <= 0) {
-			player.stats.health = 0;
-			send("SERVER:COMBAT_DEFEAT:You have been defeated!");
-			player.isInCombat = false;
-
-			// --- MODIFICATION ---
-			respawn_monster_immediately(player.currentArea, current_monster_spawn_id);
-
-			player.currentOpponent.reset();
-			player.currentArea = "TOWN"; player.currentMonsters.clear();
-			player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
-			player.posX = 26; player.posY = 12; player.currentPath.clear();
-			broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
-			{ lock_guard<mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
-
-			send("SERVER:AREA_CHANGED:TOWN");
-			send_area_map_data(player.currentArea);
-			SyncPlayerMonsters(player); // Syncs to TOWN
-			send_current_monsters_list();
-			send_available_areas();
 			send_player_stats();
-			return;
+
+			// --- Check for Player Defeat ---
+			if (player.stats.health <= 0) {
+				player.stats.health = 0;
+				send("SERVER:COMBAT_DEFEAT:You have been defeated!");
+				player.isInCombat = false;
+
+				// --- MODIFICATION ---
+				respawn_monster_immediately(player.currentArea, current_monster_spawn_id);
+
+				player.currentOpponent.reset();
+				player.currentArea = "TOWN"; player.currentMonsters.clear();
+				player.stats.health = player.stats.maxHealth / 2; player.stats.mana = player.stats.maxMana;
+				player.posX = 26; player.posY = 12; player.currentPath.clear();
+				broadcast_data.currentArea = "TOWN"; broadcast_data.posX = player.posX; broadcast_data.posY = player.posY;
+				{ std::lock_guard<std::mutex> lock(g_player_registry_mutex); g_player_registry[player.userId] = broadcast_data; }
+
+				send("SERVER:AREA_CHANGED:TOWN");
+				send_area_map_data(player.currentArea);
+				SyncPlayerMonsters(player); // Syncs to TOWN
+				send_current_monsters_list();
+				send_available_areas();
+				send_player_stats();
+				return;
+			}
+
+			send("SERVER:COMBAT_TURN:Your turn.");
 		}
-
-		send("SERVER:COMBAT_TURN:Your turn.");
 	}
-
 
 	   else if (message.rfind("GIVE_XP:", 0) == 0) {
 		if (!player.isFullyInitialized) { send("SERVER:ERROR:Complete character creation first."); }
@@ -5325,5 +6141,37 @@ void AsyncSession::handle_message(const string& message)
 	   else {
 		string echo = "SERVER:ECHO: " + message;
 		send(echo);
+	}
+}
+void check_party_timeouts() {
+	std::vector<std::shared_ptr<Party>> parties_to_resolve;
+
+	// 1. Identify expired rounds (Lock briefly to read)
+	{
+		std::lock_guard<std::mutex> lock(g_parties_mutex);
+		auto now = std::chrono::steady_clock::now();
+
+		for (auto const& [id, party] : g_parties) {
+			if (party && party->activeCombat) {
+				// Check if 20 seconds have passed
+				auto duration = std::chrono::duration_cast<std::chrono::seconds>(
+					now - party->activeCombat->roundStartTime
+				).count();
+
+				if (duration >= 20) {
+					parties_to_resolve.push_back(party);
+				}
+			}
+		}
+	}
+
+	// 2. Resolve them (Unlocked, as resolve_party_round handles logic/sending)
+	for (auto& party : parties_to_resolve) {
+		// Double check combat still exists (race condition safety)
+		if (party->activeCombat) {
+			// Optional: Log that it was a forced timeout
+			// broadcast_to_party(party, "SERVER:COMBAT_LOG:Time limit reached! Round ending...");
+			resolve_party_round(party);
+		}
 	}
 }
