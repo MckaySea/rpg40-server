@@ -643,29 +643,29 @@ const std::vector<std::vector<int>> DESERT3_GRID = {
 
 };
 const std::vector<std::vector<int>> SWAMP_GRID = {
-	//       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 0
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 1
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 2
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 3
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 4
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 5 
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 6
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 7
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 8
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 9
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 10
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 11
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 12 
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 13 
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 14 
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 15 
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 16
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 17
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 18
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 19
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 20
-			{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}  // 21
+   	 	//   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
+   	 		{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0}, // 0
+    		{0,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0}, // 1
+	    	{0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0}, // 2
+	    	{0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 3
+	    	{0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 4
+	    	{0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 5
+	    	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 6
+	    	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0}, // 7
+	    	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0}, // 8
+	    	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0}, // 9
+	   	 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0}, // 10
+	   	 	{0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 11
+	   		{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0}, // 12
+	   	 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 13
+	    	{0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 14
+   			{0,0,0,0,0,0,0,0,0,0,1,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0}, // 15
+		    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0}, // 16
+		    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 17
+		    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 18
+	   	 	{0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,1,1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0}, // 19
+	   		{0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,1,1,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0}, // 20
+	   	 	{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}, // 21
 };
 const std::vector<std::vector<int>> SWAMP2_GRID = {
 	//       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
@@ -1920,13 +1920,14 @@ void initializeAreas() {
 		// Overworld is safe, no monsters.
 	};
 	g_areas["FOREST2"].monsters = {
-	{global_monster_id_counter++, "ANCIENT_DRAGON", 4, 3, 1, 1},
-	{global_monster_id_counter++, "TREANT", 25, 5, 1, 1},
-	{global_monster_id_counter++, "TREANT", 28, 9, 1, 1},
-	{global_monster_id_counter++, "TREANT", 9, 17, 1, 1},
-	{ global_monster_id_counter++, "TREANT", 16, 12, 1, 1 },
-	{ global_monster_id_counter++, "TREANT", 28, 17, 1, 1 }  		// <-- Added
+		{global_monster_id_counter++, "ANCIENT_DRAGON", 4, 3, 1, 1},
+		{global_monster_id_counter++, "TREANT", 25, 5, 1, 1},
+		{global_monster_id_counter++, "TREANT", 28, 9, 1, 1},
+		{global_monster_id_counter++, "TREANT", 9, 17, 1, 1},
+		{global_monster_id_counter++, "TREANT", 16, 12, 1, 1 },
+		{global_monster_id_counter++, "TREANT", 28, 17, 1, 1 }  		// <-- Added
 	};
+	
 	g_areas["FOREST"].monsters = {
 		{global_monster_id_counter++, "SLIME", 12, 8, 2, 4},
 		{global_monster_id_counter++, "SLIME", 19, 17, 2, 4},
@@ -1939,7 +1940,7 @@ void initializeAreas() {
 		{global_monster_id_counter++, "GIANT_SPIDER", 25, 18, 1, 1}, // <-- Fixed: space
 		{global_monster_id_counter++, "TREANT", 28, 5, 1, 1}        // <-- Added
 	};
-
+	
 	g_areas["VOLCANO"].monsters = {
 		{global_monster_id_counter++, "LAVA_ELEMENTAL", 31, 6, 2, 3},
 		{global_monster_id_counter++, "LAVA_ELEMENTAL", 10, 17, 2, 3},
@@ -1956,17 +1957,18 @@ void initializeAreas() {
 	// --- Adding monsters for the other zones ---
 
 	g_areas["CAVES"].monsters = {
-		{global_monster_id_counter++, "BAT", 5, 5, 3, 6},
-		{global_monster_id_counter++, "KOBOLD", 10, 10, 2, 4},
-		{global_monster_id_counter++, "CAVE_CRAB", 15, 15, 1, 3},
-		{global_monster_id_counter++, "GIANT_SPIDER", 20, 18, 1, 2}, // <-- Fixed: space
-		{global_monster_id_counter++, "ROCK_GOLEM", 22, 5, 2, 3},
-		{global_monster_id_counter++, "ROCK_GOLEM", 25, 10, 1, 1}     // <-- Added
+		{global_monster_id_counter++, "BAT", 5, 7, 3, 6},
+		{global_monster_id_counter++, "BAT", 27, 6, 3, 6},
+		{global_monster_id_counter++, "KOBOLD", 9, 12, 2, 4},
+		{global_monster_id_counter++, "CAVE_CRAB", 16, 14, 1, 3},
+		{global_monster_id_counter++, "GIANT_SPIDER", 22, 17, 1, 2}, // <-- Fixed: space
+		{global_monster_id_counter++, "ROCK_GOLEM", 16, 5, 2, 3},
+		{global_monster_id_counter++, "ROCK_GOLEM", 25, 12, 1, 1}     // <-- Added
 	};
 
 	g_areas["RUINS"].monsters = {
 		{global_monster_id_counter++, "SKELETON", 8, 8, 2, 5},
-		{global_monster_id_counter++, "SKELETON", 3, 12, 2, 5},
+		{global_monster_id_counter++, "SKELETON", 3, 19, 2, 5},
 		{global_monster_id_counter++, "UNDEAD_GUARD", 16, 7, 1, 3},
 		{global_monster_id_counter++, "UNDEAD_GUARD", 17, 18, 1, 3},
 		{global_monster_id_counter++, "GOBLIN_SHAMAN", 26, 11, 1, 1},
@@ -1977,21 +1979,24 @@ void initializeAreas() {
 	};
 
 	g_areas["SWAMP"].monsters = {
-		{global_monster_id_counter++, "SWAMP_THING", 12, 6, 2, 4},
-		{global_monster_id_counter++, "SWAMP_THING", 12, 6, 2, 4},
-		{global_monster_id_counter++, "SWAMP_THING", 24, 7, 2, 4},
+		{global_monster_id_counter++, "SWAMP_THING", 12, 7, 2, 4},
+		{global_monster_id_counter++, "SWAMP_THING", 5, 16, 2, 4},
+		{global_monster_id_counter++, "SWAMP_THING", 24, 9, 2, 4},
 		{global_monster_id_counter++, "GOBLIN_SHAMAN", 30, 5, 2, 4},
+		{global_monster_id_counter++, "GOBLIN_SHAMAN", 26, 17, 2, 4},
 		{global_monster_id_counter++, "SLIME", 15, 15, 3, 5},
+		{global_monster_id_counter++, "SLIME", 21, 3, 3, 5},
+		{global_monster_id_counter++, "SLIME", 36, 11, 3, 5},
 		{global_monster_id_counter++, "GIANT_SPIDER", 5, 5, 1, 2},   // <-- Fixed: space
-		{global_monster_id_counter++, "KOBOLD", 12, 10, 1, 3},
-		{global_monster_id_counter++, "KOBOLD", 12, 10, 1, 3}// <-- Added
+		{global_monster_id_counter++, "KOBOLD", 12, 12, 1, 3},
+		{global_monster_id_counter++, "KOBOLD", 19, 20, 1, 3}// <-- Added
 	};
 
 	g_areas["MOUNTAINS"].monsters = {
 		{global_monster_id_counter++, "ROCK_GOLEM", 10, 8, 1, 2},
 		{global_monster_id_counter++, "ROCK_GOLEM", 19, 10, 1, 2},
 		{global_monster_id_counter++, "HARPY", 15, 5, 2, 4},
-		{global_monster_id_counter++, "ORC_SCOUT", 18, 13, 1, 3},
+		{global_monster_id_counter++, "ORC_SCOUT", 13, 13, 1, 3},
 		{global_monster_id_counter++, "GRIFFIN", 25, 8, 1, 1},
 		{global_monster_id_counter++, "WYVERN", 33, 16, 1, 1}         // <-- Added
 	};
@@ -2005,7 +2010,7 @@ void initializeAreas() {
 		{global_monster_id_counter++, "GIANT_SCORPION", 32, 18, 1, 3},
 		{global_monster_id_counter++, "HARPY", 36, 6, 1, 2},
 		{global_monster_id_counter++, "KOBOLD", 21, 9, 2, 4},
-		{global_monster_id_counter++, "SKELETON", 10, 17, 2, 4},
+		{global_monster_id_counter++, "SKELETON", 4, 15, 2, 4},
 		{global_monster_id_counter++, "MINOTAUR", 28, 12, 1, 1}      // <-- Added
 	};
 	g_areas["LAKE"].monsters = {
@@ -6188,11 +6193,11 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "CAVE_SHADY_DEALER", InteractableType::SHOP, {7, 5},  "SHOP_SHADY_DEALER" },
 
 		// --- Resource Nodes ---
-		{ "CAVE_IRON_1",       InteractableType::RESOURCE_NODE, {12, 10}, "IRON_VEIN" },
-		{ "CAVE_MITHRIL_1",    InteractableType::RESOURCE_NODE, {25,  8}, "MITHRIL_VEIN" },
+		{ "CAVE_IRON_1",       InteractableType::RESOURCE_NODE, {11, 3}, "IRON_VEIN" },
+		{ "CAVE_MITHRIL_1",    InteractableType::RESOURCE_NODE, {31, 11}, "MITHRIL_VEIN" },
 
 		// --- Zone Transitions ---
-		{ "CAVES_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {23, 19}, "OVERWORLD" }
+		{ "CAVES_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {29, 4}, "OVERWORLD" }
 	}
 },
 {
@@ -6201,7 +6206,7 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		{ "CAVE_COPPER_1",       InteractableType::RESOURCE_NODE, {6, 17}, "COPPER_VEIN" },
 
 		// --- Resource Nodes ---
-		{ "RUINS_IRON_1",        InteractableType::RESOURCE_NODE, {10, 14}, "IRON_VEIN" },
+		{ "RUINS_IRON_1",        InteractableType::RESOURCE_NODE, {11, 3}, "IRON_VEIN" },
 		{ "RUINS_MITHRIL_1",     InteractableType::RESOURCE_NODE, {20,  5}, "MITHRIL_VEIN" },
 
 		// --- Zone Transitions ---
@@ -6240,19 +6245,19 @@ const std::map<std::string, std::vector<InteractableObject>> g_interactable_obje
 		// --- Resource Nodes ---
 		{ "SWAMP_REDWOOD_1", InteractableType::RESOURCE_NODE, { 6, 14}, "REDWOOD_TREE" },
 		{ "SWAMP_ELDER_1",   InteractableType::RESOURCE_NODE, {16,  6}, "ELDER_TREE" },
-		{ "SWAMP_ANGLER_1",  InteractableType::RESOURCE_NODE, {24, 12}, "ANGLER_SPOT" },
+		{ "SWAMP_ANGLER_1",  InteractableType::RESOURCE_NODE, {33, 19}, "ANGLER_SPOT" },
 
 		// --- Zone Transitions ---
-		{ "SWAMP_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {0, 10}, "OVERWORLD" }
+		{ "SWAMP_TO_OVERWORLD", InteractableType::ZONE_TRANSITION, {13, 21}, "OVERWORLD" }
 	}
 },
 {
 	"MOUNTAINS", {
 		// --- Resource Nodes ---
-		{ "MOUNTAINS_IRON_1",    InteractableType::RESOURCE_NODE, { 5,  4}, "IRON_VEIN" },
-		{ "MOUNTAINS_MITHRIL_1", InteractableType::RESOURCE_NODE, {22,  5}, "MITHRIL_VEIN" },
-		{ "MOUNTAINS_ADAMANT_1", InteractableType::RESOURCE_NODE, {30,  9}, "ADAMANT_VEIN" },
-		{ "MOUNTAINS_RUNITE_1",  InteractableType::RESOURCE_NODE, {18, 17}, "RUNITE_VEIN" },
+		{ "MOUNTAINS_IRON_1",    InteractableType::RESOURCE_NODE, { 5,  7}, "IRON_VEIN" },
+		{ "MOUNTAINS_MITHRIL_1", InteractableType::RESOURCE_NODE, {21,  3}, "MITHRIL_VEIN" },
+		{ "MOUNTAINS_ADAMANT_1", InteractableType::RESOURCE_NODE, {32,  8}, "ADAMANT_VEIN" },
+		{ "MOUNTAINS_RUNITE_1",  InteractableType::RESOURCE_NODE, {10, 17}, "RUNITE_VEIN" },
 
 		// --- Existing Copper Nodes ---
 		{ "CAVE_COPPER_2", InteractableType::RESOURCE_NODE, {12,  8}, "COPPER_VEIN" },
