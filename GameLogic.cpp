@@ -4790,6 +4790,7 @@ void AsyncSession::handle_message(const string& message)
 						oss << "SERVER:COMBAT_START:{"
 							<< "\"id\":" << combat->monster->id
 							<< ",\"name\":" << nlohmann::json(combat->monster->type).dump()
+							<< ",\"asset\":" << nlohmann::json(combat->monster->assetKey).dump()
 							<< ",\"health\":" << combat->monster->health
 							<< ",\"maxHealth\":" << combat->monster->maxHealth << "}";
 
@@ -4845,6 +4846,7 @@ void AsyncSession::handle_message(const string& message)
 							oss << "SERVER:COMBAT_START:{"
 								<< "\"id\":" << party->activeCombat->monster->id
 								<< ",\"name\":" << nlohmann::json(party->activeCombat->monster->type).dump()
+								<< ",\"asset\":" << nlohmann::json(party->activeCombat->monster->assetKey).dump()
 								<< ",\"health\":" << party->activeCombat->monster->health
 								<< ",\"maxHealth\":" << party->activeCombat->monster->maxHealth << "}";
 							send(oss.str());
